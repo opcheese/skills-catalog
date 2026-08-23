@@ -1,0 +1,34 @@
+{
+  "name": "opcheese-skills",
+  "description": "Our agent skills: the Superpowers fork (human and unattended spines) plus codebase-design vocabulary",
+  "owner": {
+    "name": "opcheese",
+    "email": "ocaliomeri@gmail.com"
+  },
+  "plugins": [
+    {
+      "name": "superpowers-human",
+      "description": "Superpowers fork, interactive spine: human-in-the-loop gates, per-task native code-review checkpoint, end-of-run sign-off",
+      "source": {
+        "source": "github",
+        "repo": "opcheese/superpowers",
+        "ref": "main"
+      }
+    },
+    {
+      "name": "superpowers-agents",
+      "description": "Superpowers fork, unattended spine: rulings over stalls, automated verification gate, escalation, always-PR. For claude -p in CI, cron and pipelines",
+      "source": {
+        "source": "github",
+        "repo": "opcheese/superpowers",
+        "ref": "agents"
+      }
+    },
+    {
+      "name": "codebase-vocabulary",
+      "description": "Design vocabulary and safety rails that the Superpowers spine does not cover: deep modules and seams, domain glossary and ADRs, merge-conflict resolution, dangerous-git hooks",
+      "version": "1.0.0",
+      "source": "./plugins/codebase-vocabulary"
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "name": "codebase-vocabulary",
+  "description": "Design vocabulary and safety rails that the Superpowers spine does not cover: deep modules and seams, domain glossary and ADRs, merge-conflict resolution, dangerous-git hooks",
+  "version": "1.0.0",
+  "author": {
+    "name": "opcheese"
+  },
+  "license": "MIT",
+  "keywords": ["skills", "architecture", "domain-modeling", "adr", "git"]
+}
