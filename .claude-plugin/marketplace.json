@@ -1,6 +1,6 @@
 {
   "name": "opcheese-skills",
-  "description": "Our agent skills: the Superpowers fork (human and unattended spines) plus codebase-design vocabulary",
+  "description": "Our agent skills: the Superpowers fork (human and unattended spines), codebase-design vocabulary, and the shadow learning memory store",
   "owner": {
     "name": "opcheese",
     "email": "ocaliomeri@gmail.com"
@@ -35,6 +35,15 @@
       "description": "Interactive-only companions: domain glossary and ADR discipline, and hooks that block dangerous git commands. Both need a person at the keyboard",
       "version": "1.0.0",
       "source": "./plugins/codebase-vocabulary-human"
+    },
+    {
+      "name": "shadow-learn-memory",
+      "description": "Shadow learning memory store: extract durable knowledge from your Claude Code, Codex and Kimi sessions, consolidate it into patterns and entities, and scaffold long-horizon research threads. Every write is gated on your confirmation",
+      "source": {
+        "source": "github",
+        "repo": "Ludentes/Claude-Shadow-Learn",
+        "ref": "main"
+      }
     }
   ]
 }
