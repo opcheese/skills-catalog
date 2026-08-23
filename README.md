@@ -45,15 +45,17 @@ opposite answers about when to involve a person. Installing both puts two
 skills with identical trigger conditions in front of the model, and which
 one fires is a coin flip. Pick one per environment.
 
-## Do not install codebase-vocabulary-human where agents run unattended
+## Why codebase-vocabulary-human is separate
 
-`git-guardrails-claude-code` installs a hook that blocks `git push` with no
-branch distinction, and the `superpowers-agents` spine always opens a PR —
-which means pushing a feature branch. The default blocked list breaks every
-unattended run at its finish step. If a repo runs both, customize the
-blocked list to allow pushing a non-default branch. `domain-modeling` is
-the other one: it asks you questions, and unattended there is nobody to
-answer.
+Both skills in it need a person. `domain-modeling` works by asking you
+questions, and unattended there is nobody to answer.
+`git-guardrails-claude-code` is a setup skill you run once per repo.
+
+Its hook is safe to install in a repo that also runs unattended agents:
+pushing is branch-aware, so pushing to `main` is blocked while pushing a
+feature branch — which is what opening a PR requires — still works. That is
+a change from upstream, which blocked `git push` outright; see
+[the notice](plugins/codebase-vocabulary-human/NOTICE.md).
 
 ## Why not just install mattpocock/skills too?
 

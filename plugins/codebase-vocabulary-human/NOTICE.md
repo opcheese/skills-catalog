@@ -1,6 +1,6 @@
 # Attribution
 
-The skills in this plugin are copied verbatim from
+The skills in this plugin are copied from
 [mattpocock/skills](https://github.com/mattpocock/skills), MIT licensed,
 Copyright (c) 2026 Matt Pocock. The full license text is in `LICENSE`.
 
@@ -46,10 +46,30 @@ The full reasoning, and the framework used to pick them, is in
 `docs/research/2026-08-23-mattpocock-skills-and-adoption-framework.md` on
 the `agents` branch of our Superpowers fork.
 
+## Modifications
+
+One file is **not** a verbatim copy:
+
+`git-guardrails-claude-code/scripts/block-dangerous-git.sh` has been
+rewritten so that pushing is branch-aware. Upstream blocks `git push`
+unconditionally. Our `agents` spine always opens a pull request, which
+requires pushing a feature branch, so the upstream list would fail every
+unattended run at its finish step.
+
+Our version blocks pushes whose destination is a protected branch (`main`,
+`master`, or the remote's default, overridable via
+`GIT_GUARDRAILS_PROTECTED_BRANCHES`), and always blocks force, `+refspec`,
+`--mirror`, `--all` and `--delete` pushes. Everything else upstream blocked
+is still blocked. `SKILL.md` is updated to describe the new behaviour, and
+`tests/test-block-dangerous-git.sh` covers both directions — that a
+dangerous push is refused, and that the safe push a PR depends on still
+works.
+
 ## Updating
 
 These files are a pinned copy, not a submodule. To refresh them, diff
-against the upstream paths above at a newer commit, re-apply deliberately,
-and bump the provenance SHA in this file. Nothing here has been modified
-from upstream, and keeping it that way makes every future refresh a
-straight copy.
+against the upstream paths above at a newer commit and re-apply
+deliberately, bumping the provenance SHA here. Everything except the
+guardrails script is unmodified, so those are straight copies; the
+guardrails script needs its branch-awareness re-applied by hand, and the
+test suite is what tells you whether you got it right.

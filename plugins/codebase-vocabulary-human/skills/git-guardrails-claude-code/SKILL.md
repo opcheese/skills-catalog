@@ -9,13 +9,33 @@ Sets up a PreToolUse hook that intercepts and blocks dangerous git commands befo
 
 ## What Gets Blocked
 
-- `git push` (all variants including `--force`)
+Always, regardless of branch:
+
 - `git reset --hard`
 - `git clean -f` / `git clean -fd`
 - `git branch -D`
 - `git checkout .` / `git restore .`
+- `git push --force` / `-f` / `--force-with-lease`, a `+refspec`, and
+  `git push --mirror` / `--all` / `--delete`
 
-When blocked, Claude sees a message telling it that it does not have authority to access these commands.
+Pushing is **branch-aware**:
+
+- **Blocked** — any push whose destination is a protected branch, including
+  `git push origin main`, `git push origin feature:main`,
+  `git push origin HEAD:refs/heads/main`, and a bare `git push` while HEAD is
+  on a protected branch.
+- **Allowed** — pushing a feature branch: `git push -u origin my-feature`,
+  `git push`, `git push origin HEAD:refs/heads/new-branch`.
+
+Protected means `main`, `master`, and the remote's own default branch. Override
+the set with `GIT_GUARDRAILS_PROTECTED_BRANCHES`, comma-separated.
+
+Why not block pushing outright: opening a pull request requires pushing a
+branch. A hook that blocks every push blocks the safe workflow along with the
+dangerous one, and it breaks any unattended agent whose finish step is
+"push the branch, open a PR."
+
+When blocked, Claude sees a message naming the reason and telling it that it does not have authority to run the command.
 
 ## Steps
 
@@ -92,4 +112,17 @@ Run a quick test:
 echo '{"tool_input":{"command":"git push origin main"}}' | <path-to-script>
 ```
 
-Should exit with code 2 and print a BLOCKED message to stderr.
+Should exit with code 2 and print a BLOCKED message to stderr. Then check the
+safe case is still allowed, which is the half that actually breaks workflows:
+
+```bash
+echo '{"tool_input":{"command":"git push -u origin my-feature"}}' | <path-to-script>
+```
+
+Should exit 0 and print nothing.
+
+The bundled suite covers both directions:
+
+```bash
+bash tests/test-block-dangerous-git.sh
+```

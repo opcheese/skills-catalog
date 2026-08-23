@@ -61,16 +61,26 @@ Run the guardrails setup once in any repo you let an agent work in:
 /git-guardrails-claude-code
 ```
 
-### Guardrails and unattended repos
+### What the guardrails actually block
 
-The default blocked list blocks `git push` outright, with no branch
-distinction. The unattended spine always opens a PR, which means it has to
-push a feature branch. **If this repo also runs `superpowers-agents`, the
-default list will break every unattended run at its finish step.**
+Pushing is branch-aware, so the hook is safe to install in a repo that also
+runs unattended agents:
 
-The setup skill asks whether you want to customize the blocked list. In a
-repo that runs both, say yes and narrow the push rule so pushing a
-non-default branch is allowed while pushing to `main` still is not.
+- **Blocked** — pushing to `main`, `master` or the remote's default branch,
+  by any route: `git push origin main`, `git push origin feature:main`, or a
+  bare `git push` while you are standing on `main`. Force pushes,
+  `+refspec`, `--mirror`, `--all` and `--delete` are blocked wherever they
+  point.
+- **Allowed** — pushing a feature branch, which is what opening a PR needs.
+
+Override the protected set per repo with
+`GIT_GUARDRAILS_PROTECTED_BRANCHES`, comma-separated, if you have a
+`release` or `staging` branch that deserves the same treatment.
+
+Upstream's version blocked `git push` outright. We changed it, because a
+hook that blocks every push blocks the safe workflow along with the
+dangerous one — and would break the unattended spine at its finish step,
+where pushing a branch is the whole point.
 
 ## The two gates
 
