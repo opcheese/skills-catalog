@@ -20,6 +20,12 @@ And, in both cases:
 /plugin install codebase-vocabulary@opcheese-skills
 ```
 
+If you are at the keyboard, also:
+
+```
+/plugin install codebase-vocabulary-human@opcheese-skills
+```
+
 New here? Read [docs/dev-guide.md](docs/dev-guide.md) — it is step by step
 and copy-paste ready.
 
@@ -29,7 +35,8 @@ and copy-paste ready.
 |---|---|---|
 | **superpowers-human** | Our [Superpowers](https://github.com/obra/superpowers) fork, `main` branch. The full methodology — brainstorm → spec → plan → implement → review → PR — with human gates kept: a per-task checkpoint that asks you to run the native `/code-review`, and an end-of-run sign-off. | You are working interactively. This is the default for everyone. |
 | **superpowers-agents** | The same fork, `agents` branch. Every human gate is replaced by something an unattended run can actually do: recorded rulings instead of questions, an automated verification gate instead of sign-off, escalation instead of stopping, and always-open-a-PR instead of merging. | You are running `claude -p` with nobody watching. |
-| **codebase-vocabulary** | Four skills from [mattpocock/skills](https://github.com/mattpocock/skills) (MIT, attributed) covering what Superpowers does not: deep modules and seams, domain glossary and ADRs, merge conflicts, and hooks that block dangerous git commands. | Always. It composes with either spine. |
+| **codebase-vocabulary** | Two skills from [mattpocock/skills](https://github.com/mattpocock/skills) (MIT, attributed) covering what Superpowers does not: deep modules and seams, and merge-conflict resolution. Neither waits on a person. | Always. It composes with either spine. |
+| **codebase-vocabulary-human** | Two more from the same source that need someone at the keyboard: domain glossary and ADR discipline, and hooks that block dangerous git commands. | Interactive work only. See the warning below. |
 
 ## Do not install both spines
 
@@ -37,6 +44,16 @@ and copy-paste ready.
 opposite answers about when to involve a person. Installing both puts two
 skills with identical trigger conditions in front of the model, and which
 one fires is a coin flip. Pick one per environment.
+
+## Do not install codebase-vocabulary-human where agents run unattended
+
+`git-guardrails-claude-code` installs a hook that blocks `git push` with no
+branch distinction, and the `superpowers-agents` spine always opens a PR —
+which means pushing a feature branch. The default blocked list breaks every
+unattended run at its finish step. If a repo runs both, customize the
+blocked list to allow pushing a non-default branch. `domain-modeling` is
+the other one: it asks you questions, and unattended there is nobody to
+answer.
 
 ## Why not just install mattpocock/skills too?
 
@@ -46,8 +63,9 @@ implement loop, its own code review. The overlap is at the *trigger* layer,
 where the model chooses a skill before reading either one, so the failure is
 silent and non-deterministic rather than loud.
 
-`codebase-vocabulary` is the part of that pack that collides with nothing.
-See [plugins/codebase-vocabulary/NOTICE.md](plugins/codebase-vocabulary/NOTICE.md).
+These four skills are the part of that pack that collides with nothing. See
+[codebase-vocabulary/NOTICE.md](plugins/codebase-vocabulary/NOTICE.md) and
+[codebase-vocabulary-human/NOTICE.md](plugins/codebase-vocabulary-human/NOTICE.md).
 
 ## Updating
 
@@ -56,5 +74,5 @@ See [plugins/codebase-vocabulary/NOTICE.md](plugins/codebase-vocabulary/NOTICE.m
 ```
 
 The two Superpowers entries track branches, so they pick up each upstream
-sync automatically. `codebase-vocabulary` is a pinned copy and moves only
-when we deliberately bump it.
+sync automatically. The two `codebase-vocabulary*` plugins are pinned copies
+and move only when we deliberately bump them.

@@ -16,6 +16,7 @@ the working habits that come with it.
 /plugin marketplace add opcheese/skills-catalog
 /plugin install superpowers-human@opcheese-skills
 /plugin install codebase-vocabulary@opcheese-skills
+/plugin install codebase-vocabulary-human@opcheese-skills
 ```
 
 Restart Claude Code. To check it worked, start a fresh session and say:
@@ -41,20 +42,35 @@ You do not invoke most of it. It triggers itself when you ask for something
 that needs it. The two places it deliberately stops and waits for you are
 described under *The two gates* below.
 
-**codebase-vocabulary** supplies four things the spine does not:
+**codebase-vocabulary** supplies what the spine does not. It is split in
+two, by whether the skill needs you present:
 
-| Skill | Fires when | What it gives you |
-|---|---|---|
-| `codebase-design` | you are deciding where an interface or module boundary goes | the vocabulary — deep modules, seams, adapters, leverage, locality |
-| `domain-modeling` | you are arguing about what a word means, or writing a `CONTEXT.md` / ADR | a glossary discipline, and a three-part test for whether a decision deserves an ADR |
-| `resolving-merge-conflicts` | you are mid-merge or mid-rebase with conflicts | a procedure that does not lose work |
-| `git-guardrails-claude-code` | you run it once per repo | hooks that block `push`, `reset --hard`, `clean`, branch deletion |
+| Skill | Plugin | Fires when | What it gives you |
+|---|---|---|---|
+| `codebase-design` | codebase-vocabulary | you are deciding where an interface or module boundary goes | the vocabulary — deep modules, seams, adapters, leverage, locality |
+| `resolving-merge-conflicts` | codebase-vocabulary | you are mid-merge or mid-rebase with conflicts | a procedure that does not lose work |
+| `domain-modeling` | codebase-vocabulary-**human** | you are arguing about what a word means, or writing a `CONTEXT.md` / ADR | a glossary discipline, and a three-part test for whether a decision deserves an ADR |
+| `git-guardrails-claude-code` | codebase-vocabulary-**human** | you run it once per repo | hooks that block `push`, `reset --hard`, `clean`, branch deletion |
+
+The bottom two are in a separate plugin because they need a person. See
+*Guardrails and unattended repos* below before running the guardrails setup.
 
 Run the guardrails setup once in any repo you let an agent work in:
 
 ```
 /git-guardrails-claude-code
 ```
+
+### Guardrails and unattended repos
+
+The default blocked list blocks `git push` outright, with no branch
+distinction. The unattended spine always opens a PR, which means it has to
+push a feature branch. **If this repo also runs `superpowers-agents`, the
+default list will break every unattended run at its finish step.**
+
+The setup skill asks whether you want to customize the blocked list. In a
+repo that runs both, say yes and narrow the push rule so pushing a
+non-default branch is allowed while pushing to `main` still is not.
 
 ## The two gates
 
@@ -129,10 +145,11 @@ is missing, skip it.
 ## Unattended runs
 
 For CI, cron, or anything driven by `claude -p`, install the other spine
-**in that environment only**:
+**in that environment only**, and leave the `-human` plugin out:
 
 ```
 /plugin install superpowers-agents@opcheese-skills
+/plugin install codebase-vocabulary@opcheese-skills
 ```
 
 Never install both in the same environment — they are the same skills with

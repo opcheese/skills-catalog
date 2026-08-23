@@ -8,11 +8,24 @@ Provenance: commit `5b15a47f2d7150f545fbcacbfe381787fc0230dc` (2026-08-21).
 
 | Skill | Upstream path |
 |---|---|
-| `codebase-design` | `skills/engineering/codebase-design/` |
-| `resolving-merge-conflicts` | `skills/engineering/resolving-merge-conflicts/` |
+| `domain-modeling` | `skills/engineering/domain-modeling/` |
+| `git-guardrails-claude-code` | `skills/misc/git-guardrails-claude-code/` |
 
-The two that need a person at the keyboard live in the sibling plugin
-`codebase-vocabulary-human`, which has its own copy of this notice.
+## Why these two are separate
+
+Both need a person at the keyboard, so they ship apart from the spine-neutral
+skills in `codebase-vocabulary`.
+
+`domain-modeling` works by interrogating you — "your glossary defines
+'cancellation' as X, but you seem to mean Y, which is it?" — and an
+unattended run has nobody to answer, so it stalls exactly where our
+`agents` spine is built never to stall.
+
+`git-guardrails-claude-code` installs a `PreToolUse` hook that blocks
+`git push` with no branch distinction. Our `agents` spine always opens a
+PR, which means pushing a feature branch, so the default blocked list
+breaks every unattended run at its finish step. See the dev guide before
+installing it in a repo that also runs unattended.
 
 ## Why only these
 

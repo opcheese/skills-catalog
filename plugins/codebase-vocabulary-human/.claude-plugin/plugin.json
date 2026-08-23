@@ -1,0 +1,8 @@
+{
+  "name": "codebase-vocabulary-human",
+  "description": "Interactive-only companions to codebase-vocabulary: domain glossary and ADR discipline, and hooks that block dangerous git commands. Both need a person at the keyboard",
+  "version": "1.0.0",
+  "author": { "name": "opcheese" },
+  "license": "MIT",
+  "keywords": ["skills", "domain-modeling", "adr", "git", "hooks"]
+}

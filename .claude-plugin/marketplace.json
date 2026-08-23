@@ -26,9 +26,15 @@
     },
     {
       "name": "codebase-vocabulary",
-      "description": "Design vocabulary and safety rails that the Superpowers spine does not cover: deep modules and seams, domain glossary and ADRs, merge-conflict resolution, dangerous-git hooks",
+      "description": "Design vocabulary and procedures that work on either spine: deep modules and seams, and merge-conflict resolution",
       "version": "1.0.0",
       "source": "./plugins/codebase-vocabulary"
+    },
+    {
+      "name": "codebase-vocabulary-human",
+      "description": "Interactive-only companions: domain glossary and ADR discipline, and hooks that block dangerous git commands. Both need a person at the keyboard",
+      "version": "1.0.0",
+      "source": "./plugins/codebase-vocabulary-human"
     }
   ]
 }
