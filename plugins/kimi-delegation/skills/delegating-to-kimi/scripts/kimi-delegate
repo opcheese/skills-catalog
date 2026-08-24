@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+# Run one delegated task on Kimi and stream the result back.
+#
+#   kimi-delegate --via kimi|claude [--agent NAME] [--cwd DIR]
+#                 [--output text|stream-json] -- <prompt>
+#
+# --via kimi    Kimi's own agent system. Defaults to the read-only `explore`
+#               agent, because an unqualified `kimi -p` edits the working
+#               tree with no approval gate.
+# --via claude  Claude Code itself, running on Kimi's Anthropic-compatible
+#               endpoint, keeping its own tools and permission system.
+
+set -uo pipefail
+
+MIN_KIMI_VERSION="0.38.0"
+KIMI_HOME="${KIMI_CODE_HOME:-$HOME/.kimi-code}"
+MODEL="${KIMI_DELEGATE_MODEL:-k3}"
+BASE_URL="https://api.kimi.com/coding"
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CRED_HELPER="$SCRIPT_DIR/kimi-credential"
+if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && \
+   [ -x "$CLAUDE_PLUGIN_ROOT/skills/delegating-to-kimi/scripts/kimi-credential" ]; then
+  CRED_HELPER="$CLAUDE_PLUGIN_ROOT/skills/delegating-to-kimi/scripts/kimi-credential"
+fi
+
+die() { printf 'kimi-delegate: %s\n' "$1" >&2; exit 1; }
+
+VIA=""
+AGENT=""
+CWD=""
+OUTPUT="text"
+PROMPT=""
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --via)    VIA="${2:-}"; shift 2 ;;
+    --agent)  AGENT="${2:-}"; shift 2 ;;
+    --cwd)    CWD="${2:-}"; shift 2 ;;
+    --output) OUTPUT="${2:-}"; shift 2 ;;
+    --dangerously-skip-permissions|--allow-dangerously-skip-permissions)
+      die "refusing --dangerously-skip-permissions; delegation never bypasses permission checks" ;;
+    --) shift; PROMPT="$*"; break ;;
+    *)  die "unknown argument: $1" ;;
+  esac
+done
+
+[ -n "$VIA" ] || die "--via kimi|claude is required"
+[ -n "$PROMPT" ] || die "a prompt is required after --"
+
+KIMI_BIN="${KIMI_BIN:-$(command -v kimi 2>/dev/null || printf '%s' "$KIMI_HOME/bin/kimi")}"
+[ -x "$KIMI_BIN" ] || die "Kimi CLI not found. Install: curl -fsSL https://code.kimi.com/kimi-code/install.sh | bash"
+
+KIMI_VERSION="$("$KIMI_BIN" --version 2>/dev/null | tr -d '[:space:]')"
+older_than() {
+  [ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | head -1)" = "$1" ] && [ "$1" != "$2" ]
+}
+if [ -z "$KIMI_VERSION" ] || older_than "$KIMI_VERSION" "$MIN_KIMI_VERSION"; then
+  die "Kimi CLI is ${KIMI_VERSION:-unknown}; $MIN_KIMI_VERSION or newer is required for --agent.
+Note that \`kimi upgrade\` misdetects native Linux installs. Upgrade with:
+  curl -fsSL https://code.kimi.com/kimi-code/install.sh | bash"
+fi
+
+[ -f "$KIMI_HOME/credentials/kimi-code.json" ] || die "no Kimi credentials. Run: kimi login"
+
+[ -n "$CWD" ] && { cd "$CWD" || die "no such directory: $CWD"; }
+
+case "$VIA" in
+  kimi)
+    exec "$KIMI_BIN" -p "$PROMPT" --agent "${AGENT:-explore}" --output-format "$OUTPUT"
+    ;;
+  claude)
+    die "not implemented yet"
+    ;;
+  *) die "--via must be kimi or claude, got: $VIA" ;;
+esac
