@@ -88,6 +88,12 @@ check_contains "apiKeyHelper is an absolute path" "$OUT" "/kimi-credential"
 check_contains "the agent is forwarded" "$OUT" "--agent reviewer"
 check_contains "the prompt is passed" "$OUT" "review this"
 
+cat > "$WORK/home/config.toml" <<'TOML'
+[models."kimi-code/k3"]
+model = "k3"
+[models."kimi-code/kimi-for-coding"]
+model = "kimi-for-coding"
+TOML
 OUT=$(KIMI_DELEGATE_MODEL=kimi-for-coding run --via claude -- "x")
 check_contains "the model is overridable" "$OUT" '"ANTHROPIC_MODEL": "kimi-for-coding"'
 check_missing "no agent flag when none given" "$OUT" "--agent"
@@ -165,6 +171,76 @@ OUT=$(KIMI_DELEGATION_ROOT="$ALT" KIMI_CODE_HOME="$WORK/home" PATH="$BIN:$PATH" 
 check_contains "KIMI_DELEGATION_ROOT is honoured" "$OUT" "$ALT/skills/delegating-to-kimi/agents/delegate-readonly.md"
 OUT=$(CLAUDE_PLUGIN_ROOT="$ALT" KIMI_CODE_HOME="$WORK/home" PATH="$BIN:$PATH" bash "$SCRIPT" --via kimi -- "x" 2>&1)
 check_contains "CLAUDE_PLUGIN_ROOT still works as an alias" "$OUT" "$ALT/skills/delegating-to-kimi/agents/delegate-readonly.md"
+
+echo "The model is validated against what Kimi actually offers:"
+printf '#!/usr/bin/env bash\nif [ "$1" = "--version" ]; then echo "0.38.0"; exit 0; fi\necho "KIMI ARGV: $*"\n' > "$BIN/kimi"
+chmod +x "$BIN/kimi"
+cat > "$WORK/home/config.toml" <<'TOML'
+[models."kimi-code/k3"]
+model = "k3"
+[models."kimi-code/kimi-for-coding-highspeed"]
+model = "kimi-for-coding-highspeed"
+TOML
+
+OUT=$(KIMI_DELEGATE_MODEL=k3-typo run --via claude -- "x")
+check_contains "an undeclared model is refused" "$OUT" "not a model this Kimi install offers"
+check_contains "the refusal lists what is available" "$OUT" "kimi-for-coding-highspeed"
+check_missing "and nothing was run" "$OUT" "CLAUDE ARGV"
+
+OUT=$(KIMI_DELEGATE_MODEL=kimi-for-coding-highspeed run --via claude -- "x")
+check_contains "a declared model is accepted" "$OUT" "CLAUDE ARGV"
+check_contains "and reaches the settings blob" "$OUT" "kimi-for-coding-highspeed"
+
+OUT=$(KIMI_DELEGATE_MODEL=kimi-code/k3 run --via claude -- "x")
+check_contains "the kimi-code/ alias form is accepted" "$OUT" "CLAUDE ARGV"
+check_contains "and is sent bare on the wire" "$OUT" '"ANTHROPIC_MODEL": "k3"'
+
+# The default must be validated too, or the check only protects people who
+# opted in to a model -- which is nobody by default.
+cat > "$WORK/home/config.toml" <<'TOML'
+[models."kimi-code/something-else"]
+model = "something-else"
+TOML
+OUT=$(run --via claude -- "x")
+check_contains "the built-in default is validated too" "$OUT" "not a model this Kimi install offers"
+
+# Unverifiable is not the same as valid. A config with no models at all must
+# not silently wave an explicit choice through.
+: > "$WORK/home/config.toml"
+OUT=$(KIMI_DELEGATE_MODEL=whatever run --via claude -- "x")
+check_contains "an unverifiable explicit model is refused" "$OUT" "could not read the model list"
+OUT=$(run --via claude -- "x")
+check_contains "but the default still runs when the list is unreadable" "$OUT" "CLAUDE ARGV"
+
+echo "Every run says what it ran on:"
+cat > "$WORK/home/config.toml" <<'TOML'
+[models."kimi-code/k3"]
+model = "k3"
+TOML
+OUT=$(run --via claude -- "x")
+check_contains "path B reports the model" "$OUT" "model=k3"
+check_contains "path B reports the endpoint" "$OUT" "endpoint=https://api.kimi.com/coding"
+check_contains "path B reports that thinking is on and unswitchable" "$OUT" "thinking=on"
+OUT=$(run --via kimi -- "x")
+check_contains "path A reports its route" "$OUT" "via=kimi"
+
+# config.toml lists the search and fetch services before the provider. A naive
+# "first URL in the file" would report one of those as the endpoint.
+cat > "$WORK/home/config.toml" <<'TOML'
+[services.moonshot_search]
+base_url = "https://api.kimi.com/coding/v1/search"
+[providers."managed:kimi-code"]
+base_url = "https://api.kimi.com/coding/v1"
+[models."kimi-code/k3"]
+model = "k3"
+TOML
+OUT=$(run --via kimi -- "x")
+check_contains "path A reports the provider endpoint" "$OUT" "endpoint=https://api.kimi.com/coding/v1 "
+check_missing "not the search service" "$OUT" "/v1/search"
+
+# The banner must not contaminate the delegated answer.
+ONLY_STDOUT=$(KIMI_CODE_HOME="$WORK/home" PATH="$BIN:$PATH" bash "$SCRIPT" --via kimi -- "x" 2>/dev/null)
+check_missing "the banner goes to stderr, not stdout" "$ONLY_STDOUT" "via=kimi"
 
 printf '\n%d passed, %d failed\n' "$PASS" "$FAIL"
 [ "$FAIL" -eq 0 ]

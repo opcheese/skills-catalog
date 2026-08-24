@@ -302,3 +302,61 @@ high-entropy scan over the plugin and this document, and a literal `grep -F` for
 live access and refresh tokens across the whole working tree. The temporary credential
 copies used for the refresh test lived in `mktemp -d` directories and were removed by
 their `trap`.
+
+### The effort dial, and why the plugin does not expose one
+
+Prompted by `2026-08-24-kimi-reasoning-effort.md` in the galatea repo, which
+found that this endpoint accepts and silently discards unknown parameters. Its
+method — send a deliberately bogus value as a control — is what the checks
+below borrow, and turning it on our own claims is what produced them.
+
+Measured 2026-08-24 against `/coding` and `k3`, the exact endpoint and model
+Path B uses:
+
+| request | content blocks | `thinking_tokens` |
+|---|---|---|
+| no `thinking` parameter | `thinking`, `text` | 7 |
+| `thinking: {type: disabled}` | `text` | field absent |
+
+So thinking is on by default and the disable is structurally honoured at the
+API. Whether either path can *reach* that switch is a separate question, and
+the answer is no:
+
+- **Path B.** A logging proxy between the delegated `claude -p` and Kimi
+  recorded what actually goes on the wire. Claude Code sends
+  `thinking: {"type": "adaptive", "display": "omitted"}`. With
+  `MAX_THINKING_TOKENS=0` the key is absent entirely — and absent is the row
+  above where Kimi thinks anyway. `MAX_THINKING_TOKENS=1024` and `=100` both
+  produced `adaptive` unchanged, so the budget is never forwarded. There is no
+  value of that variable that reaches `{type: disabled}`.
+- **Path A.** `kimi --help` has no thinking or effort flag. The dial lives in
+  `[thinking]` in `config.toml`, and `k3` declares `always_thinking`, which the
+  CLI treats as "can never resolve to `off`". `support_efforts` for `k3` is
+  `low`, `high`, `max` with a `high` default — real, but global, and not
+  settable for a single delegation.
+
+An agent-file `thinking:` key is accepted, including `thinking: bogusvalue`,
+and thinking still happened in every case. That is the galatea failure mode
+exactly: a control whose passing condition is met by a thing that does nothing.
+Shipping it as a parameter would have been shipping a fake dial.
+
+### What the bogus control found in our own claims
+
+The same trick, aimed at this plugin:
+
+| probe | result | what it means |
+|---|---|---|
+| `wibble_effort: "banana"` | HTTP 200, normal answer | unknown parameters are discarded silently |
+| `model: "totally-not-a-model"` | HTTP 200, normal answer | **an unknown model is served by something else** |
+
+The second row is a defect in this plugin, now fixed: `KIMI_DELEGATE_MODEL` is
+validated against the models declared in `config.toml` before anything runs,
+and every run prints its route, model, endpoint, agent, and thinking state to
+stderr. Before that, a mistyped model produced a confident answer from an
+unknown model with nothing anywhere recording the substitution.
+
+It also retires one earlier claim. The Codex groundwork reported "HTTP 200 on
+both wire APIs" as evidence of viability; by this endpoint's own behaviour a
+200 proves only that the request was not rejected. The tool-calling
+observation was structural and stands. The wire-API claim does not, and those
+notes were never written to disk in the first place.

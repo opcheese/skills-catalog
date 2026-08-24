@@ -14,7 +14,8 @@ set -uo pipefail
 
 MIN_KIMI_VERSION="0.38.0"
 KIMI_HOME="${KIMI_CODE_HOME:-$HOME/.kimi-code}"
-MODEL="${KIMI_DELEGATE_MODEL:-k3}"
+DEFAULT_MODEL="k3"
+MODEL="${KIMI_DELEGATE_MODEL:-$DEFAULT_MODEL}"
 BASE_URL="https://api.kimi.com/coding"
 
 # Where this skill is installed. Resolved next to the script itself, which is
@@ -36,6 +37,14 @@ if [ -n "$SKILL_ROOT" ]; then
 fi
 
 die() { printf 'kimi-delegate: %s\n' "$1" >&2; exit 1; }
+
+# Say what this ran on. Without it a delegated answer carries no record of the
+# model or the endpoint that produced it, and two runs cannot be compared.
+# stderr, so it never contaminates the answer on stdout.
+provenance() {
+  printf 'kimi-delegate: via=%s model=%s endpoint=%s agent=%s thinking=%s\n' \
+    "$1" "$MODEL" "$3" "$2" "$4" >&2
+}
 
 if [ "${KIMI_DELEGATE_DEPTH:-0}" -ge 1 ]; then
   die "delegation is already in progress (depth ${KIMI_DELEGATE_DEPTH}); refusing to nest"
@@ -97,6 +106,55 @@ fi
 
 [ -f "$KIMI_HOME/credentials/kimi-code.json" ] || die "no Kimi credentials. Run: kimi login"
 
+# Kimi answers HTTP 200 for a model it has never heard of -- a mistyped model
+# is served by something else entirely, with no error and nothing in the
+# transcript naming what replied. Measured 2026-08-24: `model:
+# "totally-not-a-model"` returned 200 and a normal answer. So check the name
+# here, against the models this install actually declares.
+MODEL="${MODEL#kimi-code/}"
+# The provider base_url, not the first URL in the file -- config.toml also
+# lists the search and fetch services, and reporting one of those as the
+# endpoint would be a wrong answer dressed as provenance.
+KIMI_CLI_ENDPOINT="$(python3 - "$KIMI_HOME/config.toml" <<'PY'
+import re, sys
+try:
+    text = open(sys.argv[1]).read()
+except OSError:
+    sys.exit(0)
+section = None
+for line in text.splitlines():
+    header = re.match(r'\s*\[([^\]]+)\]', line)
+    if header:
+        section = header.group(1)
+        continue
+    if section and section.startswith("providers.") and line.strip().startswith("base_url"):
+        print(line.split("=", 1)[1].strip().strip('"'))
+        break
+PY
+)"
+[ -n "$KIMI_CLI_ENDPOINT" ] || KIMI_CLI_ENDPOINT="unknown, set by Kimi provider config"
+KNOWN_MODELS="$(python3 - "$KIMI_HOME/config.toml" <<'PY'
+import re, sys
+try:
+    text = open(sys.argv[1]).read()
+except OSError:
+    sys.exit(0)
+# [models."kimi-code/k3"] -> k3
+for name in re.findall(r'^\[models\."([^"]+)"\]', text, re.M):
+    print(name.split("/", 1)[-1])
+PY
+)"
+if [ -z "$KNOWN_MODELS" ]; then
+  # Unverifiable is not the same as valid. Refuse a model the caller chose on
+  # purpose; let the built-in default through, since blocking it would break
+  # every delegation over a config we merely failed to parse.
+  [ "$MODEL" = "$DEFAULT_MODEL" ] || die "cannot verify the model '$MODEL': could not read the model list from $KIMI_HOME/config.toml"
+elif ! printf '%s\n' "$KNOWN_MODELS" | grep -qxF -- "$MODEL"; then
+  die "'$MODEL' is not a model this Kimi install offers. Available:
+$(printf '%s\n' "$KNOWN_MODELS" | sed 's/^/  /')"
+fi
+
+
 [ -n "$CWD" ] && { cd "$CWD" || die "no such directory: $CWD"; }
 
 case "$VIA" in
@@ -104,12 +162,14 @@ case "$VIA" in
     if [ -n "$AGENT" ]; then
       # An explicitly named agent is the caller's choice, and is resolved by
       # Kimi's normal discovery order -- which a repo-local definition can win.
+      provenance "kimi" "$AGENT (caller's choice, resolved by Kimi)" "$KIMI_CLI_ENDPOINT" "on (effort from config.toml)"
       exec "$KIMI_BIN" -p "$PROMPT" --agent "$AGENT" --output-format "$OUTPUT"
     fi
     # The default is pinned to the definition shipped beside this script.
     # A bare `--agent explore` would be resolved project-first, so any repo
     # could override the read-only built-in and take back write access.
     [ -f "$AGENT_FILE" ] || die "the read-only agent definition is missing: $AGENT_FILE"
+    provenance "kimi" "delegate-readonly (pinned file)" "$KIMI_CLI_ENDPOINT" "on (effort from config.toml)"
     exec "$KIMI_BIN" -p "$PROMPT" --agent-file "$AGENT_FILE" --output-format "$OUTPUT"
     ;;
   claude)
@@ -135,8 +195,10 @@ PY
     # task quietly runs on the caller's own Anthropic account.
     [ -n "$SETTINGS" ] || die "could not build the settings for the delegated session"
     if [ -n "$AGENT" ]; then
+      provenance "claude" "$AGENT" "$BASE_URL" "on (no dial exists)"
       exec claude -p "$PROMPT" --settings "$SETTINGS" --agent "$AGENT" --output-format "$OUTPUT"
     fi
+    provenance "claude" "default" "$BASE_URL" "on (no dial exists)"
     exec claude -p "$PROMPT" --settings "$SETTINGS" --output-format "$OUTPUT"
     ;;
   *) die "--via must be kimi or claude, got: $VIA" ;;

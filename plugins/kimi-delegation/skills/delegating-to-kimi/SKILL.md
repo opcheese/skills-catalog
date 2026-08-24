@@ -72,7 +72,35 @@ Claude Code's own permission system:
 - `--output text|stream-json` — passed through unaltered
 - Everything after `--` is the prompt
 
-`KIMI_DELEGATE_MODEL` overrides the model, default `k3`.
+`KIMI_DELEGATE_MODEL` overrides the model, default `k3`. The name is checked
+against the models your Kimi install declares, and an unknown one is refused
+with the list of what is available. This check exists because the endpoint
+itself will not do it: a request naming a model Kimi has never heard of
+returns HTTP 200 and a normal answer, so without the check a typo is served by
+something else with no error anywhere.
+
+Every run prints one line to stderr naming the route, model, endpoint, agent,
+and thinking state, so an answer can be traced to what produced it. It goes to
+stderr and never mixes into the answer on stdout.
+
+## Thinking is on, and you cannot turn it off
+
+Both paths think, always, and neither exposes a switch. Measured 2026-08-24:
+
+- Kimi's `k3` declares the `always_thinking` capability, and the CLI refuses
+  to resolve an effort of `off` for such a model. Effort itself (`low`,
+  `high`, `max`) is real, but it is a global setting in `[thinking]` in
+  `~/.kimi-code/config.toml` — there is no per-invocation flag, so this skill
+  cannot set it for one delegation.
+- On Path B the delegated Claude Code sends `thinking: {type: adaptive}` or
+  omits the field entirely, and Kimi thinks by default in both cases.
+  `MAX_THINKING_TOKENS` changes only which of those two it sends, and a
+  positive value is not forwarded as a budget at all.
+
+Do not add a thinking parameter to this skill on the strength of an accepted
+request. The endpoint returns 200 for parameters it discards — a bogus effort
+string and a bogus model both come back with a normal answer — so "it was
+accepted" is not evidence that anything happened.
 
 ## What it refuses
 
