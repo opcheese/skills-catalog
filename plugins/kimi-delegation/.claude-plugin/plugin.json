@@ -1,0 +1,10 @@
+{
+  "name": "kimi-delegation",
+  "description": "Delegate work to Kimi from Claude Code: read-only review and bulk tasks through Kimi's own agents, or Claude Code itself running on Kimi's model. Requires a Kimi Code subscription and CLI >= 0.38.0",
+  "version": "1.0.0",
+  "author": {
+    "name": "opcheese"
+  },
+  "license": "MIT",
+  "keywords": ["kimi", "delegation", "agents", "review", "multi-model"]
+}
