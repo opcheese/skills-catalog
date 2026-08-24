@@ -90,6 +90,29 @@ If you also use Codex CLI or Kimi Code and want all three reading one store,
 run that repo's `shadow-learn.sh init` instead — it links the skills into
 those tools and writes the `AGENTS.md` for you.
 
+## Using kimi-delegation outside Claude Code
+
+`kimi-delegation` is the one plugin here that is useful without Claude Code.
+Its Path A is a bash call to the Kimi CLI, so it works from Codex, a script,
+or a bare shell. The marketplace only distributes it; it is not a runtime
+dependency.
+
+To install it anywhere else, put the skill directory where your tool looks for
+skills — for Codex that is `~/.agents/skills/`:
+
+```
+git clone https://github.com/opcheese/skills-catalog /tmp/skills-catalog
+cp -r /tmp/skills-catalog/plugins/kimi-delegation/skills/delegating-to-kimi \
+      ~/.agents/skills/
+```
+
+The scripts locate their own siblings, so nothing else is needed. If you split
+them up, set `KIMI_DELEGATION_ROOT` to the install root.
+
+One caveat: `--via claude` runs the Claude Code CLI as the delegate, so it
+needs `claude` on `PATH` whatever called it. On a machine without it, Path A
+works and Path B refuses with a clear message.
+
 ## Why kimi-delegation is a single plugin
 
 The catalog splits a plugin in two when some of its skills need a person at

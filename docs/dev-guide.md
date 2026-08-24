@@ -134,6 +134,11 @@ if you judge the disagreement.
 
 Needs `kimi login` and CLI >= 0.38.0 once per machine.
 
+Unlike everything else in the catalog, this one is not tied to Claude Code.
+`--via kimi` is a plain bash call, so it works from Codex or a script too —
+see *Using kimi-delegation outside Claude Code* in the README. `--via claude`
+does need the `claude` CLI on `PATH`, whatever you called it from.
+
 ## The two gates
 
 The spine runs continuously and will not ask you "should I continue?" — that

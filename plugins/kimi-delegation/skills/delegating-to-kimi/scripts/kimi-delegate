@@ -17,16 +17,22 @@ KIMI_HOME="${KIMI_CODE_HOME:-$HOME/.kimi-code}"
 MODEL="${KIMI_DELEGATE_MODEL:-k3}"
 BASE_URL="https://api.kimi.com/coding"
 
+# Where this skill is installed. Resolved next to the script itself, which is
+# true under every harness -- Claude Code, Codex, a bare clone. The env vars
+# only override that: KIMI_DELEGATION_ROOT is the harness-neutral name, and
+# CLAUDE_PLUGIN_ROOT is accepted because Claude Code sets it for us.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CRED_HELPER="$SCRIPT_DIR/kimi-credential"
 AGENT_FILE="$SCRIPT_DIR/../agents/delegate-readonly.md"
-if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && \
-   [ -x "$CLAUDE_PLUGIN_ROOT/skills/delegating-to-kimi/scripts/kimi-credential" ]; then
-  CRED_HELPER="$CLAUDE_PLUGIN_ROOT/skills/delegating-to-kimi/scripts/kimi-credential"
-fi
-if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && \
-   [ -f "$CLAUDE_PLUGIN_ROOT/skills/delegating-to-kimi/agents/delegate-readonly.md" ]; then
-  AGENT_FILE="$CLAUDE_PLUGIN_ROOT/skills/delegating-to-kimi/agents/delegate-readonly.md"
+
+SKILL_ROOT="${KIMI_DELEGATION_ROOT:-${CLAUDE_PLUGIN_ROOT:-}}"
+if [ -n "$SKILL_ROOT" ]; then
+  if [ -x "$SKILL_ROOT/skills/delegating-to-kimi/scripts/kimi-credential" ]; then
+    CRED_HELPER="$SKILL_ROOT/skills/delegating-to-kimi/scripts/kimi-credential"
+  fi
+  if [ -f "$SKILL_ROOT/skills/delegating-to-kimi/agents/delegate-readonly.md" ]; then
+    AGENT_FILE="$SKILL_ROOT/skills/delegating-to-kimi/agents/delegate-readonly.md"
+  fi
 fi
 
 die() { printf 'kimi-delegate: %s\n' "$1" >&2; exit 1; }
@@ -73,7 +79,15 @@ KIMI_BIN="${KIMI_BIN:-$(command -v kimi 2>/dev/null || printf '%s' "$KIMI_HOME/b
 # version -- letting a too-old CLI through the gate that exists to stop it.
 KIMI_VERSION="$("$KIMI_BIN" --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)"
 older_than() {
-  [ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | head -1)" = "$1" ] && [ "$1" != "$2" ]
+  # Not `sort -V`: that is GNU-only, and BSD sort would fall back to lexical
+  # order, where 0.9.0 reads as newer than 0.38.0 and an old CLI walks through
+  # the gate. python3 is already required elsewhere in this script.
+  python3 - "$1" "$2" <<'PY'
+import sys
+def parts(v):
+    return [int(x) for x in v.split(".")]
+sys.exit(0 if parts(sys.argv[1]) < parts(sys.argv[2]) else 1)
+PY
 }
 if [ -z "$KIMI_VERSION" ] || older_than "$KIMI_VERSION" "$MIN_KIMI_VERSION"; then
   die "Kimi CLI is ${KIMI_VERSION:-unknown}; $MIN_KIMI_VERSION or newer is required for --agent.

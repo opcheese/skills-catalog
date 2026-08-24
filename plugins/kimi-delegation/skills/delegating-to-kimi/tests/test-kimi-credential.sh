@@ -121,5 +121,22 @@ check "broken interpreter names python3" "$(grep -c python3 "$WORK/err_e")" "1"
 check "broken interpreter does not blame the login" "$(grep -c 'kimi login' "$WORK/err_e")" "0"
 check "a valid token never triggers a refresh" "$([ -e "$WORK/refresh_ran" ] && echo yes || echo no)" "no"
 
+echo "Refresh works on a machine with no timeout(1) -- stock macOS has none:"
+SANDBOX="$WORK/sandbox"
+mkdir -p "$SANDBOX"
+# Everything the helper needs, and deliberately NOT timeout.
+for tool in bash sh env python3 mktemp rm cat grep head tr dirname; do
+  src=$(command -v "$tool" 2>/dev/null) && ln -sf "$src" "$SANDBOX/$tool"
+done
+check "the sandbox really has no timeout" "$([ -e "$SANDBOX/timeout" ] && echo yes || echo no)" "no"
+HOME_F="$WORK/f"
+make_cred "$HOME_F" -10 "$TOK_STALE"
+make_fake_kimi "$SANDBOX" "$HOME_F" "$TOK_FRESH"
+OUT=$(KIMI_CODE_HOME="$HOME_F" PATH="$SANDBOX" /usr/bin/env bash "$SCRIPT" 2>"$WORK/err_f")
+STATUS=$?
+check "refresh still succeeds without timeout" "$OUT" "$TOK_FRESH"
+check "no timeout means no crash" "$STATUS" "0"
+check "and stderr stays clean" "$(cat "$WORK/err_f")" ""
+
 printf '\n%d passed, %d failed\n' "$PASS" "$FAIL"
 [ "$FAIL" -eq 0 ]

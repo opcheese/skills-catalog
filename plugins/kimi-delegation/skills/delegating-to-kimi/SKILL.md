@@ -19,13 +19,21 @@ definitions already in `.claude/agents/`.
 
 ## Running it
 
-The scripts live beside this skill and are not on `PATH`, so call them by
-full path every time:
+The scripts live in `scripts/` beside this file and are not on `PATH`, so call
+them by full path. Set the directory once, then reuse it:
 
 ```bash
-"$CLAUDE_PLUGIN_ROOT/skills/delegating-to-kimi/scripts/kimi-delegate" \
+# Claude Code sets this for you:
+KD="$CLAUDE_PLUGIN_ROOT/skills/delegating-to-kimi"
+# Codex, or any other harness: wherever this skill was installed, e.g.
+KD=~/.agents/skills/delegating-to-kimi
+
+"$KD/scripts/kimi-delegate" \
   --via kimi -- "Review src/auth.ts for auth bypasses. Report findings only."
 ```
+
+If you are reading this file, its directory is `$KD` — the scripts are one
+level down in `scripts/`.
 
 Path A defaults to a **read-only agent definition shipped with this plugin**,
 passed with `--agent-file`. An unqualified `kimi -p` edits the working tree
@@ -40,7 +48,7 @@ back. That is not theoretical — it was tested, and the repo's definition won.
 To let Kimi write, name an agent that can:
 
 ```bash
-"$CLAUDE_PLUGIN_ROOT/skills/delegating-to-kimi/scripts/kimi-delegate" \
+"$KD/scripts/kimi-delegate" \
   --via kimi --agent coder -- "Apply the rename across the repo."
 ```
 
@@ -48,7 +56,7 @@ Path B runs Claude Code itself on Kimi's model, so Kimi's output is subject to
 Claude Code's own permission system:
 
 ```bash
-"$CLAUDE_PLUGIN_ROOT/skills/delegating-to-kimi/scripts/kimi-delegate" \
+"$KD/scripts/kimi-delegate" \
   --via claude --agent my-reviewer -- "Review the staged diff."
 ```
 
@@ -73,9 +81,21 @@ Claude Code's own permission system:
 - Kimi CLI older than 0.38.0, which predates `--agent` and so cannot be
   contained
 
+## Any harness, not just Claude Code
+
+Nothing here is Claude Code specific except one path. `--via kimi` is a bash
+call to the Kimi CLI and works from Codex, a script, or a bare shell. Set
+`KIMI_DELEGATION_ROOT` to the install directory if the scripts cannot find
+their own siblings; `CLAUDE_PLUGIN_ROOT` is accepted as an alias.
+
+`--via claude` runs the Claude Code CLI as the delegate, so it needs `claude`
+on `PATH` regardless of which harness you called from. Without it you get
+`the claude CLI is not on PATH` and exit 1 — nothing half-runs.
+
 ## Requirements
 
-A Kimi Code subscription (`kimi login`) and CLI >= 0.38.0. Note that
+A Kimi Code subscription (`kimi login`), CLI >= 0.38.0, `bash` and `python3`.
+Note that
 `kimi upgrade` misdetects native Linux installs as Windows and refuses;
 upgrade with `curl -fsSL https://code.kimi.com/kimi-code/install.sh | bash`.
 

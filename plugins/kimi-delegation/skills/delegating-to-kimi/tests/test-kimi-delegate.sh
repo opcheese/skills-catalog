@@ -140,5 +140,31 @@ OUT=$(KIMI_CODE_HOME="$WORK/home" PATH="$WORK/bin_broken:$BIN:$PATH" bash "$SCRI
 check_missing "empty settings never reach claude" "$OUT" "CLAUDE ARGV"
 check_contains "empty settings are refused loudly" "$OUT" "settings"
 
+echo "Version comparison is numeric, not lexical:"
+version_gate() {
+  printf '#!/usr/bin/env bash\nif [ "$1" = "--version" ]; then echo "%s"; exit 0; fi\necho "KIMI ARGV: $*"\n' "$1" > "$BIN/kimi"
+  chmod +x "$BIN/kimi"
+  run --via kimi -- "x"
+}
+# 0.9.0 is older than 0.38.0 numerically but NEWER lexically. A string
+# comparison would wave it through.
+check_missing "0.9.0 is refused, not read as newer than 0.38.0" "$(version_gate 0.9.0)" "KIMI ARGV"
+check_contains "0.38.0 itself is accepted" "$(version_gate 0.38.0)" "KIMI ARGV"
+check_contains "0.39.1 is accepted" "$(version_gate 0.39.1)" "KIMI ARGV"
+check_contains "1.0.0 is accepted" "$(version_gate 1.0.0)" "KIMI ARGV"
+check_missing "0.37.9 is refused" "$(version_gate 0.37.9)" "KIMI ARGV"
+
+echo "The install root is harness-neutral:"
+printf '#!/usr/bin/env bash\nif [ "$1" = "--version" ]; then echo "0.38.0"; exit 0; fi\necho "KIMI ARGV: $*"\n' > "$BIN/kimi"
+chmod +x "$BIN/kimi"
+ALT="$WORK/alt"
+mkdir -p "$ALT/skills/delegating-to-kimi/agents" "$ALT/skills/delegating-to-kimi/scripts"
+echo "---" > "$ALT/skills/delegating-to-kimi/agents/delegate-readonly.md"
+cp "$SCRIPT" "$ALT/skills/delegating-to-kimi/scripts/kimi-delegate"
+OUT=$(KIMI_DELEGATION_ROOT="$ALT" KIMI_CODE_HOME="$WORK/home" PATH="$BIN:$PATH" bash "$SCRIPT" --via kimi -- "x" 2>&1)
+check_contains "KIMI_DELEGATION_ROOT is honoured" "$OUT" "$ALT/skills/delegating-to-kimi/agents/delegate-readonly.md"
+OUT=$(CLAUDE_PLUGIN_ROOT="$ALT" KIMI_CODE_HOME="$WORK/home" PATH="$BIN:$PATH" bash "$SCRIPT" --via kimi -- "x" 2>&1)
+check_contains "CLAUDE_PLUGIN_ROOT still works as an alias" "$OUT" "$ALT/skills/delegating-to-kimi/agents/delegate-readonly.md"
+
 printf '\n%d passed, %d failed\n' "$PASS" "$FAIL"
 [ "$FAIL" -eq 0 ]

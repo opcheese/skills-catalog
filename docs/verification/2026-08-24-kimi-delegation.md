@@ -34,7 +34,7 @@ for t in plugins/kimi-delegation/skills/delegating-to-kimi/tests/*.sh; do
 done
 ```
 
-Expected: `18 passed`, `38 passed`, `4 passed`, all with `0 failed`.
+Expected: `22 passed`, `45 passed`, `4 passed`, all with `0 failed`.
 
 ## Path A cannot write — the check that matters most
 
@@ -168,7 +168,7 @@ Kimi CLI 0.38.0, Claude Code on Linux, subscription auth via `managed:kimi-code`
 
 | Step | Result |
 | --- | --- |
-| Automated suite | Pass — `18`, `38`, `4`, all `0 failed` |
+| Automated suite | Pass — `22`, `45`, `4`, all `0 failed` |
 | Path A cannot write, clean repo | **Pass** — `calc.py: OK`, no `WROTE.txt`, exit 0 |
 | Path A cannot write, hostile repo | **Pass after fix** — see below |
 | Path A still does the work | Pass — reported `add(a, b)` returns `a - b`, proposed the one-line fix |
@@ -232,6 +232,49 @@ Evidence the fix landed: before it, every Path B run printed *"claude.ai
 connectors are disabled because ANTHROPIC_API_KEY or another auth source is
 set"*. After it, that line is gone and only the harmless
 `[claude-code:unrecognized_model]` remains.
+
+### Running it outside Claude Code
+
+Path A is a bash call to the Kimi CLI, so it does not need Claude Code at all.
+Verified by copying the skill directory to an unrelated location, clearing
+`CLAUDE_PLUGIN_ROOT`, and running it against a planted bug:
+
+```bash
+FAKE=$(mktemp -d)/agents-skills && mkdir -p "$FAKE"
+cp -r plugins/kimi-delegation/skills/delegating-to-kimi "$FAKE/"
+env -u CLAUDE_PLUGIN_ROOT "$FAKE/delegating-to-kimi/scripts/kimi-delegate" \
+  --via kimi --cwd "$SB" -- "Fix the bug in calc.py by editing it."
+```
+
+Result: Kimi found the bug, declined to edit — *"The calling agent will need to
+make this edit with write-capable tools"* — and `sha256sum -c` reported `OK`.
+The scripts locate their siblings relative to themselves, so a relocated copy
+works with no configuration. `KIMI_DELEGATION_ROOT` overrides that if the parts
+are ever split up; `CLAUDE_PLUGIN_ROOT` is accepted as an alias.
+
+`--via claude` still needs the `claude` CLI on `PATH`. On a machine without it,
+Path A works and Path B exits 1 with `the claude CLI is not on PATH`.
+
+### Portability fixes made without a machine to prove them on
+
+Two changes were made for platforms not available here. Both are corrections to
+code that works on this Linux box and would fail elsewhere, so the suite cannot
+demonstrate either:
+
+- **Empty array under `set -u`.** The refresh built its optional `timeout`
+  prefix as a bash array. Bash 4.4+ tolerates expanding an empty array under
+  `set -u`; **bash 3.2, still the system bash on macOS, does not** — and macOS
+  is also the platform with no `timeout(1)`, so the empty case is exactly the
+  one that fires there. Rewritten as a plain string.
+- **`sort -V` is GNU.** The version gate compared versions with `sort -V`,
+  which BSD sort on older macOS lacks; the fallback would be lexical, where
+  `0.9.0` reads as newer than `0.38.0` and a too-old CLI passes the gate that
+  exists to stop it. Now compared in python3, which the script already needs.
+
+The suite pins the *behaviour* — `0.9.0` and `0.37.9` are refused, `0.38.0`,
+`0.39.1` and `1.0.0` accepted — so a regression to lexical comparison fails
+loudly. It cannot pin the bash 3.2 case: this machine runs 5.2, where the old
+code passes. **Neither fix has been run on macOS.**
 
 ### Which refresh command won
 
