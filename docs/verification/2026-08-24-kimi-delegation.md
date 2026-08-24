@@ -34,7 +34,7 @@ for t in plugins/kimi-delegation/skills/delegating-to-kimi/tests/*.sh; do
 done
 ```
 
-Expected: `13 passed`, `17 passed`, `4 passed`, all with `0 failed`.
+Expected: `18 passed`, `38 passed`, `4 passed`, all with `0 failed`.
 
 ## Path A cannot write — the check that matters most
 
@@ -168,7 +168,7 @@ Kimi CLI 0.38.0, Claude Code on Linux, subscription auth via `managed:kimi-code`
 
 | Step | Result |
 | --- | --- |
-| Automated suite | Pass — `13`, `17`, `4`, all `0 failed` |
+| Automated suite | Pass — `18`, `38`, `4`, all `0 failed` |
 | Path A cannot write, clean repo | **Pass** — `calc.py: OK`, no `WROTE.txt`, exit 0 |
 | Path A cannot write, hostile repo | **Pass after fix** — see below |
 | Path A still does the work | Pass — reported `add(a, b)` returns `a - b`, proposed the one-line fix |
@@ -204,6 +204,34 @@ to apply it.
 Naming an agent explicitly (`--agent coder`) still uses Kimi's normal discovery,
 and so is still winnable by the repository. That is the caller's choice rather
 than the plugin's default, and `SKILL.md` says so.
+
+### What a second review round found
+
+A review of the plugin itself — not the research behind it — turned up nine
+issues, four of which were reproduced before being fixed.
+
+| Issue | Reproduced | Fix |
+| --- | --- | --- |
+| A trailing option flag (`kimi-delegate --via`) spun forever | Yes — timed out at 3s | `shift 2` fails on a lone flag and leaves `$@` untouched; the value is now required first |
+| The credential refresh ran Kimi's **write-capable default agent** in the caller's directory, untimed | By inspection | Now runs the read-only definition, in a scratch `cwd`, under `timeout 60` |
+| An inherited `ANTHROPIC_API_KEY` outranks `apiKeyHelper` — and would have been sent to `api.kimi.com` | By inspection | Both `ANTHROPIC_API_KEY` and `ANTHROPIC_AUTH_TOKEN` are blanked in the settings |
+| A failed `python3` left `--settings ""`, silently running the "delegated" task on the caller's own Claude account | Yes — `CLAUDE ARGV: -p x --settings  ...` | Refuses when the settings blob is empty |
+| A broken `python3` reported "token expired. Run: kimi login" for a perfectly valid token | Yes | Explicit arms for exit 2 and everything else; the message now names the interpreter |
+| The "nothing token-shaped on stderr" assertion could not fail — fixtures were 9 characters against a 40-character regex | Yes | Fixtures are now token-shaped, plus a literal check for each |
+| An update banner on `kimi --version` smuggled an old CLI past the version gate | Yes — `0.37.0` behind a banner ran | The version is extracted as a dotted triple, and an unreadable one refuses |
+| Tests named "Path A containment" only asserted on argv | — | Renamed to "Path A argv"; the containment property is proved by the live checks above, not by the suite |
+| Two `SKILL.md` examples invoked `kimi-delegate` bare, though it is never on `PATH` | — | Both use the full `$CLAUDE_PLUGIN_ROOT` path |
+
+The third one is worth dwelling on. This machine authenticates by subscription,
+so the delegated session had no `ANTHROPIC_API_KEY` to leak and the bug was
+invisible here. On a colleague's API-key machine the same command would have
+sent their Anthropic key to a third-party host. Verification on one machine is
+not verification.
+
+Evidence the fix landed: before it, every Path B run printed *"claude.ai
+connectors are disabled because ANTHROPIC_API_KEY or another auth source is
+set"*. After it, that line is gone and only the harmless
+`[claude-code:unrecognized_model]` remains.
 
 ### Which refresh command won
 

@@ -52,7 +52,7 @@ OUT=$(run --via kimi -- "review this")
 check_contains "0.18.0 is refused" "$OUT" "0.38.0"
 check_missing "0.18.0 never reaches the CLI" "$OUT" "KIMI ARGV"
 
-echo "Path A containment:"
+echo "Path A argv (what would run -- not proof of containment):"
 printf '#!/usr/bin/env bash\nif [ "$1" = "--version" ]; then echo "0.38.0"; exit 0; fi\necho "KIMI ARGV: $*"\n' > "$BIN/kimi"
 chmod +x "$BIN/kimi"
 
@@ -101,6 +101,44 @@ check_contains "it allows reading" "$AGENT_BODY" "Read"
 check_missing "it grants no shell" "$AGENT_BODY" "Bash"
 check_missing "it grants no write tool" "$AGENT_BODY" "Write"
 check_missing "it grants no edit tool" "$AGENT_BODY" "Edit"
+
+echo "Malformed invocations terminate:"
+printf '#!/usr/bin/env bash\nif [ "$1" = "--version" ]; then echo "0.38.0"; exit 0; fi\necho "KIMI ARGV: $*"\n' > "$BIN/kimi"
+chmod +x "$BIN/kimi"
+for flag in --via --agent --cwd --output; do
+  OUT=$(KIMI_CODE_HOME="$WORK/home" PATH="$BIN:$PATH" timeout 5 bash "$SCRIPT" "$flag" 2>&1)
+  STATUS=$?
+  check_missing "trailing $flag does not hang" "timeout:$STATUS" "timeout:124"
+  check_contains "trailing $flag names the missing value" "$OUT" "missing value"
+done
+
+echo "The version gate reads a version, not a banner:"
+printf '#!/usr/bin/env bash\nif [ "$1" = "--version" ]; then printf "New version available!\\n0.37.0\\n"; exit 0; fi\necho "KIMI ARGV: $*"\n' > "$BIN/kimi"
+chmod +x "$BIN/kimi"
+OUT=$(run --via kimi -- "x")
+check_contains "a banner does not smuggle an old version past the gate" "$OUT" "0.38.0"
+check_missing "the old version never reaches the CLI" "$OUT" "KIMI ARGV"
+
+printf '#!/usr/bin/env bash\nif [ "$1" = "--version" ]; then echo "not a version"; exit 0; fi\necho "KIMI ARGV: $*"\n' > "$BIN/kimi"
+chmod +x "$BIN/kimi"
+OUT=$(run --via kimi -- "x")
+check_missing "an unreadable version never reaches the CLI" "$OUT" "KIMI ARGV"
+
+echo "Path B fails closed if the settings cannot be built:"
+printf '#!/usr/bin/env bash\nif [ "$1" = "--version" ]; then echo "0.38.0"; exit 0; fi\n' > "$BIN/kimi"
+chmod +x "$BIN/kimi"
+mkdir -p "$WORK/bin_broken"
+cp "$BIN/kimi" "$BIN/claude" 2>/dev/null || true
+cat > "$BIN/claude" <<'EOF'
+#!/usr/bin/env bash
+echo "CLAUDE ARGV: $*"
+EOF
+chmod +x "$BIN/claude"
+printf '#!/bin/sh\nexit 127\n' > "$WORK/bin_broken/python3"
+chmod +x "$WORK/bin_broken/python3"
+OUT=$(KIMI_CODE_HOME="$WORK/home" PATH="$WORK/bin_broken:$BIN:$PATH" bash "$SCRIPT" --via claude -- "x" 2>&1)
+check_missing "empty settings never reach claude" "$OUT" "CLAUDE ARGV"
+check_contains "empty settings are refused loudly" "$OUT" "settings"
 
 printf '\n%d passed, %d failed\n' "$PASS" "$FAIL"
 [ "$FAIL" -eq 0 ]

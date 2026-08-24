@@ -44,10 +44,17 @@ PROMPT=""
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    --via)    VIA="${2:-}"; shift 2 ;;
-    --agent)  AGENT="${2:-}"; shift 2 ;;
-    --cwd)    CWD="${2:-}"; shift 2 ;;
-    --output) OUTPUT="${2:-}"; shift 2 ;;
+    --via|--agent|--cwd|--output)
+      # `shift 2` on a lone flag fails and leaves $@ unchanged, which spins
+      # this loop forever. Require the value before consuming anything.
+      [ $# -ge 2 ] || die "missing value for $1"
+      case "$1" in
+        --via)    VIA="$2" ;;
+        --agent)  AGENT="$2" ;;
+        --cwd)    CWD="$2" ;;
+        --output) OUTPUT="$2" ;;
+      esac
+      shift 2 ;;
     --dangerously-skip-permissions|--allow-dangerously-skip-permissions)
       die "refusing --dangerously-skip-permissions; delegation never bypasses permission checks" ;;
     --) shift; PROMPT="$*"; break ;;
@@ -61,7 +68,10 @@ done
 KIMI_BIN="${KIMI_BIN:-$(command -v kimi 2>/dev/null || printf '%s' "$KIMI_HOME/bin/kimi")}"
 [ -x "$KIMI_BIN" ] || die "Kimi CLI not found. Install: curl -fsSL https://code.kimi.com/kimi-code/install.sh | bash"
 
-KIMI_VERSION="$("$KIMI_BIN" --version 2>/dev/null | tr -d '[:space:]')"
+# Take the first dotted triple and nothing else. `tr -d '[:space:]'` would
+# glue an update banner onto the number, and the result sorts after every real
+# version -- letting a too-old CLI through the gate that exists to stop it.
+KIMI_VERSION="$("$KIMI_BIN" --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)"
 older_than() {
   [ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | head -1)" = "$1" ] && [ "$1" != "$2" ]
 }
@@ -95,11 +105,21 @@ case "$VIA" in
 import json, sys
 helper, model, base_url = sys.argv[1], sys.argv[2], sys.argv[3]
 print(json.dumps({
-    "env": {"ANTHROPIC_BASE_URL": base_url, "ANTHROPIC_MODEL": model},
+    "env": {
+        "ANTHROPIC_BASE_URL": base_url,
+        "ANTHROPIC_MODEL": model,
+        # An inherited key would outrank apiKeyHelper and would then be sent
+        # to api.kimi.com. Blank both so the helper is the only credential.
+        "ANTHROPIC_API_KEY": "",
+        "ANTHROPIC_AUTH_TOKEN": "",
+    },
     "apiKeyHelper": helper,
 }, indent=None, separators=(", ", ": ")))
 PY
 )"
+    # Without this, a failed python3 leaves SETTINGS empty and the "delegated"
+    # task quietly runs on the caller's own Anthropic account.
+    [ -n "$SETTINGS" ] || die "could not build the settings for the delegated session"
     if [ -n "$AGENT" ]; then
       exec claude -p "$PROMPT" --settings "$SETTINGS" --agent "$AGENT" --output-format "$OUTPUT"
     fi

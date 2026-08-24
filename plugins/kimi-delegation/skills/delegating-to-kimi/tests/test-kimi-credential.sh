@@ -9,6 +9,12 @@ PASS=0
 FAIL=0
 
 WORK=$(mktemp -d)
+
+# Long and token-shaped on purpose: a 9-character fixture would slip through
+# the "nothing token-shaped reached stderr" assertion below.
+TOK_VALID="eyJhbGciOiJIUzI1NiJ9.dmFsaWQtZml4dHVyZQ.AAAAAAAAAAAAAAAAAAAAAA"
+TOK_STALE="eyJhbGciOiJIUzI1NiJ9.c3RhbGUtZml4dHVyZQ.BBBBBBBBBBBBBBBBBBBBBB"
+TOK_FRESH="eyJhbGciOiJIUzI1NiJ9.ZnJlc2gtZml4dHVyZQ.CCCCCCCCCCCCCCCCCCCCCC"
 trap 'rm -rf "$WORK"' EXIT
 
 # Build a credential file whose token expires $1 seconds from now.
@@ -54,7 +60,7 @@ check() {
 
 echo "A valid token is printed verbatim:"
 HOME_A="$WORK/a"
-make_cred "$HOME_A" 600 "tok-valid"
+make_cred "$HOME_A" 600 "$TOK_VALID"
 mkdir -p "$WORK/bin_a"
 cat > "$WORK/bin_a/kimi" <<EOF
 #!/usr/bin/env bash
@@ -63,17 +69,17 @@ EOF
 chmod +x "$WORK/bin_a/kimi"
 OUT=$(KIMI_CODE_HOME="$HOME_A" PATH="$WORK/bin_a:$PATH" bash "$SCRIPT" 2>"$WORK/err_a")
 STATUS=$?
-check "stdout is the token" "$OUT" "tok-valid"
+check "stdout is the token" "$OUT" "$TOK_VALID"
 check "exit 0" "$STATUS" "0"
 check "stderr is empty" "$(cat "$WORK/err_a")" ""
 check "no subprocess spawned" "$([ -e "$WORK/spawned" ] && echo yes || echo no)" "no"
 
 echo "A stale token is refreshed through the Kimi CLI:"
 HOME_B="$WORK/b"
-make_cred "$HOME_B" -10 "tok-stale"
-make_fake_kimi "$WORK/bin_b" "$HOME_B" "tok-fresh"
+make_cred "$HOME_B" -10 "$TOK_STALE"
+make_fake_kimi "$WORK/bin_b" "$HOME_B" "$TOK_FRESH"
 OUT=$(KIMI_CODE_HOME="$HOME_B" PATH="$WORK/bin_b:$PATH" bash "$SCRIPT" 2>"$WORK/err_b")
-check "stale token is replaced" "$OUT" "tok-fresh"
+check "stale token is replaced" "$OUT" "$TOK_FRESH"
 check "refresh keeps stderr empty" "$(cat "$WORK/err_b")" ""
 check "no CLI chatter on stdout" "$(printf '%s' "$OUT" | grep -c 'fake kimi ran')" "0"
 
@@ -87,7 +93,7 @@ check "missing credential prints nothing on stdout" "$OUT" ""
 check "missing credential names kimi login" "$(grep -c 'kimi login' "$WORK/err_c")" "1"
 
 HOME_D="$WORK/d"
-make_cred "$HOME_D" -10 "tok-stale"
+make_cred "$HOME_D" -10 "$TOK_STALE"
 mkdir -p "$WORK/bin_d"
 printf '#!/usr/bin/env bash\nexit 1\n' > "$WORK/bin_d/kimi"
 chmod +x "$WORK/bin_d/kimi"
@@ -98,6 +104,22 @@ check "failed refresh names kimi login" "$(grep -c 'kimi login' "$WORK/err_d")" 
 
 check "no token-shaped string in any stderr" \
   "$(cat "$WORK"/err_* | grep -cE '[A-Za-z0-9._-]{40,}')" "0"
+check "no fixture token verbatim in any stderr" \
+  "$(cat "$WORK"/err_* | grep -cF -e "$TOK_VALID" -e "$TOK_STALE" -e "$TOK_FRESH")" "0"
+
+echo "A broken interpreter is diagnosed, not blamed on the login:"
+HOME_E="$WORK/e"
+make_cred "$HOME_E" 600 "$TOK_VALID"
+mkdir -p "$WORK/bin_e"
+printf '#!/bin/sh\nexit 127\n' > "$WORK/bin_e/python3"
+printf '#!/bin/sh\ntouch "%s/refresh_ran"\n' "$WORK" > "$WORK/bin_e/kimi"
+chmod +x "$WORK/bin_e/python3" "$WORK/bin_e/kimi"
+OUT=$(KIMI_CODE_HOME="$HOME_E" PATH="$WORK/bin_e:$PATH" bash "$SCRIPT" 2>"$WORK/err_e")
+STATUS=$?
+check "broken interpreter exits 1" "$STATUS" "1"
+check "broken interpreter names python3" "$(grep -c python3 "$WORK/err_e")" "1"
+check "broken interpreter does not blame the login" "$(grep -c 'kimi login' "$WORK/err_e")" "0"
+check "a valid token never triggers a refresh" "$([ -e "$WORK/refresh_ran" ] && echo yes || echo no)" "no"
 
 printf '\n%d passed, %d failed\n' "$PASS" "$FAIL"
 [ "$FAIL" -eq 0 ]

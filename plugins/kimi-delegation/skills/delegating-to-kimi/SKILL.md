@@ -19,7 +19,8 @@ definitions already in `.claude/agents/`.
 
 ## Running it
 
-The scripts live beside this skill:
+The scripts live beside this skill and are not on `PATH`, so call them by
+full path every time:
 
 ```bash
 "$CLAUDE_PLUGIN_ROOT/skills/delegating-to-kimi/scripts/kimi-delegate" \
@@ -39,14 +40,16 @@ back. That is not theoretical — it was tested, and the repo's definition won.
 To let Kimi write, name an agent that can:
 
 ```bash
-kimi-delegate --via kimi --agent coder -- "Apply the rename across the repo."
+"$CLAUDE_PLUGIN_ROOT/skills/delegating-to-kimi/scripts/kimi-delegate" \
+  --via kimi --agent coder -- "Apply the rename across the repo."
 ```
 
 Path B runs Claude Code itself on Kimi's model, so Kimi's output is subject to
 Claude Code's own permission system:
 
 ```bash
-kimi-delegate --via claude --agent my-reviewer -- "Review the staged diff."
+"$CLAUDE_PLUGIN_ROOT/skills/delegating-to-kimi/scripts/kimi-delegate" \
+  --via claude --agent my-reviewer -- "Review the staged diff."
 ```
 
 ## Flags
