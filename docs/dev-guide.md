@@ -18,6 +18,7 @@ the working habits that come with it.
 /plugin install codebase-vocabulary@opcheese-skills
 /plugin install codebase-vocabulary-human@opcheese-skills
 /plugin install shadow-learn-memory@opcheese-skills
+/plugin install kimi-delegation@opcheese-skills
 ```
 
 Restart Claude Code. To check it worked, start a fresh session and say:
@@ -115,6 +116,23 @@ When the user corrects you, note the correction explicitly in your reply.
 ```
 
 Without it the store is written and never opened.
+
+### kimi-delegation
+
+Hands a task to Kimi instead of Claude.
+
+| Command | What it does |
+| --- | --- |
+| `--via kimi` | Kimi's own agents. **Read-only by default** |
+| `--via kimi --agent coder` | Lets Kimi write |
+| `--via claude` | Claude Code on Kimi's model, with Claude Code's permissions |
+
+Use it for a second opinion on a review or design, and for large mechanical
+passes you would rather not spend Claude context on. Read what comes back —
+a second model earns its keep by disagreeing, which is only worth something
+if you judge the disagreement.
+
+Needs `kimi login` and CLI >= 0.38.0 once per machine.
 
 ## The two gates
 

@@ -32,6 +32,12 @@ And if you want the agent to remember what you taught it between sessions:
 /plugin install shadow-learn-memory@opcheese-skills
 ```
 
+And if you have a Kimi Code subscription and want a second model on tap:
+
+```
+/plugin install kimi-delegation@opcheese-skills
+```
+
 New here? Read [docs/dev-guide.md](docs/dev-guide.md) — it is step by step
 and copy-paste ready.
 
@@ -44,6 +50,7 @@ and copy-paste ready.
 | **codebase-vocabulary** | Two skills from [mattpocock/skills](https://github.com/mattpocock/skills) (MIT, attributed) covering what Superpowers does not: deep modules and seams, and merge-conflict resolution. Neither waits on a person. | Always. It composes with either spine. |
 | **codebase-vocabulary-human** | Two more from the same source that need someone at the keyboard: domain glossary and ADR discipline, and hooks that block dangerous git commands. | Interactive work only. See the warning below. |
 | **shadow-learn-memory** | The [shadow learning](https://github.com/Ludentes/Claude-Shadow-Learn) store. Reads your Claude Code, Codex and Kimi transcripts, extracts the corrections and facts worth keeping, and consolidates them into pattern and entity files the agent reads before judgment work. | Interactive work only — every write asks you first. |
+| **kimi-delegation** | Hand a task to Kimi — read-only review and bulk work through its own agents, or Claude Code itself running on its model. Refuses loudly without a Kimi subscription and CLI >= 0.38.0. | You have a Kimi subscription and want a second model's judgment, or want to spare Claude context. |
 
 ## Do not install both spines
 
@@ -82,6 +89,20 @@ store gets written and never opened.
 If you also use Codex CLI or Kimi Code and want all three reading one store,
 run that repo's `shadow-learn.sh init` instead — it links the skills into
 those tools and writes the `AGENTS.md` for you.
+
+## Why kimi-delegation is a single plugin
+
+The catalog splits a plugin in two when some of its skills need a person at
+the keyboard — that is what `codebase-vocabulary-human` and the interactive-only
+`shadow-learn-memory` are about. Delegation has no human gate on either path:
+both run headless, and delegating is *more* valuable unattended, where sparing
+Claude quota matters most. The split convention tracks human gates, not
+caution, so it does not apply here.
+
+It does carry a hard precondition the other plugins do not: a Kimi Code
+subscription and CLI >= 0.38.0. Without those the skill refuses loudly rather
+than degrading, so installing it on a machine without Kimi costs nothing but
+the description tokens.
 
 ## Why not just install mattpocock/skills too?
 
