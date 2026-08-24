@@ -75,7 +75,21 @@ case "$VIA" in
     exec "$KIMI_BIN" -p "$PROMPT" --agent "${AGENT:-explore}" --output-format "$OUTPUT"
     ;;
   claude)
-    die "not implemented yet"
+    command -v claude >/dev/null 2>&1 || die "the claude CLI is not on PATH"
+    [ -x "$CRED_HELPER" ] || die "kimi-credential is missing or not executable: $CRED_HELPER"
+    SETTINGS="$(python3 - "$CRED_HELPER" "$MODEL" "$BASE_URL" <<'PY'
+import json, sys
+helper, model, base_url = sys.argv[1], sys.argv[2], sys.argv[3]
+print(json.dumps({
+    "env": {"ANTHROPIC_BASE_URL": base_url, "ANTHROPIC_MODEL": model},
+    "apiKeyHelper": helper,
+}, indent=None, separators=(", ", ": ")))
+PY
+)"
+    if [ -n "$AGENT" ]; then
+      exec claude -p "$PROMPT" --settings "$SETTINGS" --agent "$AGENT" --output-format "$OUTPUT"
+    fi
+    exec claude -p "$PROMPT" --settings "$SETTINGS" --output-format "$OUTPUT"
     ;;
   *) die "--via must be kimi or claude, got: $VIA" ;;
 esac

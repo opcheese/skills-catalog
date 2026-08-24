@@ -72,5 +72,23 @@ OUT=$(KIMI_DELEGATE_DEPTH=1 KIMI_CODE_HOME="$WORK/home" PATH="$BIN:$PATH" bash "
 check_contains "recursion is refused" "$OUT" "already in progress"
 check_missing "recursion never reaches the CLI" "$OUT" "KIMI ARGV"
 
+echo "Path B:"
+cat > "$BIN/claude" <<'EOF'
+#!/usr/bin/env bash
+echo "CLAUDE ARGV: $*"
+EOF
+chmod +x "$BIN/claude"
+
+OUT=$(run --via claude --agent reviewer -- "review this")
+check_contains "base url points at kimi" "$OUT" "api.kimi.com/coding"
+check_contains "model defaults to k3" "$OUT" '"ANTHROPIC_MODEL": "k3"'
+check_contains "apiKeyHelper is an absolute path" "$OUT" "/kimi-credential"
+check_contains "the agent is forwarded" "$OUT" "--agent reviewer"
+check_contains "the prompt is passed" "$OUT" "review this"
+
+OUT=$(KIMI_DELEGATE_MODEL=kimi-for-coding run --via claude -- "x")
+check_contains "the model is overridable" "$OUT" '"ANTHROPIC_MODEL": "kimi-for-coding"'
+check_missing "no agent flag when none given" "$OUT" "--agent"
+
 printf '\n%d passed, %d failed\n' "$PASS" "$FAIL"
 [ "$FAIL" -eq 0 ]
