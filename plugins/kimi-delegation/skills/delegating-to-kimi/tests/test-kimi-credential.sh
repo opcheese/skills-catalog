@@ -23,6 +23,26 @@ json.dump({"access_token": token, "refresh_token": "r", "token_type": "Bearer",
 PY
 }
 
+# A fake kimi that rewrites the credential file the way the real CLI does.
+make_fake_kimi() {
+  local bindir=$1 home=$2 newtoken=$3
+  mkdir -p "$bindir"
+  cat > "$bindir/kimi" <<EOF
+#!/usr/bin/env bash
+if [ "\$1" = "--version" ]; then echo "0.38.0"; exit 0; fi
+python3 - "$home/credentials/kimi-code.json" "$newtoken" <<'PY'
+import json, sys, time
+path, token = sys.argv[1], sys.argv[2]
+d = json.load(open(path))
+d["access_token"] = token
+d["expires_at"] = int(time.time()) + 900
+json.dump(d, open(path, "w"))
+PY
+echo "fake kimi ran"
+EOF
+  chmod +x "$bindir/kimi"
+}
+
 check() {
   local label=$1 actual=$2 expected=$3
   if [ "$actual" = "$expected" ]; then
@@ -47,6 +67,15 @@ check "stdout is the token" "$OUT" "tok-valid"
 check "exit 0" "$STATUS" "0"
 check "stderr is empty" "$(cat "$WORK/err_a")" ""
 check "no subprocess spawned" "$([ -e "$WORK/spawned" ] && echo yes || echo no)" "no"
+
+echo "A stale token is refreshed through the Kimi CLI:"
+HOME_B="$WORK/b"
+make_cred "$HOME_B" -10 "tok-stale"
+make_fake_kimi "$WORK/bin_b" "$HOME_B" "tok-fresh"
+OUT=$(KIMI_CODE_HOME="$HOME_B" PATH="$WORK/bin_b:$PATH" bash "$SCRIPT" 2>"$WORK/err_b")
+check "stale token is replaced" "$OUT" "tok-fresh"
+check "refresh keeps stderr empty" "$(cat "$WORK/err_b")" ""
+check "no CLI chatter on stdout" "$(printf '%s' "$OUT" | grep -c 'fake kimi ran')" "0"
 
 printf '\n%d passed, %d failed\n' "$PASS" "$FAIL"
 [ "$FAIL" -eq 0 ]
