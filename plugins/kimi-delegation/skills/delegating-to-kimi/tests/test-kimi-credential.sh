@@ -77,5 +77,27 @@ check "stale token is replaced" "$OUT" "tok-fresh"
 check "refresh keeps stderr empty" "$(cat "$WORK/err_b")" ""
 check "no CLI chatter on stdout" "$(printf '%s' "$OUT" | grep -c 'fake kimi ran')" "0"
 
+echo "Failure is loud and names the fix:"
+HOME_C="$WORK/c"
+mkdir -p "$HOME_C/credentials"
+OUT=$(KIMI_CODE_HOME="$HOME_C" PATH="/nonexistent:/usr/bin:/bin" bash "$SCRIPT" 2>"$WORK/err_c")
+STATUS=$?
+check "missing credential exits 1" "$STATUS" "1"
+check "missing credential prints nothing on stdout" "$OUT" ""
+check "missing credential names kimi login" "$(grep -c 'kimi login' "$WORK/err_c")" "1"
+
+HOME_D="$WORK/d"
+make_cred "$HOME_D" -10 "tok-stale"
+mkdir -p "$WORK/bin_d"
+printf '#!/usr/bin/env bash\nexit 1\n' > "$WORK/bin_d/kimi"
+chmod +x "$WORK/bin_d/kimi"
+OUT=$(KIMI_CODE_HOME="$HOME_D" PATH="$WORK/bin_d:$PATH" bash "$SCRIPT" 2>"$WORK/err_d")
+STATUS=$?
+check "failed refresh exits 1" "$STATUS" "1"
+check "failed refresh names kimi login" "$(grep -c 'kimi login' "$WORK/err_d")" "1"
+
+check "no token-shaped string in any stderr" \
+  "$(cat "$WORK"/err_* | grep -cE '[A-Za-z0-9._-]{40,}')" "0"
+
 printf '\n%d passed, %d failed\n' "$PASS" "$FAIL"
 [ "$FAIL" -eq 0 ]
