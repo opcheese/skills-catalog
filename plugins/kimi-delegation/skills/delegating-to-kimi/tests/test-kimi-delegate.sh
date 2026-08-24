@@ -57,7 +57,9 @@ printf '#!/usr/bin/env bash\nif [ "$1" = "--version" ]; then echo "0.38.0"; exit
 chmod +x "$BIN/kimi"
 
 OUT=$(run --via kimi -- "find the bug")
-check_contains "no --agent means explore" "$OUT" "--agent explore"
+check_contains "no --agent pins an agent file" "$OUT" "--agent-file"
+check_contains "the pinned agent is the read-only one" "$OUT" "delegate-readonly.md"
+check_missing "the default never resolves a bare agent name" "$OUT" "--agent explore"
 check_contains "the prompt is passed" "$OUT" "find the bug"
 
 OUT=$(run --via kimi --agent coder -- "fix the bug")
@@ -89,6 +91,16 @@ check_contains "the prompt is passed" "$OUT" "review this"
 OUT=$(KIMI_DELEGATE_MODEL=kimi-for-coding run --via claude -- "x")
 check_contains "the model is overridable" "$OUT" '"ANTHROPIC_MODEL": "kimi-for-coding"'
 check_missing "no agent flag when none given" "$OUT" "--agent"
+
+echo "The pinned read-only agent definition:"
+AGENT_FILE="$(cd "$(dirname "${BASH_SOURCE[0]}")/../agents" 2>/dev/null && pwd)/delegate-readonly.md"
+check_contains "the pinned agent file exists" "$([ -f "$AGENT_FILE" ] && echo yes || echo no)" "yes"
+AGENT_BODY="$(cat "$AGENT_FILE" 2>/dev/null)"
+check_contains "it allowlists tools" "$AGENT_BODY" "tools:"
+check_contains "it allows reading" "$AGENT_BODY" "Read"
+check_missing "it grants no shell" "$AGENT_BODY" "Bash"
+check_missing "it grants no write tool" "$AGENT_BODY" "Write"
+check_missing "it grants no edit tool" "$AGENT_BODY" "Edit"
 
 printf '\n%d passed, %d failed\n' "$PASS" "$FAIL"
 [ "$FAIL" -eq 0 ]

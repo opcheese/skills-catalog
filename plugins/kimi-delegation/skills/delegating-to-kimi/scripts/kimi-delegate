@@ -19,9 +19,14 @@ BASE_URL="https://api.kimi.com/coding"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CRED_HELPER="$SCRIPT_DIR/kimi-credential"
+AGENT_FILE="$SCRIPT_DIR/../agents/delegate-readonly.md"
 if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && \
    [ -x "$CLAUDE_PLUGIN_ROOT/skills/delegating-to-kimi/scripts/kimi-credential" ]; then
   CRED_HELPER="$CLAUDE_PLUGIN_ROOT/skills/delegating-to-kimi/scripts/kimi-credential"
+fi
+if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && \
+   [ -f "$CLAUDE_PLUGIN_ROOT/skills/delegating-to-kimi/agents/delegate-readonly.md" ]; then
+  AGENT_FILE="$CLAUDE_PLUGIN_ROOT/skills/delegating-to-kimi/agents/delegate-readonly.md"
 fi
 
 die() { printf 'kimi-delegate: %s\n' "$1" >&2; exit 1; }
@@ -72,7 +77,16 @@ fi
 
 case "$VIA" in
   kimi)
-    exec "$KIMI_BIN" -p "$PROMPT" --agent "${AGENT:-explore}" --output-format "$OUTPUT"
+    if [ -n "$AGENT" ]; then
+      # An explicitly named agent is the caller's choice, and is resolved by
+      # Kimi's normal discovery order -- which a repo-local definition can win.
+      exec "$KIMI_BIN" -p "$PROMPT" --agent "$AGENT" --output-format "$OUTPUT"
+    fi
+    # The default is pinned to the definition shipped beside this script.
+    # A bare `--agent explore` would be resolved project-first, so any repo
+    # could override the read-only built-in and take back write access.
+    [ -f "$AGENT_FILE" ] || die "the read-only agent definition is missing: $AGENT_FILE"
+    exec "$KIMI_BIN" -p "$PROMPT" --agent-file "$AGENT_FILE" --output-format "$OUTPUT"
     ;;
   claude)
     command -v claude >/dev/null 2>&1 || die "the claude CLI is not on PATH"

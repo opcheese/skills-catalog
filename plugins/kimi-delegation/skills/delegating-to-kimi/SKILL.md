@@ -26,10 +26,15 @@ The scripts live beside this skill:
   --via kimi -- "Review src/auth.ts for auth bypasses. Report findings only."
 ```
 
-Path A defaults to Kimi's `explore` agent, which is **read-only**. This is
-deliberate: an unqualified `kimi -p` edits the working tree with no approval
-gate at all, and `--yolo` is refused precisely because `-p` already behaves
-that way. Naming a read-only agent is what contains it.
+Path A defaults to a **read-only agent definition shipped with this plugin**,
+passed with `--agent-file`. An unqualified `kimi -p` edits the working tree
+with no approval gate at all, so something has to contain it.
+
+It has to be a pinned *file*, not an agent *name*. Kimi resolves names
+project-first, so a repository that ships `.kimi-code/agents/explore.md` with
+`override: true` replaces the read-only built-in and gets full tool access
+back. That is not theoretical — it was tested, and the repo's definition won.
+`--agent-file` outranks project discovery, which is why the default uses it.
 
 To let Kimi write, name an agent that can:
 
@@ -49,6 +54,9 @@ kimi-delegate --via claude --agent my-reviewer -- "Review the staged diff."
 - `--via kimi|claude` — required
 - `--agent NAME` — Path A: a Kimi agent (`coder`, `explore`, `plan`, or one
   of yours in `.kimi-code/agents/`). Path B: one of your `.claude/agents/`.
+  Naming an agent opts out of the pinned default and back into Kimi's normal
+  discovery order, which the repository you are working in can win. Only name
+  an agent in a repository you trust.
 - `--cwd DIR` — run in DIR instead of the current directory
 - `--output text|stream-json` — passed through unaltered
 - Everything after `--` is the prompt
