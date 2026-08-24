@@ -26,6 +26,11 @@ fi
 
 die() { printf 'kimi-delegate: %s\n' "$1" >&2; exit 1; }
 
+if [ "${KIMI_DELEGATE_DEPTH:-0}" -ge 1 ]; then
+  die "delegation is already in progress (depth ${KIMI_DELEGATE_DEPTH}); refusing to nest"
+fi
+export KIMI_DELEGATE_DEPTH=$(( ${KIMI_DELEGATE_DEPTH:-0} + 1 ))
+
 VIA=""
 AGENT=""
 CWD=""

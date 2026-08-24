@@ -52,5 +52,25 @@ OUT=$(run --via kimi -- "review this")
 check_contains "0.18.0 is refused" "$OUT" "0.38.0"
 check_missing "0.18.0 never reaches the CLI" "$OUT" "KIMI ARGV"
 
+echo "Path A containment:"
+printf '#!/usr/bin/env bash\nif [ "$1" = "--version" ]; then echo "0.38.0"; exit 0; fi\necho "KIMI ARGV: $*"\n' > "$BIN/kimi"
+chmod +x "$BIN/kimi"
+
+OUT=$(run --via kimi -- "find the bug")
+check_contains "no --agent means explore" "$OUT" "--agent explore"
+check_contains "the prompt is passed" "$OUT" "find the bug"
+
+OUT=$(run --via kimi --agent coder -- "fix the bug")
+check_contains "an explicit agent is forwarded" "$OUT" "--agent coder"
+check_missing "explore is not substituted in" "$OUT" "explore"
+
+OUT=$(run --via kimi --agent coder --dangerously-skip-permissions -- "x")
+check_contains "skip-permissions is refused" "$OUT" "refusing"
+check_missing "skip-permissions never reaches the CLI" "$OUT" "KIMI ARGV"
+
+OUT=$(KIMI_DELEGATE_DEPTH=1 KIMI_CODE_HOME="$WORK/home" PATH="$BIN:$PATH" bash "$SCRIPT" --via kimi -- "x" 2>&1)
+check_contains "recursion is refused" "$OUT" "already in progress"
+check_missing "recursion never reaches the CLI" "$OUT" "KIMI ARGV"
+
 printf '\n%d passed, %d failed\n' "$PASS" "$FAIL"
 [ "$FAIL" -eq 0 ]
