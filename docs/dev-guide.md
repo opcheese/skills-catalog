@@ -59,16 +59,19 @@ It is split in two, by whether the skill needs you present:
 | `codebase-design` | codebase-vocabulary | you are deciding where an interface or module boundary goes | the vocabulary — deep modules, seams, adapters, leverage, locality |
 | `resolving-merge-conflicts` | codebase-vocabulary | you are mid-merge or mid-rebase with conflicts | a procedure that does not lose work |
 | `domain-modeling` | codebase-vocabulary-**human** | you are arguing about what a word means, or writing a `CONTEXT.md` / ADR | a glossary discipline, and a three-part test for whether a decision deserves an ADR |
-| `git-guardrails-claude-code` | codebase-vocabulary-**human** | you run it once per repo | hooks that block `push`, `reset --hard`, `clean`, branch deletion |
+| `git-guardrails-claude-code` | codebase-vocabulary-**human** | you run it once per repo | a hook that blocks `reset --hard`, `clean`, branch deletion, and pushes to a protected branch — feature-branch pushes still work |
 
 The bottom two are in a separate plugin because they need a person. See
 *Guardrails and unattended repos* below before running the guardrails setup.
 
-Run the guardrails setup once in any repo you let an agent work in:
+Run the guardrails setup once in any repo you let an agent work in. Plugin
+skills are addressed `plugin:skill`, so:
 
 ```
-/git-guardrails-claude-code
+/codebase-vocabulary-human:git-guardrails-claude-code
 ```
+
+Asking for it in words — "set up the git guardrails in this repo" — works too.
 
 ### What the guardrails actually block
 

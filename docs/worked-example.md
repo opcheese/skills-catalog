@@ -117,7 +117,8 @@ confident and wrong at the one moment it is least recoverable.
 
 The spine ends the branch: review, then a PR.
 
-If you ran `/git-guardrails-claude-code` in this repo, the hook is what makes
+If you ran `/codebase-vocabulary-human:git-guardrails-claude-code` in this
+repo, the hook is what makes
 that safe to leave running. It blocks a push to `main` by any route — including
 a bare `git push` while you happen to be standing on it — and allows the
 feature-branch push that opening a PR requires.

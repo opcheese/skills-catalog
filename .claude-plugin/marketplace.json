@@ -32,7 +32,7 @@
     },
     {
       "name": "codebase-vocabulary-human",
-      "description": "Interactive-only companions: domain glossary and ADR discipline, and hooks that block dangerous git commands. Both need a person at the keyboard",
+      "description": "Interactive-only companions to codebase-vocabulary: domain glossary and ADR discipline, and a setup skill that installs hooks blocking dangerous git commands. Both need a person at the keyboard",
       "version": "1.0.0",
       "source": "./plugins/codebase-vocabulary-human"
     },

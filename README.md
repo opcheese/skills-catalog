@@ -136,6 +136,26 @@ Either works, and they buy different things:
   claude` and needs neither the CLI nor a login. Set
   `KIMI_DELEGATE_BASE_URL` if your key was issued outside the coding plan.
 
+On a key-only machine there is no Kimi CLI config, so there is no model list
+to check a name against, and that changes how the model argument behaves:
+
+- The default, `k3`, is sent **unverified**. It is a Kimi Code plan name; if
+  your key is not on that plan, Kimi answers HTTP 200 with some other model
+  rather than an error, and you are billed for it.
+- Any other name is **refused** rather than sent, unless you also set
+  `KIMI_DELEGATE_SKIP_MODEL_CHECK=1`.
+
+So on a key outside the coding plan, name your model *and* take the opt-out
+deliberately:
+
+```
+export KIMI_DELEGATE_MODEL=the-model-your-key-serves
+export KIMI_DELEGATE_SKIP_MODEL_CHECK=1
+```
+
+Runs taken that way are marked `(unverified)` in the provenance line, which is
+the only signal you get that nothing checked the name.
+
 With neither the skill refuses loudly rather than degrading, so installing it
 on a machine without Kimi costs nothing but the description tokens.
 
@@ -192,7 +212,7 @@ one to leave out if you do not keep a glossary and do not want the hook.
 
 To see the two working together on one task, request to merged PR, read
 [the worked example](docs/worked-example.md). The full reasoning, including
-the four skills we borrowed ideas from rather than installing, is in
+the two skills we borrowed ideas from and the four we declined outright, is in
 [the adoption writeup](https://github.com/opcheese/superpowers/blob/agents/docs/research/2026-08-23-mattpocock-skills-and-adoption-framework.md).
 
 ## Why not just install mattpocock/skills too?

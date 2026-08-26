@@ -9,7 +9,15 @@ runs on their own machine and the record of what happened here.
 
 ## Before you start
 
-You need a Kimi Code subscription and CLI >= 0.38.0:
+How much of this you can run depends on which credential you have:
+
+- **An API key** (`export KIMI_API_KEY=...`) covers the automated suite and
+  every `--via claude` step, with no CLI and no login.
+- **A Kimi Code subscription** is required for the Path A steps, which drive
+  Kimi's own agent system through its own OAuth. There is no key-only
+  substitute for those; skip them if you have only a key.
+
+For the subscription route you need CLI >= 0.38.0:
 
 ```bash
 kimi --version
