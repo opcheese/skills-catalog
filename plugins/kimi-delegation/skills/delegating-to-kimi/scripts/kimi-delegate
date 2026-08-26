@@ -188,17 +188,19 @@ if [ -z "$KNOWN_MODELS" ]; then
   # Unverifiable is not the same as valid. Refuse a model the caller chose on
   # purpose; let the built-in default through, since blocking it would break
   # every delegation over a config we merely failed to parse.
-  if [ "${KIMI_DELEGATE_SKIP_MODEL_CHECK:-}" = "1" ]; then
-    # Deliberate, and recorded as such: the caller has taken on the risk that a
-    # typo here is answered by some other model at full price.
-    MODEL_NOTE=" (unverified)"
-  elif [ "$MODEL" != "$DEFAULT_MODEL" ]; then
+  if [ "${KIMI_DELEGATE_SKIP_MODEL_CHECK:-}" != "1" ] && [ "$MODEL" != "$DEFAULT_MODEL" ]; then
     die "cannot verify the model '$MODEL': there is no model list to check it against.
 A key issued outside the coding plan has no local config.toml, so this is
 expected there. Kimi answers HTTP 200 for a model it has never heard of, which
 is why an unverifiable name is refused rather than sent. To take that risk on
 purpose: KIMI_DELEGATE_SKIP_MODEL_CHECK=1"
   fi
+  # Everything that survives this branch was let through, not checked -- the
+  # default included. `k3` is a coding-plan name, and a key issued off that
+  # plan is answered HTTP 200 by some other model and billed for it. Marking
+  # only the deliberate opt-out would leave the silent case, which is the one
+  # nobody is watching for, as the one that looks verified.
+  MODEL_NOTE=" (unverified)"
 elif ! printf '%s\n' "$KNOWN_MODELS" | grep -qxF -- "$MODEL"; then
   die "'$MODEL' is not a model this Kimi install offers. Available:
 $(printf '%s\n' "$KNOWN_MODELS" | sed 's/^/  /')"

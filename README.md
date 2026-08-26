@@ -139,9 +139,10 @@ Either works, and they buy different things:
 On a key-only machine there is no Kimi CLI config, so there is no model list
 to check a name against, and that changes how the model argument behaves:
 
-- The default, `k3`, is sent **unverified**. It is a Kimi Code plan name; if
-  your key is not on that plan, Kimi answers HTTP 200 with some other model
-  rather than an error, and you are billed for it.
+- The default, `k3`, is still sent — blocking it would break every delegation
+  over a config we merely failed to parse — but it is not checked. It is a
+  Kimi Code plan name; if your key is not on that plan, Kimi answers HTTP 200
+  with some other model rather than an error, and you are billed for it.
 - Any other name is **refused** rather than sent, unless you also set
   `KIMI_DELEGATE_SKIP_MODEL_CHECK=1`.
 
@@ -153,8 +154,9 @@ export KIMI_DELEGATE_MODEL=the-model-your-key-serves
 export KIMI_DELEGATE_SKIP_MODEL_CHECK=1
 ```
 
-Runs taken that way are marked `(unverified)` in the provenance line, which is
-the only signal you get that nothing checked the name.
+Every run on a machine with no model list is marked `(unverified)` in the
+provenance line, the default included. That marker is the only signal you get
+that nothing checked the name.
 
 With neither the skill refuses loudly rather than degrading, so installing it
 on a machine without Kimi costs nothing but the description tokens.

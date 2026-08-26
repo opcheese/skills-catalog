@@ -79,12 +79,19 @@ itself will not do it: a request naming a model Kimi has never heard of
 returns HTTP 200 and a normal answer, so without the check a typo is served by
 something else with no error anywhere.
 
-On a machine with an API key and no CLI there is no local model list, so an
-explicit model cannot be checked at all. That is refused too — unverifiable is
-not the same as valid. `KIMI_DELEGATE_SKIP_MODEL_CHECK=1` takes the risk on
-purpose, and the run is marked `(unverified)` in the line below. The opt-out
-only covers the unknowable case: when your install does declare a list, "not
-on it" is a positive answer and no variable overrules it.
+On a machine with an API key and no CLI there is no local model list, so no
+model can be checked at all. An explicit one is refused — unverifiable is not
+the same as valid — and `KIMI_DELEGATE_SKIP_MODEL_CHECK=1` takes that risk on
+purpose. The default `k3` is let through without the flag, because blocking it
+would break every delegation over a config we merely failed to parse.
+
+Either way the run is marked `(unverified)` in the line below. Nothing there
+was checked, and the default is the case nobody is watching for: `k3` is a
+Kimi Code plan name, so a key issued off that plan gets HTTP 200 from some
+other model and a bill for it.
+
+The opt-out only covers the unknowable case: when your install does declare a
+list, "not on it" is a positive answer and no variable overrules it.
 
 Every run prints one line to stderr naming the route, model, endpoint, agent,
 credential type, and thinking state, so an answer can be traced to what

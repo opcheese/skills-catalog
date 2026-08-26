@@ -295,6 +295,20 @@ OUT=$(run_bare KIMI_API_KEY=sk-fixture-key KIMI_DELEGATE_MODEL=k3-256k -- --via 
 check_missing "an unverifiable model is still refused" "$OUT" "CLAUDE ARGV"
 check_contains "and the refusal names the way through" "$OUT" "KIMI_DELEGATE_SKIP_MODEL_CHECK"
 
+# The default is let through here rather than refused, because blocking it
+# would break every delegation over a config we merely failed to parse. But
+# "let through" is not "checked": on a key outside the coding plan, `k3` is a
+# name Kimi answers HTTP 200 to and bills for while serving something else.
+# The run must say so, or the provenance line claims more than it knows.
+OUT=$(run_bare KIMI_API_KEY=sk-fixture-key -- --via claude -- "x")
+check_contains "the default still runs when there is no list" "$OUT" "CLAUDE ARGV"
+check_contains "but provenance does not pretend it was checked" "$OUT" "model=k3 (unverified)"
+
+# The same default, on an install that does declare a model list, IS checked.
+# The marker must not leak onto a run that earned its verification.
+OUT=$(run --via claude -- "x")
+check_missing "a verified default carries no marker" "$OUT" "unverified"
+
 OUT=$(run_bare KIMI_API_KEY=sk-fixture-key KIMI_DELEGATE_MODEL=k3-256k KIMI_DELEGATE_SKIP_MODEL_CHECK=1 -- --via claude -- "x")
 check_contains "the opt-out lets a deliberate choice through" "$OUT" "CLAUDE ARGV"
 check_contains "and it reaches the wire" "$OUT" '"ANTHROPIC_MODEL": "k3-256k"'
