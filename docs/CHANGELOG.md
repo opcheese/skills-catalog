@@ -42,10 +42,16 @@ without producing a skill invocation. It ships labelled as a partial.
 
 ### kimi-delegation, earlier the same day
 
-`kimi-delegation` **1.1.0**. Bump the version whenever a vendored plugin's
-contents change: `/plugin update` compares version strings, so a changed
-plugin left at the same version reports "already at the latest version" and
-never ships.
+`kimi-delegation` **1.1.0**. Bump the version whenever a **path-vendored**
+plugin's contents change — one whose `source` is a directory in this repo.
+`/plugin update` compares version strings for those, so a changed plugin left
+at the same version reports "already at the latest version" and never ships.
+
+Corrected 2026-08-26: this does **not** apply to plugins sourced from a github
+ref, such as `superpowers-agents`. Those track the branch and refetch its
+current contents, even while reporting "already at the latest version (6.3.0)".
+The message is unreliable in both directions — verify the installed file, not
+the output.
 
 ### kimi-delegation runs on an API key
 
