@@ -10,6 +10,11 @@ Notable changes to the catalog: what devs install, and what the docs tell them.
 
 ## 2026-08-26
 
+`kimi-delegation` **1.1.0**. Bump the version whenever a vendored plugin's
+contents change: `/plugin update` compares version strings, so a changed
+plugin left at the same version reports "already at the latest version" and
+never ships.
+
 ### kimi-delegation runs on an API key
 
 `KIMI_API_KEY` (or `MOONSHOT_API_KEY`) is now a complete credential for

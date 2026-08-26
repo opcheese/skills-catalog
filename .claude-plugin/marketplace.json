@@ -48,7 +48,7 @@
     {
       "name": "kimi-delegation",
       "description": "Delegate work to Kimi from Claude Code: read-only review and bulk tasks through Kimi's own agents, or Claude Code itself running on Kimi's model. Needs either a Kimi API key or a Kimi Code subscription with CLI >= 0.38.0",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "source": "./plugins/kimi-delegation"
     }
   ]
