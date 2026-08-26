@@ -386,11 +386,23 @@ Covered by tests (111 assertions across the two suites, all hermetic):
   cannot overrule a config that does declare a list
 - `auth=api-key` / `auth=subscription-token` in the provenance line
 
-**Not measured.** Whether `api.kimi.com/coding` accepts an `sk-` platform key
-on the header Claude Code sends for an `apiKeyHelper` value. The structural
-evidence is that galatea drives the same host and path with the same key shape
-through the Anthropic-compatible provider, which sends `x-api-key`; but that
-is a different client, and this endpoint answers 200 to things it discards, so
-inference from a neighbouring success is exactly the reasoning this document
-exists to distrust. One live run settles it and nothing here should be
-described as verified until one has happened.
+**Measured 2026-08-26, live.** `api.kimi.com/coding` does accept an `sk-`
+platform key on the header Claude Code sends for an `apiKeyHelper` value. One
+delegation on a real key returned the requested answer, with the provenance
+line reporting `auth=api-key`. Until that run this was inference from
+galatea's neighbouring success with a different client, which this endpoint's
+silent-accept behaviour makes worthless as evidence.
+
+Two things the live run surfaced that the hermetic tests could not:
+
+- Claude Code emits `[claude-code:unrecognized_model] {"model":"k3"}` — its own
+  client-side check of a model name it has never heard of, not the endpoint
+  rejecting anything. The call succeeded. Note the asymmetry: the harness will
+  say a name looks wrong, and then send it anyway, which is why the model gate
+  in `kimi-delegate` is not redundant with it.
+- Claude Code warns that claude.ai connectors are disabled because an auth
+  source takes precedence. Expected: supplying a credential is the point.
+  Harmless for a headless delegate, which uses no connectors.
+
+Still open: whether either line lands on stdout, where it would contaminate a
+delegated answer, or on stderr with the provenance banner where it belongs.
