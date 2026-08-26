@@ -112,3 +112,11 @@ Good interfaces make testing natural:
 
 - **Deepening a cluster given its dependencies**, see [DEEPENING.md](DEEPENING.md): dependency categories, seam discipline, and replace-don't-layer testing.
 - **Exploring alternative interfaces**, see [DESIGN-IT-TWICE.md](DESIGN-IT-TWICE.md): spin up parallel sub-agents to design the interface several radically different ways, then compare on depth, locality, and seam placement.
+
+## After the design
+
+This skill names the seam. It does not build it, and it is not a licence to start.
+
+- **The design is not settled yet** — the problem is still fuzzy, or nobody has weighed two or three shapes against each other: use superpowers:brainstorming if available first. Come back here for the vocabulary once there is something to name.
+- **The seam is agreed** — implement through it with superpowers:test-driven-development if available. The interface you just settled *is* the test surface, so the first failing test goes through it. Writing the code and its tests together is the failure mode this hand-off exists to prevent.
+- **A naming or modelling question is doing the real work** — which concept this even is, what to call it, whether it deserves an ADR: that is codebase-vocabulary-human:domain-modeling if available, not this skill.

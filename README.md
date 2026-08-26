@@ -189,14 +189,18 @@ Each skill answers one of those:
 
 **`codebase-design`** gives one vocabulary — module, interface, depth, seam,
 adapter, leverage, locality — used consistently enough that "make this deeper"
-is an instruction rather than a vibe. Pure reference, meant to be consulted
-mid-design rather than run. Install it and forget it.
+is an instruction rather than a vibe. You do not have to remember it:
+`superpowers:brainstorming` now invokes it whenever a design moves a boundary,
+and it hands off to `superpowers:test-driven-development` when the seam is
+settled, because the interface it just named is the test surface.
 
 **`domain-modeling`** is the glossary discipline: challenge a fuzzy term the
 moment it appears, and write the decision down. It costs the most, because it
-only pays off in a repo that will actually keep a `CONTEXT.md`. Its three-part
-test for whether a decision deserves an ADR — hard to reverse, surprising
-without context, a real trade-off — earns its place on its own.
+only pays off in a repo that will actually keep a `CONTEXT.md` — and it knows
+that: under test it fires on a repo that has one and declines on a repo that
+does not, without being told. Its three-part test for whether a decision
+deserves an ADR — hard to reverse, surprising without context, a real
+trade-off — earns its place on its own.
 
 **`resolving-merge-conflicts`** is 117 words and has no analogue anywhere in
 Superpowers: read both intents before resolving either, preserve both where
