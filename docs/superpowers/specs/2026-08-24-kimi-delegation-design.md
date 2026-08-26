@@ -9,6 +9,14 @@ audience: maintainers
 
 # kimi-delegation — design
 
+> **Amended 2026-08-26 — superseded in part.** This records the design as
+> built, when a Kimi Code subscription was the only credential. An API key in
+> `KIMI_API_KEY` now covers Path B on its own, with no CLI and no login, so
+> the preconditions below read as stricter than the shipped skill. Path A
+> still requires both, because it authenticates through Kimi's own OAuth. See
+> *Using an API key instead of a subscription* in `SKILL.md`. The rest of the
+> design is unchanged.
+
 A marketplace plugin that lets Claude Code hand work to Kimi, both ways:
 through Kimi's own agent system, and by running Claude Code itself on Kimi's
 model. Research and verified behaviour are in

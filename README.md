@@ -40,7 +40,8 @@ second model on tap:
 ```
 
 New here? Read [docs/dev-guide.md](docs/dev-guide.md) — it is step by step
-and copy-paste ready.
+and copy-paste ready. What changed recently is in
+[docs/CHANGELOG.md](docs/CHANGELOG.md).
 
 ## What is in the catalog
 
