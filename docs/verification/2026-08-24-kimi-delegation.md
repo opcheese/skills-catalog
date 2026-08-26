@@ -404,5 +404,8 @@ Two things the live run surfaced that the hermetic tests could not:
   source takes precedence. Expected: supplying a credential is the point.
   Harmless for a headless delegate, which uses no connectors.
 
-Still open: whether either line lands on stdout, where it would contaminate a
-delegated answer, or on stderr with the provenance banner where it belongs.
+Both lines go to stderr, alongside the provenance banner. Confirmed by
+rerunning the same delegation with `2>/dev/null`: stdout carried the answer
+and nothing else. So a caller parsing the result -- `--output stream-json`
+above all -- gets a clean stream, and the plugin has nothing to filter at the
+boundary.
