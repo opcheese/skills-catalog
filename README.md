@@ -175,7 +175,7 @@ only pays off in a repo that will actually keep a `CONTEXT.md`. Its three-part
 test for whether a decision deserves an ADR — hard to reverse, surprising
 without context, a real trade-off — earns its place on its own.
 
-**`resolving-merge-conflicts`** is 133 words and has no analogue anywhere in
+**`resolving-merge-conflicts`** is 117 words and has no analogue anywhere in
 Superpowers: read both intents before resolving either, preserve both where
 you can, never invent behaviour, never `--abort`, then run the project's own
 checks. A conflict is exactly where an unsupervised agent does something you
@@ -190,8 +190,9 @@ lines per session and does nothing until design is actually happening, so
 there is no real reason not to carry it. `codebase-vocabulary-human` is the
 one to leave out if you do not keep a glossary and do not want the hook.
 
-The full reasoning, including the four skills we borrowed ideas from rather
-than installing, is in
+To see the two working together on one task, request to merged PR, read
+[the worked example](docs/worked-example.md). The full reasoning, including
+the four skills we borrowed ideas from rather than installing, is in
 [the adoption writeup](https://github.com/opcheese/superpowers/blob/agents/docs/research/2026-08-23-mattpocock-skills-and-adoption-framework.md).
 
 ## Why not just install mattpocock/skills too?

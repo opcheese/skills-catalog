@@ -49,7 +49,8 @@ process — what to do next, when to stop — and it can run a task start to
 finish without ever deciding where a boundary belongs or what a word means.
 These skills fire on those judgment moments instead, which is why they compose
 with the spine rather than competing with it. The README has the longer
-argument under *Why these four*.
+argument under *Why these four*, and [the worked example](worked-example.md)
+walks one task through both, request to merged PR.
 
 It is split in two, by whether the skill needs you present:
 
