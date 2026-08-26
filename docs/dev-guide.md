@@ -1,7 +1,7 @@
 ---
 title: Using our agent skills
 status: current
-last_verified: 2026-08-23
+last_verified: 2026-08-26
 audience: developers
 ---
 
@@ -132,7 +132,12 @@ passes you would rather not spend Claude context on. Read what comes back —
 a second model earns its keep by disagreeing, which is only worth something
 if you judge the disagreement.
 
-Needs `kimi login` and CLI >= 0.38.0 once per machine.
+Needs a Kimi credential, once per machine. Either an API key —
+`export KIMI_API_KEY=...`, which covers `--via claude` and needs no CLI and no
+login — or a Kimi Code subscription: `kimi login` plus CLI >= 0.38.0, which is
+the only thing that unlocks `--via kimi`. An explicit key outranks a stored
+subscription token, and the `auth=` field in each run's provenance line records
+which one was actually spent.
 
 Unlike everything else in the catalog, this one is not tied to Claude Code.
 `--via kimi` is a plain bash call, so it works from Codex or a script too —
