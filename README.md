@@ -139,6 +139,61 @@ Either works, and they buy different things:
 With neither the skill refuses loudly rather than degrading, so installing it
 on a machine without Kimi costs nothing but the description tokens.
 
+## Why these four, when Superpowers is already this big
+
+Superpowers is a *process* library. It tells the agent what to do next and
+when to stop: brainstorm before building, write the test first, review before
+the PR. It says almost nothing about what good structure looks like or what
+your words mean — and it can run start to finish without ever answering
+either, which is why it never grew that layer.
+
+Those questions live *between* the process steps. "Where does this boundary
+go?" never appears in a workflow diagram; it comes up in the middle of one. A
+skill that fires on a workflow moment cannot help there, because from the
+workflow's point of view nothing has happened.
+
+You notice the gap in three specific ways:
+
+- The agent ships working code behind a wide, shallow interface — every caller
+  has to understand how it works. Nothing in the spine flags this, because the
+  tests pass and the task is done.
+- One PR uses three words for the same concept, none of them the word the
+  business uses. You correct it, and it drifts back next session.
+- A merge conflict arrives and the agent either invents behaviour that was in
+  neither branch, or reaches for `--abort` and throws the work away.
+
+Each skill answers one of those:
+
+**`codebase-design`** gives one vocabulary — module, interface, depth, seam,
+adapter, leverage, locality — used consistently enough that "make this deeper"
+is an instruction rather than a vibe. Pure reference, meant to be consulted
+mid-design rather than run. Install it and forget it.
+
+**`domain-modeling`** is the glossary discipline: challenge a fuzzy term the
+moment it appears, and write the decision down. It costs the most, because it
+only pays off in a repo that will actually keep a `CONTEXT.md`. Its three-part
+test for whether a decision deserves an ADR — hard to reverse, surprising
+without context, a real trade-off — earns its place on its own.
+
+**`resolving-merge-conflicts`** is 133 words and has no analogue anywhere in
+Superpowers: read both intents before resolving either, preserve both where
+you can, never invent behaviour, never `--abort`, then run the project's own
+checks. A conflict is exactly where an unsupervised agent does something you
+cannot easily undo.
+
+**`git-guardrails-claude-code`** is the odd one out — not vocabulary but a
+hook, and the only mechanical answer in a catalog otherwise full of procedural
+ones. Worth it in any repo you let an agent work in unattended.
+
+**When to skip them.** `codebase-vocabulary` costs a couple of description
+lines per session and does nothing until design is actually happening, so
+there is no real reason not to carry it. `codebase-vocabulary-human` is the
+one to leave out if you do not keep a glossary and do not want the hook.
+
+The full reasoning, including the four skills we borrowed ideas from rather
+than installing, is in
+[the adoption writeup](https://github.com/opcheese/superpowers/blob/agents/docs/research/2026-08-23-mattpocock-skills-and-adoption-framework.md).
+
 ## Why not just install mattpocock/skills too?
 
 Because most of that pack is a second, complete methodology that runs

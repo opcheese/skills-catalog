@@ -44,8 +44,14 @@ You do not invoke most of it. It triggers itself when you ask for something
 that needs it. The two places it deliberately stops and waits for you are
 described under *The two gates* below.
 
-**codebase-vocabulary** supplies what the spine does not. It is split in
-two, by whether the skill needs you present:
+**codebase-vocabulary** supplies what the spine does not. The spine is a
+process — what to do next, when to stop — and it can run a task start to
+finish without ever deciding where a boundary belongs or what a word means.
+These skills fire on those judgment moments instead, which is why they compose
+with the spine rather than competing with it. The README has the longer
+argument under *Why these four*.
+
+It is split in two, by whether the skill needs you present:
 
 | Skill | Plugin | Fires when | What it gives you |
 |---|---|---|---|
