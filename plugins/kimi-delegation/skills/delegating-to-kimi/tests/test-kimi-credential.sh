@@ -138,5 +138,39 @@ check "refresh still succeeds without timeout" "$OUT" "$TOK_FRESH"
 check "no timeout means no crash" "$STATUS" "0"
 check "and stderr stays clean" "$(cat "$WORK/err_f")" ""
 
+echo "An API key in the environment short-circuits everything:"
+# The key travels by environment, never on a command line, because /proc and
+# ps show every argument to every process on the box. Printing it here is how
+# it reaches Claude Code: on a pipe, to one child.
+KEY="sk-fixture-0123456789abcdef"
+HOME_G="$WORK/g"          # no credential file, and no kimi anywhere on PATH
+mkdir -p "$HOME_G"
+EMPTY="$WORK/emptybin"
+mkdir -p "$EMPTY"
+for tool in bash sh env python3 mktemp rm cat grep head tr dirname; do
+  src=$(command -v "$tool" 2>/dev/null) && ln -sf "$src" "$EMPTY/$tool"
+done
+OUT=$(KIMI_API_KEY="$KEY" KIMI_CODE_HOME="$HOME_G" PATH="$EMPTY" /usr/bin/env bash "$SCRIPT" 2>"$WORK/err_g")
+STATUS=$?
+check "the key is printed verbatim" "$OUT" "$KEY"
+check "with no login and no CLI" "$STATUS" "0"
+check "and stderr stays clean" "$(cat "$WORK/err_g")" ""
+
+OUT=$(MOONSHOT_API_KEY="$KEY" KIMI_CODE_HOME="$HOME_G" PATH="$EMPTY" /usr/bin/env bash "$SCRIPT" 2>/dev/null)
+check "MOONSHOT_API_KEY works the same" "$OUT" "$KEY"
+
+# An exported-but-empty variable is what a sourced .env leaves behind. It must
+# not shadow a perfectly good subscription token.
+HOME_H="$WORK/h"
+make_cred "$HOME_H" 900 "$TOK_VALID"
+OUT=$(KIMI_API_KEY= KIMI_CODE_HOME="$HOME_H" PATH="$EMPTY" /usr/bin/env bash "$SCRIPT" 2>/dev/null)
+check "an empty key falls through to the token file" "$OUT" "$TOK_VALID"
+
+# Precedence, stated once here so it cannot drift: an explicit key wins. The
+# alternative -- preferring whichever the file holds -- would mean a stale
+# login silently decides which account gets billed.
+OUT=$(KIMI_API_KEY="$KEY" KIMI_CODE_HOME="$HOME_H" PATH="$EMPTY" /usr/bin/env bash "$SCRIPT" 2>/dev/null)
+check "an explicit key outranks a valid token file" "$OUT" "$KEY"
+
 printf '\n%d passed, %d failed\n' "$PASS" "$FAIL"
 [ "$FAIL" -eq 0 ]

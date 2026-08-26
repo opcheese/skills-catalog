@@ -360,3 +360,37 @@ both wire APIs" as evidence of viability; by this endpoint's own behaviour a
 200 proves only that the request was not rejected. The tool-calling
 observation was structural and stands. The wire-API claim does not, and those
 notes were never written to disk in the first place.
+
+## API-key mode, and what about it is not yet measured
+
+Added 2026-08-26. `KIMI_API_KEY` (or `MOONSHOT_API_KEY`) makes `--via claude`
+work with no Kimi CLI and no `kimi login`: `kimi-credential` returns the key
+before it touches the disk, so the same `apiKeyHelper` wiring carries either
+credential. The key reaches the helper by environment and leaves on a pipe,
+never on a command line, because `/proc` and `ps` expose every argument to
+every user on the machine.
+
+Covered by tests (111 assertions across the two suites, all hermetic):
+
+- path B runs with no CLI and no credential file when a key is set
+- the key appears in no argv, and the helper is still the only supplier
+- an empty `KIMI_API_KEY=` — what sourcing a `.env` without the key leaves —
+  is not treated as a credential on either script
+- an explicit key outranks a valid stored token, so which account gets billed
+  is a decision and not an accident
+- `--via kimi` refuses, naming the reason: Kimi's agent system authenticates
+  through its own OAuth provider
+- `KIMI_DELEGATE_BASE_URL` reaches both the settings blob and the provenance
+- with no model list to check against, an explicit model is refused unless
+  `KIMI_DELEGATE_SKIP_MODEL_CHECK=1`, which marks the run `(unverified)` and
+  cannot overrule a config that does declare a list
+- `auth=api-key` / `auth=subscription-token` in the provenance line
+
+**Not measured.** Whether `api.kimi.com/coding` accepts an `sk-` platform key
+on the header Claude Code sends for an `apiKeyHelper` value. The structural
+evidence is that galatea drives the same host and path with the same key shape
+through the Anthropic-compatible provider, which sends `x-api-key`; but that
+is a different client, and this endpoint answers 200 to things it discards, so
+inference from a neighbouring success is exactly the reasoning this document
+exists to distrust. One live run settles it and nothing here should be
+described as verified until one has happened.

@@ -1,6 +1,6 @@
 ---
 name: delegating-to-kimi
-description: Use when work should go to Kimi instead of Claude - an independent second opinion on a review or design, a large mechanical pass that would burn Claude context, or any task where a different model's judgment is worth more than a faster answer. Requires a Kimi Code subscription.
+description: Use when work should go to Kimi instead of Claude - an independent second opinion on a review or design, a large mechanical pass that would burn Claude context, or any task where a different model's judgment is worth more than a faster answer. Requires either a Kimi Code subscription or a Kimi API key.
 ---
 
 # Delegating to Kimi
@@ -79,9 +79,50 @@ itself will not do it: a request naming a model Kimi has never heard of
 returns HTTP 200 and a normal answer, so without the check a typo is served by
 something else with no error anywhere.
 
+On a machine with an API key and no CLI there is no local model list, so an
+explicit model cannot be checked at all. That is refused too — unverifiable is
+not the same as valid. `KIMI_DELEGATE_SKIP_MODEL_CHECK=1` takes the risk on
+purpose, and the run is marked `(unverified)` in the line below. The opt-out
+only covers the unknowable case: when your install does declare a list, "not
+on it" is a positive answer and no variable overrules it.
+
 Every run prints one line to stderr naming the route, model, endpoint, agent,
-and thinking state, so an answer can be traced to what produced it. It goes to
-stderr and never mixes into the answer on stdout.
+credential type, and thinking state, so an answer can be traced to what
+produced it. It goes to stderr and never mixes into the answer on stdout.
+
+## Using an API key instead of a subscription
+
+Set `KIMI_API_KEY` (or `MOONSHOT_API_KEY`) and `--via claude` needs nothing
+else — no `kimi login`, no Kimi CLI, no version gate. The key is the whole
+credential.
+
+```bash
+export KIMI_API_KEY=sk-...          # from your shell or a sourced .env
+"$KD/scripts/kimi-delegate" --via claude -- "Review the staged diff."
+```
+
+A key issued outside the Kimi Code coding plan is answered somewhere else, so
+point the delegation there:
+
+```bash
+export KIMI_DELEGATE_BASE_URL=https://api.moonshot.ai/anthropic
+```
+
+Three things worth knowing:
+
+- **The key never appears on a command line.** It travels by environment to
+  `kimi-credential`, which prints it on a pipe to the delegated session.
+  `/proc` and `ps` show every argument of every process to every user on the
+  machine, so a key passed as an argument would be readable by all of them.
+- **An explicit key outranks a stored subscription token**, so on a machine
+  with both, exporting the key is what decides which account gets billed. The
+  `auth=` field of the provenance line says which one a given run spent.
+- **`--via kimi` cannot use it.** Kimi's own agent system authenticates
+  through its own OAuth provider; the key has no way in. Path A still needs
+  `kimi login`, and says so if you try.
+
+An empty value (`KIMI_API_KEY=`, which is what sourcing a `.env` without the
+key leaves behind) is treated as no key at all, not as an empty credential.
 
 ## Thinking is on, and you cannot turn it off
 
@@ -122,7 +163,12 @@ on `PATH` regardless of which harness you called from. Without it you get
 
 ## Requirements
 
-A Kimi Code subscription (`kimi login`), CLI >= 0.38.0, `bash` and `python3`.
+`bash` and `python3`, plus one of:
+
+- a Kimi Code subscription (`kimi login`) and CLI >= 0.38.0 — needed for
+  `--via kimi` always, and for `--via claude` when there is no API key;
+- a Kimi API key in `KIMI_API_KEY`, which covers `--via claude` on its own.
+
 Note that
 `kimi upgrade` misdetects native Linux installs as Windows and refuses;
 upgrade with `curl -fsSL https://code.kimi.com/kimi-code/install.sh | bash`.

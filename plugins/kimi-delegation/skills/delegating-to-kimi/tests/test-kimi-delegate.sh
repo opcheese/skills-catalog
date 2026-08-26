@@ -22,7 +22,8 @@ PY
 }
 
 run() {
-  KIMI_CODE_HOME="$WORK/home" PATH="$BIN:$PATH" bash "$SCRIPT" "$@" 2>&1
+  env -u KIMI_API_KEY -u MOONSHOT_API_KEY \
+    KIMI_CODE_HOME="$WORK/home" PATH="$BIN:$PATH" bash "$SCRIPT" "$@" 2>&1
 }
 
 check_contains() {
@@ -208,7 +209,7 @@ check_contains "the built-in default is validated too" "$OUT" "not a model this 
 # not silently wave an explicit choice through.
 : > "$WORK/home/config.toml"
 OUT=$(KIMI_DELEGATE_MODEL=whatever run --via claude -- "x")
-check_contains "an unverifiable explicit model is refused" "$OUT" "could not read the model list"
+check_contains "an unverifiable explicit model is refused" "$OUT" "no model list to check it against"
 OUT=$(run --via claude -- "x")
 check_contains "but the default still runs when the list is unreadable" "$OUT" "CLAUDE ARGV"
 
@@ -241,6 +242,73 @@ check_missing "not the search service" "$OUT" "/v1/search"
 # The banner must not contaminate the delegated answer.
 ONLY_STDOUT=$(KIMI_CODE_HOME="$WORK/home" PATH="$BIN:$PATH" bash "$SCRIPT" --via kimi -- "x" 2>/dev/null)
 check_missing "the banner goes to stderr, not stdout" "$ONLY_STDOUT" "via=kimi"
+
+echo "API-key mode (no Kimi CLI, no login):"
+# A home with nothing in it and no CLI anywhere: the state of a machine that
+# has an API key and has never run `kimi login`.
+BARE="$WORK/bare"
+mkdir -p "$BARE"
+# Usage: run_bare VAR=value... -- <delegate args>
+run_bare() {
+  local assigns=()
+  while [ "$1" != "--" ]; do assigns+=("$1"); shift; done
+  shift
+  env -u MOONSHOT_API_KEY -u KIMI_API_KEY \
+    KIMI_CODE_HOME="$BARE" KIMI_BIN="$WORK/nonexistent-kimi" PATH="$BIN:$PATH" \
+    "${assigns[@]}" bash "$SCRIPT" "$@" 2>&1
+}
+
+OUT=$(run_bare KIMI_API_KEY=sk-fixture-key -- --via claude -- "x")
+check_contains "an API key runs path B with no CLI installed" "$OUT" "CLAUDE ARGV"
+check_missing "and does not demand the CLI" "$OUT" "Kimi CLI not found"
+check_missing "and does not demand a login" "$OUT" "no Kimi credentials"
+
+# The key must never reach argv: /proc and ps expose every argument to any
+# process on the box. It travels by environment to the credential helper.
+check_missing "the key is not in the claude argv" "$OUT" "sk-fixture-key"
+check_contains "the credential helper is still what supplies it" "$OUT" "/kimi-credential"
+
+check_contains "provenance names the credential type" "$OUT" "auth=api-key"
+
+OUT=$(run_bare MOONSHOT_API_KEY=sk-fixture-key -- --via claude -- "x")
+check_contains "MOONSHOT_API_KEY is accepted too" "$OUT" "CLAUDE ARGV"
+
+# An exported-but-empty variable is the shape a sourced .env leaves behind. It
+# is not a credential, and must not switch the checks off.
+OUT=$(run_bare KIMI_API_KEY= -- --via claude -- "x")
+check_missing "an empty key does not count as one" "$OUT" "CLAUDE ARGV"
+check_contains "an empty key falls back to the CLI checks" "$OUT" "Kimi CLI not found"
+
+# Path A is Kimi's own agent system, authenticated by its own OAuth provider.
+# An API key does not reach it, and saying so beats a puzzling login error.
+OUT=$(run_bare KIMI_API_KEY=sk-fixture-key -- --via kimi -- "x")
+check_missing "an API key does not run path A" "$OUT" "KIMI ARGV"
+check_contains "and the refusal explains why" "$OUT" "--via kimi"
+
+echo "The endpoint is overridable for keys issued elsewhere:"
+OUT=$(run_bare KIMI_API_KEY=sk-fixture-key KIMI_DELEGATE_BASE_URL=https://api.moonshot.ai/anthropic -- --via claude -- "x")
+check_contains "KIMI_DELEGATE_BASE_URL is honoured" "$OUT" '"ANTHROPIC_BASE_URL": "https://api.moonshot.ai/anthropic"'
+check_contains "and is what provenance reports" "$OUT" "endpoint=https://api.moonshot.ai/anthropic"
+
+echo "The model check when there is no model list to check against:"
+OUT=$(run_bare KIMI_API_KEY=sk-fixture-key KIMI_DELEGATE_MODEL=k3-256k -- --via claude -- "x")
+check_missing "an unverifiable model is still refused" "$OUT" "CLAUDE ARGV"
+check_contains "and the refusal names the way through" "$OUT" "KIMI_DELEGATE_SKIP_MODEL_CHECK"
+
+OUT=$(run_bare KIMI_API_KEY=sk-fixture-key KIMI_DELEGATE_MODEL=k3-256k KIMI_DELEGATE_SKIP_MODEL_CHECK=1 -- --via claude -- "x")
+check_contains "the opt-out lets a deliberate choice through" "$OUT" "CLAUDE ARGV"
+check_contains "and it reaches the wire" "$OUT" '"ANTHROPIC_MODEL": "k3-256k"'
+check_contains "provenance marks it unverified" "$OUT" "unverified"
+
+# The opt-out covers the unknowable case only. When the install does declare a
+# model list, "not on it" is a positive answer and no flag may overrule it.
+OUT=$(KIMI_DELEGATE_MODEL=not-a-model KIMI_DELEGATE_SKIP_MODEL_CHECK=1 run --via claude -- "x")
+check_missing "the opt-out cannot overrule a real model list" "$OUT" "CLAUDE ARGV"
+check_contains "which still refuses by name" "$OUT" "not a model this Kimi install offers"
+
+# Without a key, nothing about the old route changes.
+OUT=$(run --via claude -- "x")
+check_contains "the subscription route still reports its credential type" "$OUT" "auth=subscription"
 
 printf '\n%d passed, %d failed\n' "$PASS" "$FAIL"
 [ "$FAIL" -eq 0 ]

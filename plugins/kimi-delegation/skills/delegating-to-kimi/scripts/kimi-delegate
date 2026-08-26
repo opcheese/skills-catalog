@@ -16,7 +16,25 @@ MIN_KIMI_VERSION="0.38.0"
 KIMI_HOME="${KIMI_CODE_HOME:-$HOME/.kimi-code}"
 DEFAULT_MODEL="k3"
 MODEL="${KIMI_DELEGATE_MODEL:-$DEFAULT_MODEL}"
-BASE_URL="https://api.kimi.com/coding"
+# Overridable, because a key issued somewhere other than the coding plan is
+# answered somewhere other than the coding plan -- api.moonshot.ai/anthropic,
+# or a regional host. The subscription route has no such freedom: its token is
+# minted for this endpoint and is worthless anywhere else.
+BASE_URL="${KIMI_DELEGATE_BASE_URL:-https://api.kimi.com/coding}"
+
+# An API key is a complete credential on its own: no `kimi login`, no CLI, no
+# refresh. So in key mode the preflight checks that exist to protect those two
+# are not merely unnecessary -- they would refuse a machine that is perfectly
+# able to run the task. Non-empty, not merely set: `KIMI_API_KEY=` is what a
+# sourced .env leaves behind for a key you do not have.
+API_KEY_PRESENT=0
+if [ -n "${KIMI_API_KEY:-}" ] || [ -n "${MOONSHOT_API_KEY:-}" ]; then
+  API_KEY_PRESENT=1
+fi
+
+# Filled in below, once we know which credential this run will actually spend.
+AUTH="subscription-token"
+MODEL_NOTE=""
 
 # Where this skill is installed. Resolved next to the script itself, which is
 # true under every harness -- Claude Code, Codex, a bare clone. The env vars
@@ -41,9 +59,13 @@ die() { printf 'kimi-delegate: %s\n' "$1" >&2; exit 1; }
 # Say what this ran on. Without it a delegated answer carries no record of the
 # model or the endpoint that produced it, and two runs cannot be compared.
 # stderr, so it never contaminates the answer on stdout.
+# `auth` belongs here for the same reason the model does: a run on a personal
+# API key and a run on a subscription token are two different accounts, two
+# different bills, and potentially two different model pools. An answer that
+# does not say which one produced it cannot be compared with the next.
 provenance() {
-  printf 'kimi-delegate: via=%s model=%s endpoint=%s agent=%s thinking=%s\n' \
-    "$1" "$MODEL" "$3" "$2" "$4" >&2
+  printf 'kimi-delegate: via=%s model=%s%s endpoint=%s agent=%s auth=%s thinking=%s\n' \
+    "$1" "$MODEL" "$MODEL_NOTE" "$3" "$2" "$AUTH" "$4" >&2
 }
 
 if [ "${KIMI_DELEGATE_DEPTH:-0}" -ge 1 ]; then
@@ -81,12 +103,15 @@ done
 [ -n "$PROMPT" ] || die "a prompt is required after --"
 
 KIMI_BIN="${KIMI_BIN:-$(command -v kimi 2>/dev/null || printf '%s' "$KIMI_HOME/bin/kimi")}"
-[ -x "$KIMI_BIN" ] || die "Kimi CLI not found. Install: curl -fsSL https://code.kimi.com/kimi-code/install.sh | bash"
 
-# Take the first dotted triple and nothing else. `tr -d '[:space:]'` would
-# glue an update banner onto the number, and the result sorts after every real
-# version -- letting a too-old CLI through the gate that exists to stop it.
-KIMI_VERSION="$("$KIMI_BIN" --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)"
+# Only --via kimi always needs the CLI. --via claude needs it solely to obtain
+# and refresh a subscription token, which an API key makes moot.
+KEY_HINT=""
+if [ "$API_KEY_PRESENT" -eq 1 ]; then
+  KEY_HINT="
+Your API key does not help here: --via kimi runs Kimi's own agent system, which
+authenticates through its own OAuth provider. Spend the key with --via claude."
+fi
 older_than() {
   # Not `sort -V`: that is GNU-only, and BSD sort would fall back to lexical
   # order, where 0.9.0 reads as newer than 0.38.0 and an old CLI walks through
@@ -98,13 +123,28 @@ def parts(v):
 sys.exit(0 if parts(sys.argv[1]) < parts(sys.argv[2]) else 1)
 PY
 }
-if [ -z "$KIMI_VERSION" ] || older_than "$KIMI_VERSION" "$MIN_KIMI_VERSION"; then
-  die "Kimi CLI is ${KIMI_VERSION:-unknown}; $MIN_KIMI_VERSION or newer is required for --agent.
+
+require_kimi_cli() {
+  [ -x "$KIMI_BIN" ] || die "Kimi CLI not found. Install: curl -fsSL https://code.kimi.com/kimi-code/install.sh | bash$KEY_HINT"
+
+  # Take the first dotted triple and nothing else. `tr -d '[:space:]'` would
+  # glue an update banner onto the number, and the result sorts after every
+  # real version -- letting a too-old CLI through the gate meant to stop it.
+  KIMI_VERSION="$("$KIMI_BIN" --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)"
+  if [ -z "$KIMI_VERSION" ] || older_than "$KIMI_VERSION" "$MIN_KIMI_VERSION"; then
+    die "Kimi CLI is ${KIMI_VERSION:-unknown}; $MIN_KIMI_VERSION or newer is required for --agent.
 Note that \`kimi upgrade\` misdetects native Linux installs. Upgrade with:
   curl -fsSL https://code.kimi.com/kimi-code/install.sh | bash"
-fi
+  fi
 
-[ -f "$KIMI_HOME/credentials/kimi-code.json" ] || die "no Kimi credentials. Run: kimi login"
+  [ -f "$KIMI_HOME/credentials/kimi-code.json" ] || die "no Kimi credentials. Run: kimi login$KEY_HINT"
+}
+
+if [ "$VIA" = "kimi" ] || [ "$API_KEY_PRESENT" -eq 0 ]; then
+  require_kimi_cli
+else
+  AUTH="api-key"
+fi
 
 # Kimi answers HTTP 200 for a model it has never heard of -- a mistyped model
 # is served by something else entirely, with no error and nothing in the
@@ -148,7 +188,17 @@ if [ -z "$KNOWN_MODELS" ]; then
   # Unverifiable is not the same as valid. Refuse a model the caller chose on
   # purpose; let the built-in default through, since blocking it would break
   # every delegation over a config we merely failed to parse.
-  [ "$MODEL" = "$DEFAULT_MODEL" ] || die "cannot verify the model '$MODEL': could not read the model list from $KIMI_HOME/config.toml"
+  if [ "${KIMI_DELEGATE_SKIP_MODEL_CHECK:-}" = "1" ]; then
+    # Deliberate, and recorded as such: the caller has taken on the risk that a
+    # typo here is answered by some other model at full price.
+    MODEL_NOTE=" (unverified)"
+  elif [ "$MODEL" != "$DEFAULT_MODEL" ]; then
+    die "cannot verify the model '$MODEL': there is no model list to check it against.
+A key issued outside the coding plan has no local config.toml, so this is
+expected there. Kimi answers HTTP 200 for a model it has never heard of, which
+is why an unverifiable name is refused rather than sent. To take that risk on
+purpose: KIMI_DELEGATE_SKIP_MODEL_CHECK=1"
+  fi
 elif ! printf '%s\n' "$KNOWN_MODELS" | grep -qxF -- "$MODEL"; then
   die "'$MODEL' is not a model this Kimi install offers. Available:
 $(printf '%s\n' "$KNOWN_MODELS" | sed 's/^/  /')"
