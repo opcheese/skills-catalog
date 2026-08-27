@@ -151,39 +151,84 @@ fi
 # transcript naming what replied. Measured 2026-08-24: `model:
 # "totally-not-a-model"` returned 200 and a normal answer. So check the name
 # here, against the models this install actually declares.
-MODEL="${MODEL#kimi-code/}"
-# The provider base_url, not the first URL in the file -- config.toml also
-# lists the search and fetch services, and reporting one of those as the
-# endpoint would be a wrong answer dressed as provenance.
-KIMI_CLI_ENDPOINT="$(python3 - "$KIMI_HOME/config.toml" <<'PY'
+# Resolve the model against the providers this install actually declares, and
+# read the endpoint and the credential kind off the provider that backs it.
+#
+# A model alias is `provider/model`. Before 1.2.0 this script stripped the
+# `kimi-code/` prefix, validated the bare name, and then never passed `-m` to
+# the CLI at all on Path A -- so every `--via kimi` run silently took
+# `default_model`, whatever the caller asked for. A key-bearing provider was
+# therefore unreachable from Path A, which is why this skill used to say an
+# API key had no way in. It does: an imported provider carries its own key.
+RESOLVED="$(python3 - "$KIMI_HOME/config.toml" "$MODEL" <<'PYRESOLVE'
 import re, sys
+
+path, want = sys.argv[1], sys.argv[2]
 try:
-    text = open(sys.argv[1]).read()
+    text = open(path).read()
 except OSError:
     sys.exit(0)
-section = None
+
+providers, models, section = {}, [], None
 for line in text.splitlines():
     header = re.match(r'\s*\[([^\]]+)\]', line)
     if header:
         section = header.group(1)
+        m = re.match(r'models\."([^"]+)"$', section)
+        if m:
+            models.append(m.group(1))
+        m = re.match(r'providers\."?([^".]+)"?(\.oauth)?$', section)
+        if m:
+            # `[providers."managed:kimi-code"]` backs models aliased
+            # `kimi-code/...`. Keying on the raw section name leaves the
+            # managed provider unfindable, and an unfindable provider reads
+            # as "no oauth" -- reporting a subscription run as a key run.
+            prov = providers.setdefault(m.group(1).split(":", 1)[-1],
+                                        {"oauth": False, "base_url": ""})
+            if m.group(2):
+                prov["oauth"] = True
         continue
     if section and section.startswith("providers.") and line.strip().startswith("base_url"):
-        print(line.split("=", 1)[1].strip().strip('"'))
-        break
-PY
-)"
-[ -n "$KIMI_CLI_ENDPOINT" ] || KIMI_CLI_ENDPOINT="unknown, set by Kimi provider config"
-KNOWN_MODELS="$(python3 - "$KIMI_HOME/config.toml" <<'PY'
-import re, sys
-try:
-    text = open(sys.argv[1]).read()
-except OSError:
+        m = re.match(r'providers\."?([^".]+)"?$', section)
+        if m:
+            providers[m.group(1).split(":", 1)[-1]]["base_url"] = line.split("=", 1)[1].strip().strip('"')
+
+if not models:
     sys.exit(0)
-# [models."kimi-code/k3"] -> k3
-for name in re.findall(r'^\[models\."([^"]+)"\]', text, re.M):
-    print(name.split("/", 1)[-1])
-PY
+
+# An unqualified name matches on the model half, and only if exactly one
+# provider offers it. Two providers offering `k3` is the whole point of this
+# change, and picking one of them for the caller is how the wrong account gets
+# billed in silence.
+if "/" in want:
+    matches = [m for m in models if m == want]
+else:
+    matches = [m for m in models if m.split("/", 1)[-1] == want]
+
+print("MODELS=" + " ".join(sorted(models)))
+if len(matches) == 1:
+    qualified = matches[0]
+    prov = providers.get(qualified.split("/", 1)[0], {})
+    print("QUALIFIED=" + qualified)
+    print("ENDPOINT=" + (prov.get("base_url") or ""))
+    print("AUTHKIND=" + ("subscription-token" if prov.get("oauth") else "provider-api-key"))
+elif len(matches) > 1:
+    print("AMBIGUOUS=" + " ".join(sorted(matches)))
+PYRESOLVE
 )"
+
+KNOWN_MODELS="$(printf '%s\n' "$RESOLVED" | sed -n 's/^MODELS=//p' | tr ' ' '\n')"
+QUALIFIED="$(printf '%s\n' "$RESOLVED" | sed -n 's/^QUALIFIED=//p')"
+AMBIGUOUS="$(printf '%s\n' "$RESOLVED" | sed -n 's/^AMBIGUOUS=//p')"
+RESOLVED_ENDPOINT="$(printf '%s\n' "$RESOLVED" | sed -n 's/^ENDPOINT=//p')"
+RESOLVED_AUTH="$(printf '%s\n' "$RESOLVED" | sed -n 's/^AUTHKIND=//p')"
+
+if [ -n "$AMBIGUOUS" ]; then
+  die "'$MODEL' is offered by more than one provider, and those are different
+accounts with different bills. Name the provider:
+$(printf '%s\n' $AMBIGUOUS | sed 's/^/  /')"
+fi
+
 if [ -z "$KNOWN_MODELS" ]; then
   # Unverifiable is not the same as valid. Refuse a model the caller chose on
   # purpose; let the built-in default through, since blocking it would break
@@ -201,28 +246,45 @@ purpose: KIMI_DELEGATE_SKIP_MODEL_CHECK=1"
   # only the deliberate opt-out would leave the silent case, which is the one
   # nobody is watching for, as the one that looks verified.
   MODEL_NOTE=" (unverified)"
-elif ! printf '%s\n' "$KNOWN_MODELS" | grep -qxF -- "$MODEL"; then
+elif [ -z "$QUALIFIED" ]; then
   die "'$MODEL' is not a model this Kimi install offers. Available:
 $(printf '%s\n' "$KNOWN_MODELS" | sed 's/^/  /')"
 fi
+
+# Path A and Path B want different halves of the same name, and conflating them
+# is what the tests below caught. Path A selects a *provider's* model, so it
+# needs `provider/model`. Path B hands the name to Claude Code as
+# `ANTHROPIC_MODEL` on a base URL that already fixes the provider, so it needs
+# the bare name -- and its credential comes from `kimi-credential`, not from
+# the provider config, so the resolved credential kind must not touch it.
+PATHA_MODEL="${QUALIFIED:-$MODEL}"
+MODEL="${MODEL#*/}"
+
+# The endpoint of the provider that backs the chosen model -- not the first
+# base_url in the file. With two providers configured, reporting the first one
+# is a wrong answer dressed as provenance, and provenance is the only place a
+# reader can see which account a run spent.
+KIMI_CLI_ENDPOINT="${RESOLVED_ENDPOINT:-unknown, set by Kimi provider config}"
 
 
 [ -n "$CWD" ] && { cd "$CWD" || die "no such directory: $CWD"; }
 
 case "$VIA" in
   kimi)
+    MODEL="$PATHA_MODEL"
+    [ -n "$RESOLVED_AUTH" ] && AUTH="$RESOLVED_AUTH"
     if [ -n "$AGENT" ]; then
       # An explicitly named agent is the caller's choice, and is resolved by
       # Kimi's normal discovery order -- which a repo-local definition can win.
       provenance "kimi" "$AGENT (caller's choice, resolved by Kimi)" "$KIMI_CLI_ENDPOINT" "on (effort from config.toml)"
-      exec "$KIMI_BIN" -p "$PROMPT" --agent "$AGENT" --output-format "$OUTPUT"
+      exec "$KIMI_BIN" -p "$PROMPT" -m "$MODEL" --agent "$AGENT" --output-format "$OUTPUT"
     fi
     # The default is pinned to the definition shipped beside this script.
     # A bare `--agent explore` would be resolved project-first, so any repo
     # could override the read-only built-in and take back write access.
     [ -f "$AGENT_FILE" ] || die "the read-only agent definition is missing: $AGENT_FILE"
     provenance "kimi" "delegate-readonly (pinned file)" "$KIMI_CLI_ENDPOINT" "on (effort from config.toml)"
-    exec "$KIMI_BIN" -p "$PROMPT" --agent-file "$AGENT_FILE" --output-format "$OUTPUT"
+    exec "$KIMI_BIN" -p "$PROMPT" -m "$MODEL" --agent-file "$AGENT_FILE" --output-format "$OUTPUT"
     ;;
   claude)
     command -v claude >/dev/null 2>&1 || die "the claude CLI is not on PATH"

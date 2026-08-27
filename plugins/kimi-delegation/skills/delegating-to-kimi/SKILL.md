@@ -124,9 +124,25 @@ Three things worth knowing:
 - **An explicit key outranks a stored subscription token**, so on a machine
   with both, exporting the key is what decides which account gets billed. The
   `auth=` field of the provenance line says which one a given run spent.
-- **`--via kimi` cannot use it.** Kimi's own agent system authenticates
-  through its own OAuth provider; the key has no way in. Path A still needs
-  `kimi login`, and says so if you try.
+- **`--via kimi` reaches a key through a provider, not through the
+  environment.** Kimi's *managed* provider authenticates over OAuth and no
+  environment variable can displace it. But the CLI takes other providers, and
+  an imported one carries its own key:
+
+  ```bash
+  KIMI_REGISTRY_API_KEY=$YOUR_KEY kimi provider catalog add kimi-for-coding
+  KIMI_DELEGATE_MODEL=kimi-for-coding/k3 kimi-delegate --via kimi -- "..."
+  ```
+
+  The `auth=` field then reads `provider-api-key` rather than
+  `subscription-token`. Path A still needs `kimi login` when you are spending
+  the subscription, which is the default.
+
+- **Name the provider when two of them offer the same model.** `k3` is offered
+  by the managed provider and by any imported one, and they are different
+  accounts with different bills. An unqualified name that matches more than
+  one is **refused**, not resolved — a delegation must never pick which
+  account to spend.
 
 An empty value (`KIMI_API_KEY=`, which is what sourcing a `.env` without the
 key leaves behind) is treated as no key at all, not as an empty credential.

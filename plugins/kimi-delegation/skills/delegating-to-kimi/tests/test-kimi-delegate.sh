@@ -239,6 +239,51 @@ OUT=$(run --via kimi -- "x")
 check_contains "path A reports the provider endpoint" "$OUT" "endpoint=https://api.kimi.com/coding/v1 "
 check_missing "not the search service" "$OUT" "/v1/search"
 
+echo "Two providers, one model name -- the account a run spends must be explicit:"
+cat > "$WORK/home/config.toml" <<'TOML'
+[providers."managed:kimi-code"]
+base_url = "https://api.kimi.com/coding/v1"
+[providers."managed:kimi-code".oauth]
+storage = "file"
+[providers.kimi-for-coding]
+base_url = "https://api.kimi.com/coding"
+api_key = "sk-fixture"
+[models."kimi-code/k3"]
+model = "k3"
+[models."kimi-for-coding/k3"]
+model = "k3"
+TOML
+OUT=$(run --via kimi -- "x" 2>&1 || true)
+check_contains "a bare name offered by two providers is refused" "$OUT" "more than one provider"
+check_contains "and both candidates are named" "$OUT" "kimi-for-coding/k3"
+check_missing "and nothing is sent" "$OUT" "KIMI ARGV"
+
+OUT=$(KIMI_DELEGATE_MODEL=kimi-for-coding/k3 run --via kimi -- "x")
+check_contains "a key-bearing provider is reachable from path A" "$OUT" "auth=provider-api-key"
+check_contains "and the qualified name reaches the wire" "$OUT" "-m kimi-for-coding/k3"
+check_contains "and provenance reports its endpoint" "$OUT" "endpoint=https://api.kimi.com/coding "
+
+OUT=$(KIMI_DELEGATE_MODEL=kimi-code/k3 run --via kimi -- "x")
+check_contains "the oauth provider still reads as a subscription" "$OUT" "auth=subscription-token"
+check_contains "and it too is sent qualified" "$OUT" "-m kimi-code/k3"
+
+# The managed provider is keyed `managed:kimi-code` and its models are aliased
+# `kimi-code/...`. Keying on the raw section name leaves it unfindable, and an
+# unfindable provider reads as "no oauth" -- a subscription run reported as a
+# key run, which is the one error nobody would question.
+check_missing "a subscription run is never reported as a key run" "$OUT" "auth=provider-api-key"
+
+# Restore the single-provider config the later cases assume. A fixture left
+# behind is how a passing test starts asserting the previous test's world.
+cat > "$WORK/home/config.toml" <<'TOML'
+[providers."managed:kimi-code"]
+base_url = "https://api.kimi.com/coding/v1"
+[providers."managed:kimi-code".oauth]
+storage = "file"
+[models."kimi-code/k3"]
+model = "k3"
+TOML
+
 # The banner must not contaminate the delegated answer.
 ONLY_STDOUT=$(KIMI_CODE_HOME="$WORK/home" PATH="$BIN:$PATH" bash "$SCRIPT" --via kimi -- "x" 2>/dev/null)
 check_missing "the banner goes to stderr, not stdout" "$ONLY_STDOUT" "via=kimi"
