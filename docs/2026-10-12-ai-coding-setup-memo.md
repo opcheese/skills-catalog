@@ -100,6 +100,152 @@ for computer-use or browser work in the ChatGPT desktop app.
 The full comparison, with sources, is in the Superpowers fork:
 [Codex vs Claude Code: the harnesses](https://github.com/opcheese/superpowers/blob/agents/docs/research/2026-10-12-codex-vs-claude-code-harness.md).
 
+## Using other models in either harness
+
+Both harnesses can drive another vendor's model. Skills, hooks, plugins and
+subagents still work, because they run in the harness, not the model.
+
+A few rules apply to every setup below:
+
+- **Billing.** These setups bill per token on that provider's API key. A
+  Claude subscription works only with Claude models in Claude Code, and a
+  ChatGPT plan only with OpenAI models in Codex.
+- **Keys.** Never put a key in `settings.json` or `config.toml`. Export it
+  from your secrets store, or use Claude Code's `apiKeyHelper`. This is the
+  route `kimi-delegation` takes.
+- **Support.** Anthropic doesn't support Claude Code on non-Claude models.
+  Claude-specific features (effort levels, prompt caching, server-side web
+  search) may degrade or fail. Check `/status` after switching.
+- **Scope.** Switch one terminal or one `claude -p` run at a time with
+  environment variables. Don't change the team's global settings.
+
+| Model | In Claude Code | In Codex |
+|---|---|---|
+| **Kimi** (K3, K2.7 Code) | Native: Kimi serves the Anthropic Messages format | Native: Kimi serves the Responses API |
+| **Ollama** (local or Ollama cloud) | Native: Ollama serves the Anthropic format; `ollama launch claude` | Native: `codex --oss` or `ollama launch codex` |
+| **OpenAI** (GPT-6.x) | Through a translating proxy (LiteLLM) | Default |
+| **Claude** | Default | Through a translating proxy (LiteLLM). Codex speaks only the Responses API, and Anthropic doesn't serve it. |
+
+### Kimi in Claude Code
+
+From Kimi's [Claude Code guide](https://platform.kimi.ai/docs/guide/claude-code-kimi.md):
+
+```bash
+export ANTHROPIC_BASE_URL=https://api.moonshot.ai/anthropic
+export ANTHROPIC_AUTH_TOKEN="$KIMI_API_KEY"      # from your secrets store
+export ANTHROPIC_MODEL='kimi-k3[1m]'
+export ANTHROPIC_DEFAULT_HAIKU_MODEL=kimi-k2.7-code
+export CLAUDE_CODE_SUBAGENT_MODEL='kimi-k3[1m]'
+claude
+```
+
+With a Kimi Code subscription instead of an API key, use the
+`kimi-delegation` plugin; it handles the endpoint and credential. Leftover
+`env` values in `~/.claude/settings.json` override what you export, so
+remove them first.
+
+### Ollama in Claude Code
+
+From Ollama's [Claude Code guide](https://docs.ollama.com/integrations/claude-code.md):
+
+```bash
+ollama launch claude                    # interactive setup
+# or by hand:
+ANTHROPIC_BASE_URL=http://localhost:11434 ANTHROPIC_AUTH_TOKEN=ollama ANTHROPIC_API_KEY="" \
+  claude --model qwen3.6:35b-a3b
+```
+
+Give the model a context window of at least 64k tokens; Ollama defaults
+lower. For Ollama's cloud models, set `ANTHROPIC_BASE_URL=https://ollama.com`
+and `ANTHROPIC_AUTH_TOKEN="$OLLAMA_API_KEY"`. Small local models handle
+tool-heavy agent work poorly, so they suit exploration and drafts, not
+unattended runs.
+
+### OpenAI models in Claude Code
+
+OpenAI doesn't serve the Anthropic format, so run a translating proxy.
+[LiteLLM](https://docs.litellm.ai/docs/anthropic_unified) exposes
+`/v1/messages` for any provider it supports:
+
+```yaml
+# litellm.yaml
+model_list:
+  - model_name: gpt-sol
+    litellm_params:
+      model: openai/gpt-6.1-sol
+      api_key: os.environ/OPENAI_API_KEY
+```
+
+```bash
+litellm --config litellm.yaml           # serves http://localhost:4000
+ANTHROPIC_BASE_URL=http://localhost:4000 ANTHROPIC_AUTH_TOKEN="$LITELLM_KEY" \
+  claude --model gpt-sol
+```
+
+For a second opinion from an OpenAI model, running Codex itself (`codex
+exec`, `/review`) is usually simpler than this.
+
+### Kimi in Codex
+
+From Kimi's [Codex guide](https://platform.kimi.ai/docs/guide/codex-kimi.md),
+in `~/.codex/config.toml`, or a `--profile` so it isn't the default:
+
+```toml
+model = "kimi-k3"
+model_provider = "kimi"
+model_context_window = 1048576
+
+[model_providers.kimi]
+name = "Kimi"
+base_url = "https://api.moonshot.ai/v1"
+env_key = "KIMI_API_KEY"
+wire_api = "responses"
+```
+
+### Ollama in Codex
+
+From Ollama's [Codex guide](https://docs.ollama.com/integrations/codex.md)
+and Codex's [OSS mode](https://learn.chatgpt.com/docs/config-file/config-advanced.md):
+
+```bash
+ollama launch codex                     # sets up a dedicated profile
+# or by hand:
+codex --oss -m gpt-oss:120b             # set oss_provider = "ollama" to skip the prompt
+```
+
+Use a context window of at least 64k tokens.
+
+### Claude in Codex
+
+Codex supports only `wire_api = "responses"`, and Anthropic doesn't serve
+the Responses API. LiteLLM's [`/v1/responses`](https://docs.litellm.ai/docs/response_api)
+bridges to Claude:
+
+```yaml
+# litellm.yaml
+model_list:
+  - model_name: claude-opus
+    litellm_params:
+      model: anthropic/claude-opus-5-5
+      api_key: os.environ/ANTHROPIC_API_KEY
+```
+
+```toml
+# ~/.codex/config.toml (or a profile)
+model = "claude-opus"
+model_provider = "litellm"
+
+[model_providers.litellm]
+name = "LiteLLM"
+base_url = "http://localhost:4000/v1"
+env_key = "LITELLM_KEY"
+wire_api = "responses"
+```
+
+Of the six setups, this is the least tested; neither OpenAI nor LiteLLM
+documents it end to end. If you only want Claude's judgment on Codex's
+work, run `claude -p` or `/code-review` on the branch instead.
+
 ## Deadlines
 
 - **Nov 12 2026 (proposed, still being negotiated):** OpenAI plans to end
@@ -116,4 +262,8 @@ The full comparison, with sources, is in the Superpowers fork:
   [changelog](https://code.claude.com/docs/en/changelog)
 - [Codex docs](https://learn.chatgpt.com/llms.txt) and
   [changelog](https://learn.chatgpt.com/docs/changelog)
+- [Claude Code LLM gateways](https://code.claude.com/docs/en/llm-gateway),
+  [Kimi API docs](https://platform.kimi.ai/docs/llms.txt),
+  [Ollama docs](https://docs.ollama.com/llms.txt),
+  [LiteLLM](https://docs.litellm.ai/docs/)
 - [Superpowers fork v7.0.0 sync record](https://github.com/opcheese/superpowers/blob/agents/docs/superpowers/plans/2026-10-12-sync-upstream-v7.0.0.md)

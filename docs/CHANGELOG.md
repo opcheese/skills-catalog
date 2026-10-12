@@ -17,6 +17,7 @@ It covers:
 - how to pick up the Superpowers v7.0.0 sync on both spines;
 - working practices;
 - a one-table Codex vs Claude Code summary;
+- running Kimi, Ollama and OpenAI models in Claude Code, and Kimi, Ollama and Claude in Codex;
 - upcoming deadlines.
 
 ## 2026-08-26
