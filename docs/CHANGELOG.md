@@ -11,9 +11,13 @@ Notable changes to the catalog: what devs install, and what the docs tell them.
 ## 2026-10-12: Claude Code on a local model
 
 New guide, [local-claude-code.md](local-claude-code.md): run Claude Code on
-`qwen3.8:27b` through Ollama, with the team plugins and auto mode, and no
-traffic to Anthropic. Every step was tested on a spike machine. Linked from the
-AI coding setup memo.
+`qwen3.8:27b` through Ollama, with the team plugins and auto mode. Tested on
+one machine (RTX 5090, Claude Code 2.1.296, Ollama 0.34.2) in a clean Claude
+Code config with the team plugins; network tracing there showed no traffic
+to Anthropic. A review pass then hardened the `claude-local` command: its
+settings now go through `--settings`, so a settings file can't redirect
+prompts elsewhere, and every `git push` asks first. Linked from the AI
+coding setup memo and the dev guide.
 
 ## 2026-10-12
 

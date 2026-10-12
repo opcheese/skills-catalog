@@ -152,7 +152,10 @@ remove them first.
 
 ### Ollama in Claude Code
 
-From Ollama's [Claude Code guide](https://docs.ollama.com/integrations/claude-code.md):
+For daily use, follow [Claude Code on a local model](local-claude-code.md).
+The minimal version below, from Ollama's
+[Claude Code guide](https://docs.ollama.com/integrations/claude-code.md),
+is untested by us:
 
 ```bash
 ollama pull qwen3.6:35b-a3b             # once; about 23 GB
@@ -172,24 +175,14 @@ tool-heavy agent work poorly, so they suit exploration and drafts, not
 unattended runs.
 
 **Auto mode works with Ollama, and its safety checks stay local.** Claude
-Code's classifier, which checks each risky action, runs on the Sonnet-tier
-model you set. Without that setting it runs on the session's model. To
-choose a classifier model and skip a startup notice:
-
-```bash
-export ANTHROPIC_DEFAULT_SONNET_MODEL=qwen3.8:27b   # the classifier
-export CLAUDE_CODE_AUTO_MODE_SERVER=0
-claude --model qwen3.8:27b --permission-mode auto
-```
-
-For a tested, copy-paste setup (model, context size, a `claude-local`
-command, and no traffic to Anthropic), follow
-[Claude Code on a local model](local-claude-code.md).
-
-Expect about 10 seconds per checked shell command. Don't use a 12B model or a
-reasoning model as the classifier: in our test the first blocked routine
-work, and the second answered too slowly. Details and the model comparison:
-[local auto mode classifier](https://github.com/opcheese/superpowers/blob/agents/docs/research/2026-10-12-local-auto-mode-classifier.md).
+Code's classifier, which checks each risky action, runs on the same local
+model as the session. Expect about 10 seconds per checked shell command.
+The minimal commands above leave out several settings a real setup needs:
+a 128k context, telling Claude Code that context size, and keeping
+settings files from redirecting your prompts. Use the tested setup in
+[Claude Code on a local model](local-claude-code.md), which adds a
+`claude-local` command and showed no traffic to Anthropic in our tests.
+Background: [local auto mode classifier](https://github.com/opcheese/superpowers/blob/agents/docs/research/2026-10-12-local-auto-mode-classifier.md).
 
 ### OpenAI models in Claude Code
 

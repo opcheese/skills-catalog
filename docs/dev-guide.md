@@ -451,6 +451,8 @@ CI run throws away.
 - Which skill covers what: ask the agent "what skills do you have for X".
 - Team settings, running other models (Kimi, Ollama, OpenAI) and the
   Codex comparison: the [AI coding setup memo](2026-10-12-ai-coding-setup-memo.md).
+- Running Claude Code on a local model through Ollama:
+  [Claude Code on a local model](local-claude-code.md).
 - Something triggers when it should not, or does not trigger when it
   should: that is a real bug in our fork, not something to work around.
   Report it with the exact message that did or did not trigger it.
