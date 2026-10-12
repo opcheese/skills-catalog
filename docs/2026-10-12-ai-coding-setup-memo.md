@@ -182,6 +182,10 @@ export CLAUDE_CODE_AUTO_MODE_SERVER=0
 claude --model qwen3.8:27b --permission-mode auto
 ```
 
+For a tested, copy-paste setup (model, context size, a `claude-local`
+command, and no traffic to Anthropic), follow
+[Claude Code on a local model](local-claude-code.md).
+
 Expect about 10 seconds per checked shell command. Don't use a 12B model or a
 reasoning model as the classifier: in our test the first blocked routine
 work, and the second answered too slowly. Details and the model comparison:

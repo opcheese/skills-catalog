@@ -8,6 +8,13 @@ audience: developers
 
 Notable changes to the catalog: what devs install, and what the docs tell them.
 
+## 2026-10-12: Claude Code on a local model
+
+New guide, [local-claude-code.md](local-claude-code.md): run Claude Code on
+`qwen3.8:27b` through Ollama, with the team plugins and auto mode, and no
+traffic to Anthropic. Every step was tested on a spike machine. Linked from the
+AI coding setup memo.
+
 ## 2026-10-12
 
 Team memo: [AI coding setup, October 2026](2026-10-12-ai-coding-setup-memo.md).
