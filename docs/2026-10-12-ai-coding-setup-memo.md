@@ -171,6 +171,22 @@ and `ANTHROPIC_AUTH_TOKEN="$OLLAMA_API_KEY"`. Small local models handle
 tool-heavy agent work poorly, so they suit exploration and drafts, not
 unattended runs.
 
+**Auto mode works with Ollama, and its safety checks stay local.** Claude
+Code's classifier, which checks each risky action, runs on the Sonnet-tier
+model you set. Without that setting it runs on the session's model. To
+choose a classifier model and skip a startup notice:
+
+```bash
+export ANTHROPIC_DEFAULT_SONNET_MODEL=qwen3.8:27b   # the classifier
+export CLAUDE_CODE_AUTO_MODE_SERVER=0
+claude --model qwen3.8:27b --permission-mode auto
+```
+
+Expect about 10 seconds per checked shell command. Don't use a 12B model or a
+reasoning model as the classifier: in our test the first blocked routine
+work, and the second answered too slowly. Details and the model comparison:
+[local auto mode classifier](https://github.com/opcheese/superpowers/blob/agents/docs/research/2026-10-12-local-auto-mode-classifier.md).
+
 ### OpenAI models in Claude Code
 
 OpenAI doesn't serve the Anthropic format, so run a translating proxy.
