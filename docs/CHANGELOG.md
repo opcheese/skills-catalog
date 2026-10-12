@@ -8,6 +8,17 @@ audience: developers
 
 Notable changes to the catalog: what devs install, and what the docs tell them.
 
+## 2026-10-12
+
+Team memo: [AI coding setup, October 2026](2026-10-12-ai-coding-setup-memo.md).
+It covers:
+
+- effort `medium` as the team default;
+- how to pick up the Superpowers v7.0.0 sync on both spines;
+- working practices;
+- a one-table Codex vs Claude Code summary;
+- upcoming deadlines.
+
 ## 2026-08-26
 
 `codebase-vocabulary` **1.1.0**. The vocabulary skills are no longer islands.
