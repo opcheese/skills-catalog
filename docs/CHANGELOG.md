@@ -20,6 +20,23 @@ It covers:
 - running Kimi, Ollama and OpenAI models in Claude Code, and Kimi, Ollama and Claude in Codex;
 - upcoming deadlines.
 
+The dev guide, README and memo were revised for beginners and reviewed
+twice:
+
+- **Setup and updates now use terminal commands** (`claude plugin install`,
+  `claude plugin update`). Typed into a session, `/plugin install <name>`
+  only opens a panel, and `/plugin update` doesn't exist. Earlier
+  instructions here told you to run them anyway.
+- **Updates are version-gated.** A plugin updates only when its version
+  number changes. The README's claim that the spines track their branch was
+  wrong.
+- **New sections:** a glossary, prerequisites, and numbered setup steps.
+- **Matches the v7.0.0 spine:** plan review and the choice of how to run
+  the plan, the end-of-branch menu (our default is a pull request), and
+  how brainstorming sizes the work.
+- **Guardrails:** `GIT_GUARDRAILS_PROTECTED_BRANCHES` replaces the default
+  list, so it must include `main`.
+
 ## 2026-08-26
 
 `codebase-vocabulary` **1.1.0**. The vocabulary skills are no longer islands.
@@ -56,7 +73,7 @@ without producing a skill invocation. It ships labelled as a partial.
 
 `kimi-delegation` **1.1.0**. Bump the version whenever a **path-vendored**
 plugin's contents change — one whose `source` is a directory in this repo.
-`/plugin update` compares version strings for those, so a changed plugin left
+`claude plugin update` compares version strings for those, so a changed plugin left
 at the same version reports "already at the latest version" and never ships.
 
 Corrected 2026-08-26: this does **not** apply to plugins sourced from a github
@@ -64,6 +81,10 @@ ref, such as `superpowers-agents`. Those track the branch and refetch its
 current contents, even while reporting "already at the latest version (6.3.0)".
 The message is unreliable in both directions — verify the installed file, not
 the output.
+
+**Superseded 2026-10-12:** this correction was wrong for current Claude Code.
+A github-sourced plugin also updates only when its manifest `version`
+changes. See the 2026-10-12 entry.
 
 ### kimi-delegation runs on an API key
 

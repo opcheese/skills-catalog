@@ -17,13 +17,13 @@ Everything below is copy-paste ready.
 
 ## Install and update
 
-New machine:
+New machine, in your terminal:
 
 ```
-/plugin marketplace add opcheese/skills-catalog
-/plugin install superpowers-human@opcheese-skills     # at the keyboard
-/plugin install codebase-vocabulary@opcheese-skills
-/plugin install codebase-vocabulary-human@opcheese-skills
+claude plugin marketplace add opcheese/skills-catalog
+claude plugin install superpowers-human@opcheese-skills     # at the keyboard
+claude plugin install codebase-vocabulary@opcheese-skills
+claude plugin install codebase-vocabulary-human@opcheese-skills
 ```
 
 For `claude -p` in CI, cron or pipelines, install `superpowers-agents`
@@ -31,14 +31,16 @@ instead of `superpowers-human`. Never install both. The full list of
 plugins is in the [README](../README.md) and the step-by-step guide is in
 the [dev guide](dev-guide.md).
 
-Existing machine, to pick up the v7.0.0 sync (2026-10-12):
+Existing machine, to pick up the v7.0.0 sync (2026-10-12), in your
+terminal:
 
 ```
-/plugin marketplace update opcheese-skills
-/plugin update superpowers-human@opcheese-skills      # or superpowers-agents
+claude plugin marketplace update opcheese-skills
+claude plugin update superpowers-human@opcheese-skills      # or superpowers-agents
 ```
 
-Then restart Claude Code and check with `claude plugin list`.
+Then restart Claude Code. `claude plugin list` should show
+`Version: 7.0.0` for the spine.
 
 The v7.0.0 sync changes how three skills behave:
 
@@ -54,12 +56,12 @@ The v7.0.0 sync changes how three skills behave:
 
 | Setting | Team default | How |
 |---|---|---|
-| Effort | `medium` | Opus 5.5 already starts at `medium`. If you changed it, run `/effort medium` and press Enter to save it as your default. For `claude -p`, set `CLAUDE_CODE_EFFORT_LEVEL=medium`. |
-| Raising effort | `high` for hard debugging or architecture, for that session only | `/effort high`, then press `s` (session only) instead of Enter |
+| Effort | `medium` | Opus 5.5 already starts at `medium`. If you changed it, type `/effort medium` in a session; that saves it as your default. For `claude -p`, set `CLAUDE_CODE_EFFORT_LEVEL=medium`. |
+| Raising effort | `high` for hard debugging or architecture, for that session only | Type `/effort` with nothing after it, move the slider to `high`, and press `s` (this session only). Typing `/effort high` would save `high` as your default. |
 | `max` | Don't | Several times the tokens for little gain, and it can loop. Claude Code applies it to the current session only anyway. |
-| Subagent effort and model | Cheaper than the main session for search, scanning and audits | `effort:` and `model:` in the agent's frontmatter, or the Agent tool's `effort` parameter (Claude Code 2.1.292+) |
+| Subagent effort and model | Cheaper than the main session for search, scanning and audits | Ask Claude, for example "use a subagent on Sonnet at low effort for the search". For a custom agent, set `effort:` and `model:` in its file under `.claude/agents/`. |
 | Model training on your data | Off | Codex: Settings → Data controls → "Improve the model for everyone" → off. Claude: the model-training toggle in your claude.ai privacy settings. |
-| Auto memory | On, but check it monthly | Read `~/.claude/projects/<repo>/memory/MEMORY.md`. Delete stale entries, or set `"autoMemoryEnabled": false` in a repo's `.claude/settings.json` if it keeps collecting noise. |
+| Auto memory | On, but check it monthly | Type `/memory` in a session to see and open what Claude saved. Delete stale entries. To turn it off for yourself in one repo, set `"autoMemoryEnabled": false` in that repo's `.claude/settings.local.json`; `.claude/settings.json` would turn it off for the whole team. |
 
 The effort settings follow Anthropic's
 [model configuration docs](https://code.claude.com/docs/en/model-config).
@@ -133,7 +135,11 @@ From Kimi's [Claude Code guide](https://platform.kimi.ai/docs/guide/claude-code-
 ```bash
 export ANTHROPIC_BASE_URL=https://api.moonshot.ai/anthropic
 export ANTHROPIC_AUTH_TOKEN="$KIMI_API_KEY"      # from your secrets store
+export ANTHROPIC_API_KEY=""
 export ANTHROPIC_MODEL='kimi-k3[1m]'
+export ANTHROPIC_DEFAULT_OPUS_MODEL='kimi-k3[1m]'
+export ANTHROPIC_DEFAULT_SONNET_MODEL='kimi-k3[1m]'
+export ANTHROPIC_DEFAULT_FABLE_MODEL='kimi-k3[1m]'
 export ANTHROPIC_DEFAULT_HAIKU_MODEL=kimi-k2.7-code
 export CLAUDE_CODE_SUBAGENT_MODEL='kimi-k3[1m]'
 claude
@@ -149,6 +155,7 @@ remove them first.
 From Ollama's [Claude Code guide](https://docs.ollama.com/integrations/claude-code.md):
 
 ```bash
+ollama pull qwen3.6:35b-a3b             # once; about 23 GB
 ollama launch claude                    # interactive setup
 # or by hand:
 ANTHROPIC_BASE_URL=http://localhost:11434 ANTHROPIC_AUTH_TOKEN=ollama ANTHROPIC_API_KEY="" \
@@ -156,7 +163,10 @@ ANTHROPIC_BASE_URL=http://localhost:11434 ANTHROPIC_AUTH_TOKEN=ollama ANTHROPIC_
 ```
 
 Give the model a context window of at least 64k tokens; Ollama defaults
-lower. For Ollama's cloud models, set `ANTHROPIC_BASE_URL=https://ollama.com`
+lower. Set `OLLAMA_CONTEXT_LENGTH=65536` before starting `ollama serve`, or
+see Ollama's [context length](https://docs.ollama.com/context-length) page.
+If Ollama runs as a system service or the desktop app, set the variable
+there and restart it. For Ollama's cloud models, set `ANTHROPIC_BASE_URL=https://ollama.com`
 and `ANTHROPIC_AUTH_TOKEN="$OLLAMA_API_KEY"`. Small local models handle
 tool-heavy agent work poorly, so they suit exploration and drafts, not
 unattended runs.
@@ -177,10 +187,16 @@ model_list:
 ```
 
 ```bash
+uv tool install 'litellm[proxy]'        # once
+export LITELLM_KEY=sk-local-test        # any value if your proxy has no master key
 litellm --config litellm.yaml           # serves http://localhost:4000
 ANTHROPIC_BASE_URL=http://localhost:4000 ANTHROPIC_AUTH_TOKEN="$LITELLM_KEY" \
   claude --model gpt-sol
 ```
+
+`LITELLM_KEY` is the master key you configure for your LiteLLM proxy (see
+LiteLLM's docs). For a quick local test without one, any non-empty value
+works.
 
 For a second opinion from an OpenAI model, running Codex itself (`codex
 exec`, `/review`) is usually simpler than this.
@@ -248,13 +264,13 @@ work, run `claude -p` or `/code-review` on the branch instead.
 
 ## Deadlines
 
-- **Nov 12 2026 (proposed, still being negotiated):** OpenAI plans to end
-  Cursor's direct access to its models after SpaceX bought Cursor
-  ([report](https://propakistani.pk/2026/08/29/openai-cutting-off-cursors-access-to-its-models-after-spacex-takeover/)).
-  Anyone who reaches GPT models through Cursor should plan for a direct Codex
-  plan or their own API key.
 - **Oct 14 2026:** GPT-5.5 is retired from Codex. Update saved configs and
   custom agents that name it.
+- **Nov 12 2026 (proposed, still being negotiated):** OpenAI plans to end
+  Cursor's direct access to its models after SpaceX bought Cursor
+  ([report](https://forklog.com/en/news/openai-to-end-partnership-with-cursor-following-spacex-acquisition)).
+  Anyone who reaches GPT models through Cursor should plan for a direct Codex
+  plan or their own API key.
 
 ## Sources
 

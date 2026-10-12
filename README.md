@@ -1,42 +1,43 @@
 # opcheese-skills
 
 Our agent skills, in one place. Add the marketplace once, install the
-plugin that matches what you are doing.
+plugin that matches what you are doing. Run these commands in your
+terminal.
 
 ```
-/plugin marketplace add opcheese/skills-catalog
+claude plugin marketplace add opcheese/skills-catalog
 ```
 
 Then pick **one** spine:
 
 ```
-/plugin install superpowers-human@opcheese-skills     # you are at the keyboard
-/plugin install superpowers-agents@opcheese-skills    # claude -p in CI, cron, pipelines
+claude plugin install superpowers-human@opcheese-skills     # you are at the keyboard
+claude plugin install superpowers-agents@opcheese-skills    # claude -p in CI, cron, pipelines
 ```
 
 And, in both cases:
 
 ```
-/plugin install codebase-vocabulary@opcheese-skills
+claude plugin install codebase-vocabulary@opcheese-skills
 ```
 
 If you are at the keyboard, also:
 
 ```
-/plugin install codebase-vocabulary-human@opcheese-skills
+claude plugin install codebase-vocabulary-human@opcheese-skills
 ```
 
 And if you want the agent to remember what you taught it between sessions:
 
 ```
-/plugin install shadow-learn-memory@opcheese-skills
+claude plugin install shadow-learn-memory@opcheese-skills
 ```
 
 And if you have a Kimi Code subscription or a Kimi API key, and want a
 second model on tap:
 
 ```
-/plugin install kimi-delegation@opcheese-skills
+claude plugin install kimi-delegation@opcheese-skills
 ```
 
 New here? Read [docs/dev-guide.md](docs/dev-guide.md) — it is step by step
@@ -189,9 +190,11 @@ Each skill answers one of those:
 
 **`codebase-design`** gives one vocabulary — module, interface, depth, seam,
 adapter, leverage, locality — used consistently enough that "make this deeper"
-is an instruction rather than a vibe. You do not have to remember it:
-`superpowers:brainstorming` now invokes it whenever a design moves a boundary,
-and it hands off to `superpowers:test-driven-development` when the seam is
+is an instruction rather than a vibe. On the unattended spine you do not
+have to remember it: `superpowers:brainstorming` invokes it whenever a design
+moves a boundary. On the interactive spine, the brainstorming rebuilt in
+upstream v7.0.0 no longer calls it, so ask for it by name when a design moves
+a boundary. Either way, it hands off to `superpowers:test-driven-development` when the seam is
 settled, because the interface it just named is the test surface.
 
 **`domain-modeling`** is the glossary discipline: challenge a fuzzy term the
@@ -236,22 +239,24 @@ These four skills are the part of that pack that collides with nothing. See
 
 ## Updating
 
-Two commands, and you need both:
+Two commands in your terminal, and you need both:
 
 ```
-/plugin marketplace update opcheese-skills   # refresh what is on offer
-/plugin update superpowers-agents@opcheese-skills
+claude plugin marketplace update opcheese-skills          # refresh what is on offer
+claude plugin update superpowers-human@opcheese-skills    # or superpowers-agents
 ```
 
-Refreshing the marketplace does **not** upgrade anything you have installed.
-An installed plugin stays pinned at the commit it was installed from until you
-run `/plugin update` on it by name, and the new version only loads after a
-restart. This is easy to miss: a machine here quietly ran a five-month-old
-spine because the marketplace had been refreshed and the plugin never had.
+Then restart Claude Code. Refreshing the marketplace does **not** upgrade
+anything you have installed; run `claude plugin update` for each installed
+plugin by name. There is no in-session `/plugin update`: typed into a
+session, it just opens the plugin panel.
 
-To see what you are actually running, `claude plugin list` prints the resolved
+A plugin updates only when its version number changes. Claude Code reads
+the version from the plugin's manifest, and if the number is unchanged,
+`claude plugin update` prints `already at the latest version` and changes
+nothing, however many commits were pushed. The Superpowers spines carry
+upstream's version (7.0.0 since the October 2026 sync). So a new sync
+arrives as a new version, and nothing in between does.
+
+To see what you are actually running, `claude plugin list` prints the
 version of each installed plugin.
-
-The two Superpowers entries and `shadow-learn-memory` track branches, so a
-`/plugin update` on them picks up the latest sync. The two `codebase-vocabulary*`
-plugins are pinned copies and move only when we deliberately bump them.
