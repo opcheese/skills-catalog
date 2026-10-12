@@ -16,7 +16,9 @@ one machine (RTX 5090, Claude Code 2.1.296, Ollama 0.34.2) in a clean Claude
 Code config with the team plugins; network tracing there showed no traffic
 to Anthropic. A review pass then hardened the `claude-local` command: its
 settings now go through `--settings`, so a settings file can't redirect
-prompts elsewhere, and every `git push` asks first. Linked from the AI
+prompts elsewhere, and every `git push` asks first. After an outside report, it also
+refuses a second `--settings` flag (which would replace its settings and send
+the session to Anthropic) and uses `127.0.0.1` instead of `localhost`. Linked from the AI
 coding setup memo and the dev guide.
 
 ## 2026-10-12

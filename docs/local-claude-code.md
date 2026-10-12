@@ -92,12 +92,19 @@ All commands below go in your **terminal**.
 cat >> ~/.bashrc <<'EOF'
 # Claude Code on a local Ollama model
 claude-local() {
-  local m="${CLAUDE_LOCAL_MODEL:-qwen3.8-27b-128k}"
+  local m="${CLAUDE_LOCAL_MODEL:-qwen3.8-27b-128k}" arg
+  for arg in "$@"; do
+    case "$arg" in
+      --settings|--settings=*)
+        echo "claude-local: don't pass --settings; it would replace the local setup and send prompts to Anthropic." >&2
+        return 2 ;;
+    esac
+  done
   claude --settings "{
     \"skipWebFetchPreflight\": true,
     \"permissions\": { \"ask\": [\"Bash(git push:*)\"] },
     \"env\": {
-      \"ANTHROPIC_BASE_URL\": \"http://localhost:11434\",
+      \"ANTHROPIC_BASE_URL\": \"http://127.0.0.1:11434\",
       \"ANTHROPIC_AUTH_TOKEN\": \"ollama\",
       \"ANTHROPIC_API_KEY\": \"\",
       \"ANTHROPIC_MODEL\": \"$m\",
@@ -121,7 +128,9 @@ source ~/.bashrc
 
    The settings sit inside `--settings` on purpose: that way they win over
    any `env` block in your own or a project's settings files, which could
-   otherwise send your prompts somewhere else.
+   otherwise send your prompts somewhere else. For the same reason,
+   `claude-local` refuses a second `--settings` flag: Claude Code would use
+   that one instead, and the session would go to Anthropic.
 
 4. Check it works. In an empty scratch folder:
 
