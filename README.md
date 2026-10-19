@@ -199,7 +199,7 @@ settled, because the interface it just named is the test surface.
 
 **`domain-modeling`** is the glossary discipline: challenge a fuzzy term the
 moment it appears, and write the decision down. It costs the most, because it
-only pays off in a repo that will actually keep a `CONTEXT.md` — and it knows
+only pays off in a repo that will actually keep a `GLOSSARY.md` — and it knows
 that: under test it fires on a repo that has one and declines on a repo that
 does not, without being told. Its three-part test for whether a decision
 deserves an ADR — hard to reverse, surprising without context, a real

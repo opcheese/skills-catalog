@@ -8,6 +8,20 @@ audience: developers
 
 Notable changes to the catalog: what devs install, and what the docs tell them.
 
+## 2026-10-19: CONTEXT.md is now GLOSSARY.md
+
+`domain-modeling` and `codebase-design` follow upstream mattpocock/skills
+(commit `d80fa0f`): the project glossary is `GLOSSARY.md`, a multi-context
+repo's map is `GLOSSARY-MAP.md`, and the format guide is `GLOSSARY-FORMAT.md`.
+The skills no longer look for `CONTEXT.md`. If your repo keeps one, rename it
+so they find it again:
+
+```bash
+git mv CONTEXT.md GLOSSARY.md   # and CONTEXT-MAP.md -> GLOSSARY-MAP.md, if you have one
+```
+
+codebase-vocabulary is now 1.2.0 and codebase-vocabulary-human 1.1.0.
+
 ## 2026-10-19: kimi-delegation 1.2.1
 
 Three fixes, found while testing a document-review skill against this plugin's

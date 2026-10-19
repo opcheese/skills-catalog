@@ -5,6 +5,7 @@ The skills in this plugin are copied verbatim from
 Copyright (c) 2026 Matt Pocock. The full license text is in `LICENSE`.
 
 Provenance: commit `5b15a47f2d7150f545fbcacbfe381787fc0230dc` (2026-08-21).
+Upstream's rename of `CONTEXT.md` to `GLOSSARY.md` (commit `d80fa0f`, 2026-09-17) is applied on top; nothing else from later commits is taken.
 
 | Skill | Upstream path |
 |---|---|

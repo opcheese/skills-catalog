@@ -58,7 +58,7 @@ word, and code that treats them as one will be wrong in a way tests do not
 catch.
 
 `domain-modeling` fires on that argument. It challenges the term, and — the
-part people skip — writes the result into `CONTEXT.md` so the next session
+part people skip — writes the result into `GLOSSARY.md` so the next session
 starts from the settled meaning instead of relitigating it.
 
 The seam shape also meets its three-part ADR test: hard to reverse (every
@@ -66,7 +66,7 @@ caller depends on it), surprising without context (why *isn't* there a
 factory?), and a real trade-off (you gave up per-provider capabilities at the
 interface). Three out of three, so it gets an ADR.
 
-This is the skill with a real cost. In a repo that will not keep a `CONTEXT.md`
+This is the skill with a real cost. In a repo that will not keep a `GLOSSARY.md`
 it produces a file nobody reads. Skip it there; it is why it lives in a
 separate plugin.
 
@@ -148,7 +148,7 @@ and vocabulary failures, which is a different layer and needs different skills.
 |---|---|
 | "What are the units and their interfaces?" | depth, seam, adapter — and the deletion test |
 | "Write the failing test first" | write it through the interface; the interface is the test surface |
-| "Agree the terms" | glossary in `CONTEXT.md`, ADR if it passes the three-part test |
+| "Agree the terms" | glossary in `GLOSSARY.md`, ADR if it passes the three-part test |
 | "Resolve the conflict and move on" | read both intents, invent nothing, never `--abort` |
 | "Open the PR" | a hook that makes the destructive version unavailable |
 

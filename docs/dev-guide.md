@@ -173,7 +173,7 @@ It is split in two, by whether the skill needs you present:
 |---|---|---|---|
 | `codebase-design` | codebase-vocabulary | you are deciding where an interface or module boundary goes | the vocabulary — deep modules, seams, adapters, leverage, locality |
 | `resolving-merge-conflicts` | codebase-vocabulary | you are mid-merge or mid-rebase with conflicts | a procedure that does not lose work |
-| `domain-modeling` | codebase-vocabulary-**human** | you are arguing about what a word means, or writing a `CONTEXT.md` / ADR | a glossary discipline, and a three-part test for whether a decision deserves an ADR |
+| `domain-modeling` | codebase-vocabulary-**human** | you are arguing about what a word means, or writing a `GLOSSARY.md` / ADR | a glossary discipline, and a three-part test for whether a decision deserves an ADR |
 | `git-guardrails-claude-code` | codebase-vocabulary-**human** | you run it once per repo | a hook that blocks `reset --hard`, `clean -f`, `checkout .`, `restore .`, force branch deletion (`branch -D`), force pushes, and pushes to a protected branch. Feature-branch pushes still work. |
 
 The bottom two are in a separate plugin because they need a person. Read
@@ -386,7 +386,7 @@ unless you ask for it again through the normal process.
 task it's fine. For anything bigger, a few minutes of questions costs far
 less than an agent building the wrong thing.
 
-**Keep a `CONTEXT.md`.** `domain-modeling` maintains a glossary of what your
+**Keep a `GLOSSARY.md`.** `domain-modeling` maintains a glossary of what your
 project's words actually mean. Agents get dramatically more accurate once
 "account", "order" and "cancellation" have one definition each, and it is
 the cheapest documentation you will ever keep because the agent writes it
