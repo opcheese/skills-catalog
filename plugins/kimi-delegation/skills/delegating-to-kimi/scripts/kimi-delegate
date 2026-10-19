@@ -39,7 +39,8 @@ MODEL_NOTE=""
 # Where this skill is installed. Resolved next to the script itself, which is
 # true under every harness -- Claude Code, Codex, a bare clone. The env vars
 # only override that: KIMI_DELEGATION_ROOT is the harness-neutral name, and
-# CLAUDE_PLUGIN_ROOT is accepted because Claude Code sets it for us.
+# CLAUDE_PLUGIN_ROOT is accepted as an alias. Claude Code does not export it to
+# the Bash tool; it only fills in ${CLAUDE_PLUGIN_ROOT} in a skill's text.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CRED_HELPER="$SCRIPT_DIR/kimi-credential"
 AGENT_FILE="$SCRIPT_DIR/../agents/delegate-readonly.md"
@@ -308,12 +309,15 @@ PY
     # Without this, a failed python3 leaves SETTINGS empty and the "delegated"
     # task quietly runs on the caller's own Anthropic account.
     [ -n "$SETTINGS" ] || die "could not build the settings for the delegated session"
+    # claude -p refuses stream-json without --verbose and exits before any work.
+    OUTPUT_FLAGS=(--output-format "$OUTPUT")
+    [ "$OUTPUT" = "stream-json" ] && OUTPUT_FLAGS+=(--verbose)
     if [ -n "$AGENT" ]; then
       provenance "claude" "$AGENT" "$BASE_URL" "on (no dial exists)"
-      exec claude -p "$PROMPT" --settings "$SETTINGS" --agent "$AGENT" --output-format "$OUTPUT"
+      exec claude -p "$PROMPT" --settings "$SETTINGS" --agent "$AGENT" "${OUTPUT_FLAGS[@]}"
     fi
     provenance "claude" "default" "$BASE_URL" "on (no dial exists)"
-    exec claude -p "$PROMPT" --settings "$SETTINGS" --output-format "$OUTPUT"
+    exec claude -p "$PROMPT" --settings "$SETTINGS" "${OUTPUT_FLAGS[@]}"
     ;;
   *) die "--via must be kimi or claude, got: $VIA" ;;
 esac

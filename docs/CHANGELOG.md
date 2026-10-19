@@ -8,6 +8,21 @@ audience: developers
 
 Notable changes to the catalog: what devs install, and what the docs tell them.
 
+## 2026-10-19: kimi-delegation 1.2.1
+
+Three fixes, found while testing a document-review skill against this plugin's
+plan:
+
+- `--via claude --output stream-json` failed at once: `claude -p` refuses
+  stream-json without `--verbose`. The script now adds it.
+- The skill's script path used `$CLAUDE_PLUGIN_ROOT`, which Claude Code does
+  not export to the Bash tool. It now uses the braced `${CLAUDE_PLUGIN_ROOT}`,
+  which Claude Code fills in when it loads the skill.
+- The plugin's LICENSE named the wrong copyright holder (copied from a
+  vendored plugin). It is now opcheese.
+
+The marketplace entry now carries the plugin's own version (it said 1.1.0).
+
 ## 2026-10-12: Claude Code on a local model
 
 New guide, [local-claude-code.md](local-claude-code.md): run Claude Code on

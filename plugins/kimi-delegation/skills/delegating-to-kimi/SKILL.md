@@ -23,8 +23,8 @@ The scripts live in `scripts/` beside this file and are not on `PATH`, so call
 them by full path. Set the directory once, then reuse it:
 
 ```bash
-# Claude Code sets this for you:
-KD="$CLAUDE_PLUGIN_ROOT/skills/delegating-to-kimi"
+# Claude Code fills in the braced form when it loads this skill:
+KD="${CLAUDE_PLUGIN_ROOT}/skills/delegating-to-kimi"
 # Codex, or any other harness: wherever this skill was installed, e.g.
 KD=~/.agents/skills/delegating-to-kimi
 
@@ -69,7 +69,7 @@ Claude Code's own permission system:
   discovery order, which the repository you are working in can win. Only name
   an agent in a repository you trust.
 - `--cwd DIR` — run in DIR instead of the current directory
-- `--output text|stream-json` — passed through unaltered
+- `--output text|stream-json` — passed through (on `--via claude`, stream-json also adds the `--verbose` that `claude -p` requires)
 - Everything after `--` is the prompt
 
 `KIMI_DELEGATE_MODEL` overrides the model, default `k3`. The name is checked

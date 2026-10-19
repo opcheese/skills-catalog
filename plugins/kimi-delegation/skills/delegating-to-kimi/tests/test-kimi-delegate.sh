@@ -88,6 +88,12 @@ check_contains "model defaults to k3" "$OUT" '"ANTHROPIC_MODEL": "k3"'
 check_contains "apiKeyHelper is an absolute path" "$OUT" "/kimi-credential"
 check_contains "the agent is forwarded" "$OUT" "--agent reviewer"
 check_contains "the prompt is passed" "$OUT" "review this"
+check_missing "text output needs no --verbose" "$OUT" "--verbose"
+
+# claude -p refuses stream-json without --verbose, so passing it through
+# unaltered would exit 1 before any work.
+OUT=$(run --via claude --output stream-json -- "x")
+check_contains "stream-json gets the --verbose claude requires" "$OUT" "--output-format stream-json --verbose"
 
 cat > "$WORK/home/config.toml" <<'TOML'
 [models."kimi-code/k3"]
