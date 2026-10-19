@@ -44,9 +44,10 @@ You need:
 - **To be signed in.** Run `claude` once and finish `/login`.
 - **git**, and network access to GitHub. The marketplace and three of its
   plugins come from public GitHub repos.
-- **`jq`**, if you will use the git guardrails (see below), on your machine
-  and on any CI machine where the hook runs. Without it the hook blocks
-  nothing and says nothing. Check with `jq --version`.
+- **Bash**, if you will use the git guardrails (see below). The hook is a
+  bash script. On Windows that means Git for Windows (Git Bash): without it,
+  Claude Code runs hooks in PowerShell, the script cannot start, and the hook
+  blocks nothing. `jq` is optional; the hook uses it when it is there.
 - **Only for `kimi-delegation`:** a Kimi API key or a Kimi Code
   subscription. See *kimi-delegation* below. Skip that plugin if you have
   neither; it refuses to run without one.
@@ -196,8 +197,8 @@ projects**. If you choose this project, commit the `.claude/settings.json`
 and `.claude/hooks/` files it creates, so the whole team gets the hook.
 
 To check the hook works, ask the agent to run `git reset --hard`. It should
-be refused with a `BLOCKED:` message. If the command runs, check that `jq`
-is installed.
+be refused with a `BLOCKED:` message. If the command runs, check that the
+hook is in your settings and, on Windows, that Git Bash is installed.
 
 ### What the guardrails actually block
 
@@ -422,7 +423,7 @@ a CI secret named `CLAUDE_CODE_OAUTH_TOKEN`, or store an API key as
 `ANTHROPIC_API_KEY`. A shared pipeline should use an API key, because the
 token is tied to the subscription of whoever created it. Never put either
 in the repo. If the guardrails hook runs there too, the CI image needs
-`jq`.
+bash.
 
 The unattended spine does not ask questions. Brainstorming writes the
 design in one pass, and a reviewer subagent reads it. Nobody reviews the

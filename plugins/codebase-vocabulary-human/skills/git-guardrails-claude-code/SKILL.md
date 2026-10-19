@@ -30,6 +30,10 @@ Pushing is **branch-aware**:
 Protected means `main`, `master`, and the remote's own default branch. Override
 the set with `GIT_GUARDRAILS_PROTECTED_BRANCHES`, comma-separated.
 
+The hook is a bash script. On Windows it needs Git for Windows (Git Bash);
+without it Claude Code runs hooks in PowerShell, the script cannot start, and
+nothing is blocked. It does not need `jq`, but uses it when installed.
+
 Why not block pushing outright: opening a pull request requires pushing a
 branch. A hook that blocks every push blocks the safe workflow along with the
 dangerous one, and it breaks any unattended agent whose finish step is

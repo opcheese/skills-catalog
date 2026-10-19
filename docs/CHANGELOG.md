@@ -8,6 +8,16 @@ audience: developers
 
 Notable changes to the catalog: what devs install, and what the docs tell them.
 
+## 2026-10-19: git guardrails work without jq
+
+The guardrails hook read the command with `jq` and, without it, blocked
+nothing and said nothing. That is the usual state of Git Bash on Windows. It
+now reads the command itself when `jq` is missing, and the test suite runs
+every case both with and without `jq`. `jq` is no longer a prerequisite. On
+Windows the hook still needs Git Bash: without it Claude Code runs hooks in
+PowerShell, the script cannot start, and nothing is blocked.
+codebase-vocabulary-human is now 1.2.0.
+
 ## 2026-10-19: CONTEXT.md is now GLOSSARY.md
 
 `domain-modeling` and `codebase-design` follow upstream mattpocock/skills

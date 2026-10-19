@@ -12,7 +12,36 @@
 set -uo pipefail
 
 INPUT=$(cat)
-COMMAND=$(printf '%s' "$INPUT" | jq -r '.tool_input.command // empty' 2>/dev/null)
+
+# The command Claude is about to run, from the hook's JSON input. jq when it is
+# installed; otherwise read the one string field by hand, because a guard that
+# needs jq allows everything on machines without it (Git Bash on Windows
+# ships no jq).
+read_command() {
+  if command -v jq >/dev/null 2>&1; then
+    printf '%s' "$INPUT" | jq -r '.tool_input.command // empty' 2>/dev/null
+    return
+  fi
+  local raw out="" c i
+  raw=$(printf '%s' "$INPUT" | tr -d '\n' \
+    | sed -nE 's/.*"command"[[:space:]]*:[[:space:]]*"(([^"\\]|\\.)*)".*/\1/p')
+  for ((i = 0; i < ${#raw}; i++)); do
+    c=${raw:i:1}
+    if [ "$c" = '\' ]; then
+      i=$((i + 1))
+      case "${raw:i:1}" in
+        n) out+=$'\n' ;;
+        t) out+=$'\t' ;;
+        r) ;;
+        *) out+=${raw:i:1} ;;  # \" \\ \/ ; \uXXXX keeps its digits
+      esac
+    else
+      out+=$c
+    fi
+  done
+  printf '%s' "$out"
+}
+COMMAND=$(read_command)
 [ -z "$COMMAND" ] && exit 0
 
 block() {

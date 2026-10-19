@@ -17,13 +17,27 @@ git -C "$REPO" config user.email t@t.t
 git -C "$REPO" config user.name t
 git -C "$REPO" commit -q --allow-empty -m init
 
+# A PATH with everything but jq, the usual state of Git Bash on Windows. The
+# hook must still block there; the inputs are built with jq out here, before.
+NOJQ_BIN="$REPO.nojq"
+mkdir -p "$NOJQ_BIN"
+trap 'rm -rf "$REPO" "$NOJQ_BIN"' EXIT
+for dir in ${PATH//:/ }; do
+  for f in "$dir"/*; do
+    name=${f##*/}
+    [ "$name" = jq ] && continue
+    [ -x "$f" ] && [ ! -e "$NOJQ_BIN/$name" ] && ln -s "$f" "$NOJQ_BIN/$name"
+  done
+done
+HOOK_PATH=$PATH
+
 run_case() {
   local expect=$1 branch=$2 command=$3
   git -C "$REPO" checkout -q -B "$branch"
   local out status
   out=$(printf '%s' "$command" \
     | jq -R '{tool_input:{command:.}}' \
-    | (cd "$REPO" && bash "$SCRIPT") 2>&1)
+    | (cd "$REPO" && PATH="$HOOK_PATH" bash "$SCRIPT") 2>&1)
   status=$?
   local actual="ALLOW"
   [ "$status" -eq 2 ] && actual="BLOCK"
@@ -38,6 +52,7 @@ run_case() {
   fi
 }
 
+all_cases() {
 echo "The always-blocked set:"
 run_case BLOCK feature "git reset --hard HEAD~1"
 run_case BLOCK feature "git clean -fd"
@@ -88,6 +103,20 @@ run_case ALLOW feature "git status"
 run_case ALLOW feature "git log --oneline"
 run_case ALLOW feature "git commit -m 'clean up the restore path'"
 run_case ALLOW feature "echo 'git push origin main is banned' >> README.md"
+
+echo
+echo "Quotes, backslashes and newlines survive the JSON:"
+run_case BLOCK feature 'git commit -m "say \"hi\"" && git push origin main'
+run_case BLOCK feature $'git status\ngit push origin main'
+run_case ALLOW feature 'git commit -m "a \\ b" && git push origin feature'
+}
+
+echo "== with jq"
+all_cases
+echo
+echo "== without jq"
+HOOK_PATH=$NOJQ_BIN
+all_cases
 
 echo
 printf 'Results: %d passed, %d failed\n' "$PASS" "$FAIL"
