@@ -33,7 +33,7 @@
     {
       "name": "codebase-vocabulary-human",
       "description": "Interactive-only companions to codebase-vocabulary: domain glossary and ADR discipline, and a setup skill that installs hooks blocking dangerous git commands. Both need a person at the keyboard",
-      "version": "1.2.0",
+      "version": "1.2.1",
       "source": "./plugins/codebase-vocabulary-human"
     },
     {
@@ -48,7 +48,7 @@
     {
       "name": "kimi-delegation",
       "description": "Delegate work to Kimi from Claude Code: read-only review and bulk tasks through Kimi's own agents, or Claude Code itself running on Kimi's model. Needs either a Kimi API key or a Kimi Code subscription with CLI >= 0.38.0",
-      "version": "1.2.1",
+      "version": "1.2.2",
       "source": "./plugins/kimi-delegation"
     }
   ]

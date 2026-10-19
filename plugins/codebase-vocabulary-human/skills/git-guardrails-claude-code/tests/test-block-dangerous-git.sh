@@ -19,15 +19,13 @@ git -C "$REPO" commit -q --allow-empty -m init
 
 # A PATH with everything but jq, the usual state of Git Bash on Windows. The
 # hook must still block there; the inputs are built with jq out here, before.
+# Only the tools the hook calls, so a jq.exe or a "Program Files" PATH entry
+# cannot leak in, and nothing gets copied where symlinks are copies.
 NOJQ_BIN="$REPO.nojq"
 mkdir -p "$NOJQ_BIN"
 trap 'rm -rf "$REPO" "$NOJQ_BIN"' EXIT
-for dir in ${PATH//:/ }; do
-  for f in "$dir"/*; do
-    name=${f##*/}
-    [ "$name" = jq ] && continue
-    [ -x "$f" ] && [ ! -e "$NOJQ_BIN/$name" ] && ln -s "$f" "$NOJQ_BIN/$name"
-  done
+for tool in bash cat git grep sed tr; do
+  ln -s "$(command -v "$tool")" "$NOJQ_BIN/$tool"
 done
 HOOK_PATH=$PATH
 
@@ -36,7 +34,7 @@ run_case() {
   git -C "$REPO" checkout -q -B "$branch"
   local out status
   out=$(printf '%s' "$command" \
-    | jq -R '{tool_input:{command:.}}' \
+    | jq -R -s '{tool_input:{command:.}}' \
     | (cd "$REPO" && PATH="$HOOK_PATH" bash "$SCRIPT") 2>&1)
   status=$?
   local actual="ALLOW"
@@ -49,6 +47,21 @@ run_case() {
     printf '  [FAIL] expected %s, got %s (exit %d) on %-8s  %s\n' \
       "$expect" "$actual" "$status" "$branch" "$command"
     [ -n "$out" ] && printf '         %s\n' "$out"
+  fi
+}
+
+run_raw() {
+  local expect=$1 branch=$2 json=$3
+  git -C "$REPO" checkout -q -B "$branch"
+  local status
+  printf '%s' "$json" | (cd "$REPO" && PATH="$HOOK_PATH" bash "$SCRIPT") >/dev/null 2>&1
+  status=$?
+  local actual="ALLOW"
+  [ "$status" -eq 2 ] && actual="BLOCK"
+  if [ "$actual" = "$expect" ]; then
+    PASS=$((PASS + 1)); printf '  [ok]   %-6s raw  %.70s\n' "$expect" "$json"
+  else
+    FAIL=$((FAIL + 1)); printf '  [FAIL] expected %s, got %s (exit %d)  %s\n' "$expect" "$actual" "$status" "$json"
   fi
 }
 
@@ -103,6 +116,26 @@ run_case ALLOW feature "git status"
 run_case ALLOW feature "git log --oneline"
 run_case ALLOW feature "git commit -m 'clean up the restore path'"
 run_case ALLOW feature "echo 'git push origin main is banned' >> README.md"
+
+echo
+echo "Inputs a JSON encoder may produce, given as raw JSON:"
+run_raw BLOCK feature '{"tool_input":{"command":"git push origin m\u0061in"}}'
+run_raw BLOCK feature '{"tool_input":{"command":"git push origin main","extra":{"command":"ls"}}}'
+run_raw ALLOW feature '{"tool_input":{"command":"ls","extra":{"command":"git push origin main"}}}'
+
+echo
+echo "A long command is judged before the hook would time out:"
+BIG=$(printf 'x%.0s' $(seq 1 60000))
+SECONDS=0
+run_case BLOCK feature "cat > f <<'EOF'
+$BIG
+EOF
+git reset --hard"
+if [ "$SECONDS" -le 5 ]; then
+  PASS=$((PASS + 1)); printf '  [ok]   judged in %ss\n' "$SECONDS"
+else
+  FAIL=$((FAIL + 1)); printf '  [FAIL] took %ss; a hook that times out lets the command run\n' "$SECONDS"
+fi
 
 echo
 echo "Quotes, backslashes and newlines survive the JSON:"

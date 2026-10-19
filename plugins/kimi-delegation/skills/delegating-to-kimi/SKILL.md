@@ -25,8 +25,8 @@ them by full path. Set the directory once, then reuse it:
 ```bash
 # Claude Code fills in the braced form when it loads this skill:
 KD="${CLAUDE_PLUGIN_ROOT}/skills/delegating-to-kimi"
-# Codex, or any other harness: wherever this skill was installed, e.g.
-KD=~/.agents/skills/delegating-to-kimi
+# Codex, or any other harness: set KD to wherever this skill was installed
+# instead, e.g. KD=~/.agents/skills/delegating-to-kimi
 
 "$KD/scripts/kimi-delegate" \
   --via kimi -- "Review src/auth.ts for auth bypasses. Report findings only."

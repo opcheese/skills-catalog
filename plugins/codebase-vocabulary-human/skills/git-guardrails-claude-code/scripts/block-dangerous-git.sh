@@ -22,24 +22,19 @@ read_command() {
     printf '%s' "$INPUT" | jq -r '.tool_input.command // empty' 2>/dev/null
     return
   fi
-  local raw out="" c i
-  raw=$(printf '%s' "$INPUT" | tr -d '\n' \
-    | sed -nE 's/.*"command"[[:space:]]*:[[:space:]]*"(([^"\\]|\\.)*)".*/\1/p')
-  for ((i = 0; i < ${#raw}; i++)); do
-    c=${raw:i:1}
-    if [ "$c" = '\' ]; then
-      i=$((i + 1))
-      case "${raw:i:1}" in
-        n) out+=$'\n' ;;
-        t) out+=$'\t' ;;
-        r) ;;
-        *) out+=${raw:i:1} ;;  # \" \\ \/ ; \uXXXX keeps its digits
-      esac
-    else
-      out+=$c
-    fi
-  done
-  printf '%s' "$out"
+  # The first "command" key after "tool_input", then its string value.
+  local rest raw
+  rest=${INPUT#*\"tool_input\"}
+  rest=${rest#*\"command\"}
+  raw=$(printf '%s' "$rest" | tr -d '\n' \
+    | sed -nE 's/^[[:space:]]*:[[:space:]]*"(([^"\\]|\\.)*)".*/\1/p')
+  # JSON escapes that printf %b does not know, with \\ held aside so that
+  # \\" stays a backslash then a quote. %b then decodes \\ \n \t \uXXXX.
+  raw=${raw//\\\\/$'\001'}
+  raw=${raw//\\\"/\"}
+  raw=${raw//\\\//\/}
+  raw=${raw//$'\001'/\\\\}
+  printf '%b' "$raw"
 }
 COMMAND=$(read_command)
 [ -z "$COMMAND" ] && exit 0

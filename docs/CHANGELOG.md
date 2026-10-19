@@ -8,6 +8,20 @@ audience: developers
 
 Notable changes to the catalog: what devs install, and what the docs tell them.
 
+## 2026-10-19: review fixes to the day's changes
+
+From a `/code-review` of the three changes below:
+
+- The guardrails' jq-free reader took 24 seconds on a 60KB command, long
+  enough for the hook to time out, which lets the command run. It is now
+  linear. It also decodes `\u` escapes and reads `tool_input.command` rather
+  than the last `command` key in the input. The test suite now sends each
+  case as one JSON message and covers all three.
+- The kimi skill's path block set `KD` for Claude Code and then overwrote
+  it with the other-harness example. The example is now a comment.
+
+codebase-vocabulary-human 1.2.1, kimi-delegation 1.2.2.
+
 ## 2026-10-19: git guardrails work without jq
 
 The guardrails hook read the command with `jq` and, without it, blocked
