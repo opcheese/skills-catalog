@@ -8,6 +8,28 @@ audience: developers
 
 Notable changes to the catalog: what devs install, and what the docs tell them.
 
+## 2026-10-26: api-credits-delegation, delegation on a plan's API credits
+
+New plugin. Max and Team plans include monthly API credits in a linked Console
+organization. They cover `claude -p` only when it runs on that organization's
+API key. `credits-delegate` runs `claude -p` with the key as the winning
+credential: from a mode-600 file, through `apiKeyHelper`, never on a command
+line or in the session's environment. Inherited credentials that would outrank
+it are removed. Every run has a spend cap and reports its cost.
+
+Measured against the real API before release:
+
+- A failing key helper stops the run at no cost. It does not fall back to the
+  plan.
+- `claude -p` given a rejected key hangs until killed, so the script checks the
+  key first with an unbilled request.
+- The spend cap is checked between turns. A run can land past it: $0.0023 on a
+  $0.001 cap.
+- `--bare` skips hooks, plugins and `CLAUDE.md`. In a repo with plugins
+  installed, it cut each request's context from about 33k tokens to 1.6k.
+
+api-credits-delegation 1.0.0.
+
 ## 2026-10-19: review fixes to the day's changes
 
 From a `/code-review` of the three changes below:

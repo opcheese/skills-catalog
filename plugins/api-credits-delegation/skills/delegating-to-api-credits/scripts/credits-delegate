@@ -1,0 +1,154 @@
+#!/usr/bin/env bash
+# Run one delegated task as `claude -p`, billed to the Console organization
+# linked to a Max or Team plan, instead of the plan's own usage limits.
+#
+#   credits-delegate [--model NAME] [--budget USD] [--agent NAME] [--cwd DIR]
+#                    [--output text|json|stream-json] [--bare] -- <prompt>
+#
+# The plan's API credits cover `claude -p` only when it runs on an API key from
+# the linked organization. Signed in with the plan, the same command draws on
+# the plan's limits instead. So this script's one job is to make the key the
+# credential that wins, and to keep it out of everywhere else.
+
+set -uo pipefail
+
+KEY_FILE="${CLAUDE_CREDITS_KEY_FILE:-${XDG_CONFIG_HOME:-$HOME/.config}/claude-credits/key}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+KEY_HELPER="$SCRIPT_DIR/credits-key"
+
+die() { printf 'credits-delegate: %s\n' "$1" >&2; exit 1; }
+
+if [ "${CREDITS_DELEGATE_DEPTH:-0}" -ge 1 ]; then
+  die "delegation is already in progress (depth ${CREDITS_DELEGATE_DEPTH}); refusing to nest"
+fi
+export CREDITS_DELEGATE_DEPTH=$(( ${CREDITS_DELEGATE_DEPTH:-0} + 1 ))
+
+MODEL="haiku"
+BUDGET="1"
+AGENT=""
+CWD=""
+OUTPUT="text"
+BARE=0
+PROMPT=""
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --model|--budget|--agent|--cwd|--output)
+      # `shift 2` on a lone flag fails and leaves $@ unchanged, which spins
+      # this loop forever. Require the value before consuming anything.
+      [ $# -ge 2 ] || die "missing value for $1"
+      case "$1" in
+        --model)  MODEL="$2" ;;
+        --budget) BUDGET="$2" ;;
+        --agent)  AGENT="$2" ;;
+        --cwd)    CWD="$2" ;;
+        --output) OUTPUT="$2" ;;
+      esac
+      shift 2 ;;
+    --bare) BARE=1; shift ;;
+    --dangerously-skip-permissions|--allow-dangerously-skip-permissions)
+      die "refusing --dangerously-skip-permissions; delegation never bypasses permission checks" ;;
+    --) shift; PROMPT="$*"; break ;;
+    *)  die "unknown argument: $1" ;;
+  esac
+done
+
+[ -n "$PROMPT" ] || die "a prompt is required after --"
+printf '%s' "$BUDGET" | grep -qE '^[0-9]+(\.[0-9]+)?$' || die "--budget must be a dollar amount, got: $BUDGET"
+case "$OUTPUT" in text|json|stream-json) ;; *) die "--output must be text, json or stream-json, got: $OUTPUT" ;; esac
+command -v claude >/dev/null 2>&1 || die "the claude CLI is not on PATH"
+
+# The key file is the whole credential. Check it here, before any session
+# starts, so a bad file fails with its name instead of an auth error later.
+[ -f "$KEY_FILE" ] || die "no key file at $KEY_FILE. Put the linked organization's API key there:
+  install -d -m 700 \"$(dirname "$KEY_FILE")\" && (umask 077; cat > \"$KEY_FILE\")"
+[ -n "$(tr -d '[:space:]' < "$KEY_FILE")" ] || die "the key file $KEY_FILE is empty"
+MODE="$(stat -c '%a' "$KEY_FILE" 2>/dev/null || stat -f '%Lp' "$KEY_FILE")"
+case "$MODE" in
+  ?00) ;;
+  *) die "the key file $KEY_FILE is readable by others (mode $MODE). Run: chmod 600 \"$KEY_FILE\"" ;;
+esac
+
+# Check the key before the run. Measured 2026-10-26 on Claude Code 2.1.310:
+# `claude -p` with a rejected key does not fail, it hangs until something
+# kills it. Listing models is not billed. The key goes to curl as a header
+# read from a pipe (printf is a builtin), never as an argument.
+command -v curl >/dev/null 2>&1 || die "curl is needed to check the key before the run"
+KEY="$(tr -d '[:space:]' < "$KEY_FILE")"
+HTTP="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 \
+  -H @<(printf 'x-api-key: %s\nanthropic-version: 2023-06-01\n' "$KEY") \
+  https://api.anthropic.com/v1/models 2>/dev/null)"
+unset KEY
+case "$HTTP" in
+  200) ;;
+  401|403) die "the API rejected the key in $KEY_FILE (HTTP $HTTP). Is it revoked, or from another organization?" ;;
+  000|"") die "could not reach api.anthropic.com to check the key" ;;
+  *) die "checking the key returned HTTP $HTTP; not starting the run" ;;
+esac
+
+SETTINGS="$(python3 - "$KEY_HELPER" "$KEY_FILE" <<'PY'
+import json, shlex, sys
+helper, key_file = sys.argv[1], sys.argv[2]
+print(json.dumps({
+    "env": {
+        # Each of these outranks apiKeyHelper or redirects where the key goes.
+        # Blanked here as well as unset below, so a settings file that sets
+        # them cannot win either.
+        "ANTHROPIC_API_KEY": "",
+        "ANTHROPIC_AUTH_TOKEN": "",
+        "ANTHROPIC_BASE_URL": "",
+        "CLAUDE_CODE_USE_BEDROCK": "",
+        "CLAUDE_CODE_USE_VERTEX": "",
+        "CLAUDE_CODE_USE_FOUNDRY": "",
+    },
+    "apiKeyHelper": "bash " + shlex.quote(helper) + " " + shlex.quote(key_file),
+}, indent=None, separators=(", ", ": ")))
+PY
+)"
+# Without this, a failed python3 leaves SETTINGS empty and the task quietly
+# runs on the caller's own plan.
+[ -n "$SETTINGS" ] || die "could not build the settings for the delegated session"
+
+[ -n "$CWD" ] && { cd "$CWD" || die "no such directory: $CWD"; }
+
+ARGS=(-p "$PROMPT" --settings "$SETTINGS" --model "$MODEL" --max-budget-usd "$BUDGET")
+[ -n "$AGENT" ] && ARGS+=(--agent "$AGENT")
+# Bare mode skips hooks, plugins, CLAUDE.md and auto-memory: fewer input
+# tokens per run. It still reads apiKeyHelper from --settings.
+[ "$BARE" -eq 1 ] && ARGS+=(--bare)
+
+printf 'credits-delegate: model=%s budget=$%s agent=%s bare=%s auth=api-credits key_file=%s\n' \
+  "$MODEL" "$BUDGET" "${AGENT:-default}" "$BARE" "$KEY_FILE" >&2
+
+CLEAN_ENV=(env -u ANTHROPIC_API_KEY -u ANTHROPIC_AUTH_TOKEN -u ANTHROPIC_BASE_URL
+  -u CLAUDE_CODE_OAUTH_TOKEN -u CLAUDE_CODE_USE_BEDROCK -u CLAUDE_CODE_USE_VERTEX
+  -u CLAUDE_CODE_USE_FOUNDRY)
+
+case "$OUTPUT" in
+  stream-json) exec "${CLEAN_ENV[@]}" claude "${ARGS[@]}" --output-format stream-json --verbose ;;
+  json)        exec "${CLEAN_ENV[@]}" claude "${ARGS[@]}" --output-format json ;;
+esac
+
+# Text: run as json so the cost can be reported, then print only the answer on
+# stdout and the cost on stderr.
+RAW="$("${CLEAN_ENV[@]}" claude "${ARGS[@]}" --output-format json)"
+RC=$?
+python3 -c '
+import json, sys
+raw, rc = sys.argv[1], int(sys.argv[2])
+try:
+    d = json.loads(raw.strip().splitlines()[-1])
+except (ValueError, IndexError):
+    sys.stdout.write(raw)
+    sys.exit(rc or 1)
+if d.get("result") is not None:
+    print(d["result"])
+# A run stopped by --max-budget-usd has no result, only errors. The cap is
+# checked between turns, so the cost can land past it.
+for err in d.get("errors") or []:
+    sys.stderr.write("credits-delegate: %s (subtype %s)\n" % (err, d.get("subtype")))
+models = ",".join(d.get("modelUsage", {}) or []) or "unknown"
+sys.stderr.write("credits-delegate: cost_usd=%s served_by=%s is_error=%s\n"
+                 % (d.get("total_cost_usd"), models, str(d.get("is_error", False)).lower()))
+sys.exit(1 if d.get("is_error") or rc else 0)
+' "$RAW" "$RC"

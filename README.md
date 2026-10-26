@@ -54,6 +54,7 @@ and copy-paste ready. What changed recently is in
 | **codebase-vocabulary-human** | Two more from the same source that need someone at the keyboard: domain glossary and ADR discipline, and a setup skill that installs hooks blocking dangerous git commands. | Interactive work only. See the warning below. |
 | **shadow-learn-memory** | The [shadow learning](https://github.com/Ludentes/Claude-Shadow-Learn) store. Reads your Claude Code, Codex and Kimi transcripts, extracts the corrections and facts worth keeping, and consolidates them into pattern and entity files the agent reads before judgment work. | Interactive work only — every write asks you first. |
 | **kimi-delegation** | Hand a task to Kimi — read-only review and bulk work through its own agents, or Claude Code itself running on its model. Needs either a Kimi Code subscription or a Kimi API key; refuses loudly with neither. | You want a second model's judgment, or want to spare Claude context. |
+| **api-credits-delegation** | Run `claude -p` on the monthly API credits a Max or Team plan includes, instead of the plan's usage limits. The key stays in a mode-600 file and reaches the run only through `apiKeyHelper`; every run has a spend cap and reports its cost. | You have a Max or Team plan with a linked Console organization, and headless work to offload. |
 
 ## Do not install both spines
 

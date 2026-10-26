@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# apiKeyHelper: print the Console organization's API key from its key file.
+#
+# Claude Code's contract: print only the credential on stdout and exit 0.
+# The key reaches the delegated session through this pipe and nowhere else:
+# not argv, which `ps` shows to every user, and not the session's environment,
+# where any tool the session runs could read it.
+#
+# On failure Claude Code fails the request ("Your apiKeyHelper script is
+# failing"); it does not fall back to the subscription login, which ranks
+# below apiKeyHelper.
+
+set -uo pipefail
+
+KEY_FILE="${1:?usage: credits-key <key-file>}"
+[ -r "$KEY_FILE" ] || { printf 'credits-key: cannot read %s\n' "$KEY_FILE" >&2; exit 1; }
+KEY="$(tr -d '[:space:]' < "$KEY_FILE")"
+[ -n "$KEY" ] || { printf 'credits-key: %s is empty\n' "$KEY_FILE" >&2; exit 1; }
+printf '%s\n' "$KEY"

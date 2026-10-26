@@ -1,0 +1,4 @@
+# local research, evals and scratch: never pushed
+.superpowers/
+.env
+.env.*

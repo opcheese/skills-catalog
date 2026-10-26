@@ -77,3 +77,16 @@ Open questions, to be settled by spikes before any design:
 - The child prints this warning to stderr: "claude.ai connectors are disabled because ANTHROPIC_API_KEY … takes precedence".
 
 **Not yet shown: that the usage was billed as API credit rather than as Claude Code usage.** Per the docs, a request the credits don't cover is refused with "Credit balance too low" when the organisation holds only these credits. The run therefore counts as proof only if the org has no purchased credits and no auto-reload.
+
+## Measured while building api-credits-delegation (2026-10-26, Claude Code 2.1.310, Haiku)
+
+The org had no balance other than the promotional credits, which expire on 1 November.
+
+- **`apiKeyHelper` from `--settings`, with inherited credentials removed:** served, $0.0024 on the first run. Prompt caching brought a repeat of the same run down to $0.0003.
+- **Helper exits 1:** the run reports `is_error: true`, with "Your apiKeyHelper script is failing", and costs $0. There is no fallback to the plan login.
+- **Helper returns a rejected key:** `claude -p` printed nothing and hung until `timeout` killed it at 180 s, and again at 60 s. This is why the script checks the key first with an unbilled `GET /v1/models`, which answers 401 immediately.
+- **`--max-budget-usd 0.001`:** the run stopped with `subtype: error_max_budget_usd`, `errors: ["Reached maximum budget ($0.001)"]` and `total_cost_usd: 0.0023` after 3 turns. The cap is checked between turns.
+- **`--bare` against full mode, run in a repo with plugins and a CLAUDE.md:**
+  - Full mode wrote 21.8k tokens to the cache on the first run and read 33.3k from it on the repeat, costing $0.00285 and then $0.00034.
+  - Bare mode carried 1.6k tokens, costing $0.0002 and then $0.00002.
+  - Every turn re-reads that context, so the gap grows with the number of turns.

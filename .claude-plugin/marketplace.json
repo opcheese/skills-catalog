@@ -50,6 +50,12 @@
       "description": "Delegate work to Kimi from Claude Code: read-only review and bulk tasks through Kimi's own agents, or Claude Code itself running on Kimi's model. Needs either a Kimi API key or a Kimi Code subscription with CLI >= 0.38.0",
       "version": "1.2.2",
       "source": "./plugins/kimi-delegation"
+    },
+    {
+      "name": "api-credits-delegation",
+      "description": "Delegate claude -p runs to the monthly API credits of a Max or Team plan instead of the plan's usage limits. Needs a Console organization linked to the plan and its key in ~/.config/claude-credits/key",
+      "version": "1.0.0",
+      "source": "./plugins/api-credits-delegation"
     }
   ]
 }
