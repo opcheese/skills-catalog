@@ -49,3 +49,18 @@ Open questions, to be settled by spikes before any design:
 - **Billing class of a child `claude -p`:** a `claude -p` started from inside an interactive Claude Code session may inherit variables such as `CLAUDE_CODE_ENTRYPOINT`. Would that make it count as Claude Code usage, which the credits don't cover? Does `--bare` change that?
 - **Leaking into parent sessions:** where can the key be stored so that no interactive session picks it up? A file read by a key helper, never an exported variable.
 - **Seeing the spend:** how does a run's cost show up? The `-p` JSON output reports cost, and the Console has the Cost page.
+
+## The terms you accept by linking
+
+- **The Supplemental Credit Terms add three things.** The text was read in full; it is effective 2024-03-04 and saved as `credit-terms.txt`.
+  - The credits are non-refundable.
+  - They are non-transferable: only the account holder may use them.
+  - They are lost if the account closes.
+  - The auto-reload clause matters only if you turn it on.
+  - The terms' default one-year expiry for promotional credits is replaced by the per-cycle expiry stated at issue.
+- **The credit terms attach to the Commercial Terms, effective 2025-06-17** (saved as `commercial-terms.txt`). The points that matter:
+  - **Business use only, and no training:** "Services under these Terms are not for consumer use", and "Anthropic may not train models on Customer Content."
+  - **Use restrictions (D.4):** the Usage Policy, the Supported Regions Policy, and no use to build a competing product or train competing models.
+  - **Customer duties:** cooperate with identity and use verification requests. Indemnify Anthropic against third-party claims arising from your Inputs or from use that breaks the Usage Policy.
+  - **Anthropic's IP indemnity covers "paid use" only.** Whether usage paid with promotional credits counts is not stated.
+  - **Suspension:** Anthropic can suspend for a Usage Policy breach or a region problem. It can terminate on 30 days' notice, and the terms can change on 30 days' notice.
