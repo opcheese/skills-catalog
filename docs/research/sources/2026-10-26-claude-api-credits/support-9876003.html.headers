@@ -1,0 +1,50 @@
+HTTP/2 301 
+date: Mon, 26 Oct 2026 09:21:14 GMT
+content-type: text/html; charset=utf-8
+location: https://support.claude.com/en/articles/9876003-i-have-a-paid-claude-subscription-pro-max-team-or-enterprise-plans-why-is-claude-api-usage-billed-separately-from-my-paid-claude-plan
+status: 301 Moved Permanently
+cache-control: no-cache
+vary: Sec-Fetch-Site
+x-intercom-version: 1ac7a22e9345c095a7e7423d3d42734efe543576
+referrer-policy: strict-origin-when-cross-origin
+x-xss-protection: 1; mode=block
+x-request-queueing: 0
+x-request-id: 001sb56fuveb0cijdu8g
+x-runtime: 0.118286
+x-frame-options: DENY
+x-content-type-options: nosniff
+content-security-policy: default-src 'self'; base-uri 'self'; connect-src 'self' wss://*.intercom.io https://*.intercom.io https://*.intercom.com https://*.fin.ai https://*.intercom-messenger.com wss://*.intercom-messenger.com https://*.intercom-chat.com wss://*.intercom-chat.com https://uploads.intercomcdn.com https://uploads.intercomcdn.eu https://uploads.au.intercomcdn.com https://uploads.intercomusercontent.com https://*.google-analytics.com https://*.analytics.google.com https://analytics.google.com https://stats.g.doubleclick.net https://cdn.cookielaw.org https://*.onetrust.com; font-src data: https:; frame-ancestors 'self' https://intercomrades.support https://intercom.skilljar.com https://academy.fin.ai https://academy.intercom.com https://academy.guests.intercom.com https://app.intercom.com https://app.eu.intercom.com https://app.au.intercom.com https://intercomrades.intercom.com https://intercomrades.eu.intercom.com https://intercomrades.au.intercom.com https://fin.ai https://app.fin.ai https://app.eu.fin.ai https://app.au.fin.ai; frame-src 'self' https://platform.twitter.com https://staticxx.facebook.com https://fast.wistia.net https://fast.wistia.com https://www.useloom.com https://www.loom.com https://play.vidyard.com https://player.vimeo.com https://web.microsoftstream.com https://share.synthesia.io https://embed.app.guidde.com https://embed.eu.guidde.com https://share.descript.com https://app.guideflow.com https://app.supademo.com https://supercut.ai https://demo.arcade.software https://arcade.software https://www.arcade.software https://watchclueso.com https://www.tella.tv https://www.tella.com https://help.trainn.co https://*.portal.trainn.co https://app.storylane.io https://js.storylane.io https://app.storylane.com https://js.storylane.com https://capture.navattic.com https://share.zight.com https://zoom.us https://*.zoom.us https://player.mux.com https://www.facebook.com https://www.youtube.com https://www.youtube-nocookie.com https://content.jwplatform.com https://cdn.jwplayer.com https://players.brightcove.net https://intercom-sheets.com https://www.intercom-reporting.com https://*.sharepoint.com https://www.googletagmanager.com; img-src data: blob: https: http:; manifest-src 'self'; media-src data: blob: https:; object-src 'self' https://static.intercomassets.com; script-src 'self' https://connect.facebook.net https://platform.twitter.com https://static.intercomassets.com https://googleadservices.com https://googletagmanager.com https://google-analytics.com https://widget.intercom.io https://js.intercomcdn.com https://www.googletagmanager.com https://*.google-analytics.com https://*.analytics.google.com https://intercom.help https://intercom-help.eu https://au.intercom.help https://cdn.cookielaw.org; style-src 'self' 'unsafe-inline' https://fonts.intercomcdn.com https://static.intercomassets.com https://static.intercomcdn.com https://marketing.intercomassets.com https://marketing.intercomcdn.com https://intercom.help https://intercom-help.eu https://au.intercom.help https://static.intercomassets.eu https://static.au.intercomassets.com
+strict-transport-security: max-age=31536000; includeSubDomains; preload
+server: cloudflare
+x-ami-version: ami-05c7896c64233321c
+cf-cache-status: DYNAMIC
+set-cookie: recent_write=ca07661c-1169-4169-a7d5-587d104c475d; path=/; max-age=1; httponly
+set-cookie: __cf_bm=P8BKenqEzECp7GtJCIA5Van3kymA7ealclE2hIh2olU-1793006474.6538541-1.0.1.1-jgitykHQ9mGVIpjBSjKrUlvfrt28iJil6Hj9gLh63EFjhz2VE3ydPxZNVNUBnGtTP0xG6EXeVS0pWFbvC4JgdVd.OPjy29YSm7NdrWWT0fM0kbnqH3Arlkgj4JXwKIXV; HttpOnly; SameSite=None; Secure; Path=/; Domain=claude.com; Expires=Mon, 26 Oct 2026 09:51:14 GMT
+cf-ray: a50863c29e090d20-WAW
+alt-svc: h3=":443"; ma=86400
+
+HTTP/2 200 
+date: Mon, 26 Oct 2026 09:21:15 GMT
+content-type: text/html; charset=utf-8
+vary: Accept-Encoding
+vary: Sec-Fetch-Site
+status: 200 OK
+cache-control: max-age=0, private, must-revalidate
+x-intercom-version: dc42fd677140245f8aac8a656f077f7a939c4cb4
+referrer-policy: strict-origin-when-cross-origin
+x-xss-protection: 1; mode=block
+x-request-queueing: 0
+x-request-id: 001rsroue796mvt4i5t0
+x-runtime: 0.282114
+x-frame-options: DENY
+x-content-type-options: nosniff
+content-security-policy: default-src 'self'; base-uri 'self'; connect-src 'self' wss://*.intercom.io https://*.intercom.io https://*.intercom.com https://*.fin.ai https://*.intercom-messenger.com wss://*.intercom-messenger.com https://*.intercom-chat.com wss://*.intercom-chat.com https://uploads.intercomcdn.com https://uploads.intercomcdn.eu https://uploads.au.intercomcdn.com https://uploads.intercomusercontent.com https://*.google-analytics.com https://*.analytics.google.com https://analytics.google.com https://stats.g.doubleclick.net https://cdn.cookielaw.org https://*.onetrust.com; font-src data: https:; frame-ancestors 'self' https://intercomrades.support https://intercom.skilljar.com https://academy.fin.ai https://academy.intercom.com https://academy.guests.intercom.com https://app.intercom.com https://app.eu.intercom.com https://app.au.intercom.com https://intercomrades.intercom.com https://intercomrades.eu.intercom.com https://intercomrades.au.intercom.com https://fin.ai https://app.fin.ai https://app.eu.fin.ai https://app.au.fin.ai; frame-src 'self' https://platform.twitter.com https://staticxx.facebook.com https://fast.wistia.net https://fast.wistia.com https://www.useloom.com https://www.loom.com https://play.vidyard.com https://player.vimeo.com https://web.microsoftstream.com https://share.synthesia.io https://embed.app.guidde.com https://embed.eu.guidde.com https://share.descript.com https://app.guideflow.com https://app.supademo.com https://supercut.ai https://demo.arcade.software https://arcade.software https://www.arcade.software https://watchclueso.com https://www.tella.tv https://www.tella.com https://help.trainn.co https://*.portal.trainn.co https://app.storylane.io https://js.storylane.io https://app.storylane.com https://js.storylane.com https://capture.navattic.com https://share.zight.com https://zoom.us https://*.zoom.us https://player.mux.com https://www.facebook.com https://www.youtube.com https://www.youtube-nocookie.com https://content.jwplatform.com https://cdn.jwplayer.com https://players.brightcove.net https://intercom-sheets.com https://www.intercom-reporting.com https://*.sharepoint.com https://www.googletagmanager.com; img-src data: blob: https: http:; manifest-src 'self'; media-src data: blob: https:; object-src 'self' https://static.intercomassets.com; script-src 'self' https://connect.facebook.net https://platform.twitter.com https://static.intercomassets.com https://googleadservices.com https://googletagmanager.com https://google-analytics.com https://widget.intercom.io https://js.intercomcdn.com https://www.googletagmanager.com https://*.google-analytics.com https://*.analytics.google.com https://intercom.help https://intercom-help.eu https://au.intercom.help https://cdn.cookielaw.org 'nonce-YuGfS6jOQDdu8rUL23vuin4lhxbK-b883y27Usfu1-s'; style-src 'self' 'unsafe-inline' https://fonts.intercomcdn.com https://static.intercomassets.com https://static.intercomcdn.com https://marketing.intercomassets.com https://marketing.intercomcdn.com https://intercom.help https://intercom-help.eu https://au.intercom.help https://static.intercomassets.eu https://static.au.intercomassets.com
+strict-transport-security: max-age=31536000; includeSubDomains; preload
+server: cloudflare
+x-ami-version: ami-05c7896c64233321c
+set-cookie: recent_write=9432ff07-13f2-4892-9539-2abdc010cd54; path=/; max-age=1; httponly
+set-cookie: __cf_bm=EG6SmdqLP0L4S8WWpmtQVbHtyFYZQW.jFJMldlhm_Hg-1793006475.0298808-1.0.1.1-yJ9iXiX5zcVp5_StzAkEOVx8TtGiARRodL6PVo3LDAHh7x5XMosJMAlb0SE7AZ9X1F3tQ1oogUvZ0FgKyaBC7xgkUK10HHPw0CxQeXzrmkB7jBjYc7WNeHmjjYTpNPcV; HttpOnly; SameSite=None; Secure; Path=/; Domain=claude.com; Expires=Mon, 26 Oct 2026 09:51:15 GMT
+cf-cache-status: DYNAMIC
+cf-ray: a50863c4ece80d20-WAW
+alt-svc: h3=":443"; ma=86400
+

@@ -1,0 +1,24 @@
+HTTP/2 200 
+date: Mon, 26 Oct 2026 09:21:16 GMT
+content-type: text/markdown; charset=utf-8
+cf-ray: a50863cd3af7028c-WAW
+cf-cache-status: EXPIRED
+cache-control: public, max-age=0, must-revalidate
+content-disposition: inline
+last-modified: Mon, 26 Oct 2026 09:21:16 GMT
+link: </docs/llms.txt>; rel="llms-txt", </docs/llms-full.txt>; rel="llms-full-txt", </docs/.well-known/api-catalog>; rel="api-catalog", </docs/.well-known/mcp/server-card.json>; rel="mcp-server-card", </docs/.well-known/agent-card.json>; rel="agent-card", </docs/.well-known/agent-skills/index.json>; rel="agent-skills"
+server: cloudflare
+x-vercel-id: iad1::iad1::sbngn-1793006476434-e84be7ef8da5
+strict-transport-security: max-age=31536000; includeSubDomains; preload
+vary: rsc, accept-encoding
+content-security-policy: default-src 'none'
+x-content-type-options: nosniff
+x-frame-options: DENY
+x-llms-txt: /docs/llms.txt
+x-matched-path: /_mintlify/_markdown/_sites/[subdomain]/[[...slug]]
+x-robots-tag: noindex
+x-vercel-cache: HIT
+set-cookie: cf_geo=UZ-TK; Path=/docs; Secure; SameSite=Lax; Max-Age=300
+set-cookie: __cf_bm=U80Sv1n63LSCLSH3MRHAyO0uuzXXyz_U5beJdyAR4.I-1793006476.3550673-1.0.1.1-JbK14x8QWor5E_XY5gkEYY5e5W6Lr20eROBG9LEb264zfNCbNxuAaq61NX_Y7T.yUdGX1JVbldX6C1h6u8y.vKEPLkyXuQzPxDHkGtXHDPD5WnKHIVrJ_mcw_XXXUlpk; HttpOnly; SameSite=None; Secure; Path=/; Domain=claude.com; Expires=Mon, 26 Oct 2026 09:51:16 GMT
+alt-svc: h3=":443"; ma=86400
+

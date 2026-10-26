@@ -1,0 +1,20 @@
+HTTP/2 200 
+date: Mon, 26 Oct 2026 09:21:12 GMT
+content-type: text/markdown; charset=utf-8
+content-length: 12163
+strict-transport-security: max-age=31536000; includeSubDomains; preload
+x-xss-protection: 1; mode=block
+x-frame-options: SAMEORIGIN
+x-content-type-options: nosniff
+referrer-policy: strict-origin
+x-middleware-rewrite: /docs/as-markdown/en/about-claude/api-credits-for-subscribers
+vary: rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch,Cookie, Accept
+cache-control: private, no-store
+link: <https://platform.claude.com/docs/en/about-claude/api-credits-for-subscribers>; rel="canonical"
+x-cloud-trace-context: b1e1e481f3310f14309c0deb9bb7d5c0
+server: cloudflare
+cf-cache-status: BYPASS
+set-cookie: __cf_bm=ReV6rdlmdQvNVGp6CLtpEGbsiNVFH4p91b_jh3F9eKc-1793006472.2785137-1.0.1.1-xaaubc9v2N3EKgMP3TuTZnQ_7tIfh_TXv6utlevSkYr1u3IyNV4VhRbP7K0vSuCj._Cg3uPswkboowe9tXTIrEld.55Ym9fMNuF6gDvUQi5Hc0GI72cXvzNuRHgs5iBo; HttpOnly; SameSite=None; Secure; Path=/; Domain=claude.com; Expires=Mon, 26 Oct 2026 09:51:12 GMT
+cf-ray: a50863b3bde5a116-WAW
+alt-svc: h3=":443"; ma=86400
+
