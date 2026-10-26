@@ -64,3 +64,16 @@ Open questions, to be settled by spikes before any design:
   - **Customer duties:** cooperate with identity and use verification requests. Indemnify Anthropic against third-party claims arising from your Inputs or from use that breaks the Usage Policy.
   - **Anthropic's IP indemnity covers "paid use" only.** Whether usage paid with promotional credits counts is not stated.
   - **Suspension:** Anthropic can suspend for a Usage Policy breach or a region problem. It can terminate on 30 days' notice, and the terms can change on 30 days' notice.
+
+## Spike: child `claude -p` on the linked org's key (2026-10-26)
+
+**Question.** Is a Haiku `claude -p` call started from inside an interactive Claude Code session, with the org key passed as `ANTHROPIC_API_KEY` to the child process only, served from the org's credits? Time-box: 1 hour.
+
+**Control.** A raw Messages API call with the same key, `claude-haiku-5-5`, returned `pong`. The key works and the organisation has a balance.
+
+**Run.** Claude Code 2.1.310. The child inherited the parent session's variables, including `CLAUDECODE` and `CLAUDE_CODE_ENTRYPOINT`.
+- It was served: `is_error: false`, `result: pong`, `total_cost_usd: 0.0024`.
+- The init event shows `apiKeySource: ANTHROPIC_API_KEY` and model `claude-haiku-5-5`.
+- The child prints this warning to stderr: "claude.ai connectors are disabled because ANTHROPIC_API_KEY … takes precedence".
+
+**Not yet shown: that the usage was billed as API credit rather than as Claude Code usage.** Per the docs, a request the credits don't cover is refused with "Credit balance too low" when the organisation holds only these credits. The run therefore counts as proof only if the org has no purchased credits and no auto-reload.
