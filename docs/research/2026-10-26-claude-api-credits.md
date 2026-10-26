@@ -90,3 +90,19 @@ The org had no balance other than the promotional credits, which expire on 1 Nov
   - Full mode wrote 21.8k tokens to the cache on the first run and read 33.3k from it on the repeat, costing $0.00285 and then $0.00034.
   - Bare mode carried 1.6k tokens, costing $0.0002 and then $0.00002.
   - Every turn re-reads that context, so the gap grows with the number of turns.
+
+## Write access for delegated runs (measured 2026-10-26, Haiku)
+
+Field report from the ooo-docs session: a Sonnet run with `--bare` cost $1.01. Writes were refused under every method (shell redirect, heredoc, Edit), and so was `python3`. Text mode hid the denials. It also printed "no stdin data received in 3s".
+
+- **Tool sets.**
+  - `--bare` gives the session exactly Bash, Edit and Read, because it sets `CLAUDE_CODE_SIMPLE=1`, and `--tools "Bash,Edit,Read,Write,Glob,Grep"` does not change that.
+  - A full run has 25 tools.
+  - The help text adds that under `--bare`, auth is strictly `ANTHROPIC_API_KEY` or `apiKeyHelper` via `--settings`, and OAuth is never read.
+- **`--allowedTools "Edit(//abs/dir/**)"` plus `--add-dir abs/dir`, in bare mode:**
+  - These worked: a heredoc `cat > archive/report.md`, `echo >> archive/progress.md`, and Edit creating a new file.
+  - These were denied: `echo x > outside.md` (in the working directory) and a write to a sibling directory.
+  - `permission_denials` in the JSON result named both denials.
+- **The same rules in full mode, with the write dir outside the working directory:** the Write tool and `>>` into the dir worked, and a Write in the working directory was denied.
+- **`--allowedTools "Bash(python3 -I tools/*)"`** let `python3 -I tools/part.py` run.
+- **Docs used:** permissions.md (saved here). It says Write-tool and redirect targets are checked against `Edit(...)` rules, that `Write(path)` rules never match, and that `//` anchors at the filesystem root.

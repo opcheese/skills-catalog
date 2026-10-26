@@ -8,6 +8,24 @@ audience: developers
 
 Notable changes to the catalog: what devs install, and what the docs tell them.
 
+## 2026-10-26: api-credits-delegation can write where it is told
+
+A first field run, a document review on Sonnet with `--bare`, could not write
+the report and progress files its brief asked for, or run a read-only helper
+script. Nothing can approve a prompt in `claude -p`, so each was denied, and
+in text mode the denials were invisible.
+
+- `--write-dir DIR` lets the run create and edit files under DIR and nowhere
+  else. It uses the Write or Edit tool, or a shell redirect.
+- `--allow RULE` passes one permission rule through, e.g. `Bash(python3 -I
+  audits/*)`. Unscoped `Bash`, `Edit` and `Write` are refused.
+- Denied tool calls are printed on stderr, and `--help` works.
+- stdin is `/dev/null`, so `claude -p` no longer waits 3 s for input.
+- The skill now says what a run can and cannot do by default. It also says
+  that `--bare` leaves only Bash, Edit and Read.
+
+api-credits-delegation 1.1.0.
+
 ## 2026-10-26: api-credits-delegation, delegation on a plan's API credits
 
 New plugin. Max and Team plans include monthly API credits in a linked Console

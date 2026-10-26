@@ -26,8 +26,9 @@ CD="${CLAUDE_PLUGIN_ROOT}/skills/delegating-to-api-credits"
 
 If you are reading this file, its directory is `$CD`.
 
-The answer comes back on stdout. Two lines go to stderr: what the run used
-(model, budget, agent, key file) and what it cost (`cost_usd=`,
+The answer comes back on stdout. Lines go to stderr: what the run used
+(model, budget, agent, write dir, key file), one `denied:` line per tool
+call the permissions refused, and what it cost (`cost_usd=`,
 `served_by=`). Read the cost line and pass it on when you report the result.
 The exit code is 0 for an answer and 1 for anything else: a refusal, an API
 error, or a stop at the budget.
@@ -47,12 +48,18 @@ Code noting that the run is on the key, not the plan login. It is not a fault.
 - `--agent NAME` — one of your `.claude/agents/`, to give the run that
   agent's prompt and tool limits.
 - `--cwd DIR` — run in DIR instead of the current directory.
-- `--bare` — skip hooks, plugins, `CLAUDE.md` and auto-memory. Built-in
-  tools still work. Measured in a repo with plugins installed, every request
+- `--bare` — skip hooks, plugins, `CLAUDE.md` and auto-memory. Measured in a repo with plugins installed, every request
   carried about 33k tokens of context without it, and 1.6k with it. That made
   the first run about 14 times cheaper. Use it when the prompt carries
   everything the task needs. Leave it off when the run needs the project's
   `CLAUDE.md`, skills or agents (`--agent` under `--bare` is untested).
+- `--write-dir DIR` — let the run create and edit files under DIR, and
+  nowhere else: reports, progress files, kept helper scripts. DIR must exist;
+  it can be outside the working directory.
+- `--allow RULE` — one more permission rule, passed to `--allowedTools`,
+  e.g. `--allow "Bash(python3 -I audits/*)"` for a read-only helper script.
+  Repeatable. Unscoped `Bash`, `Edit` and `Write` are refused: name the
+  commands or paths.
 - `--output text|json|stream-json` — `text` (default) prints only the answer;
   `json` and `stream-json` pass Claude Code's own output through.
 - Everything after `--` is the prompt.
@@ -85,13 +92,36 @@ Before the run, the script checks the key with an unbilled `GET /v1/models`.
 check turns a revoked key, or one from another organization, into an
 immediate refusal.
 
-## The delegated session
+## What the run can do
 
-Without `--bare` it is ordinary `claude -p` in the working directory: your user
-and project settings, plugins, hooks and `CLAUDE.md` all load, and its permission rules
-apply. Nothing can approve a prompt in `-p`, so a tool your settings do not
-allow is denied, not asked about. Write the prompt for a session that cannot
-ask you anything, and give it everything it needs.
+Nothing can approve a prompt in `-p`, so anything not allowed is **denied**,
+not asked about. Each denial is printed on stderr as `credits-delegate:
+denied: <tool> <command or path>`. By default the run can:
+
+- read files, and run read-only shell commands (`grep`, `sed -n`, `cat`,
+  `git diff`, and the like);
+- do whatever your user settings' allow rules permit. A repository's own
+  allow rules count only if you have trusted that folder in an interactive
+  session.
+
+It cannot write files or run interpreters (`python3`, `node`) or tests.
+Without `--write-dir` and `--allow`, write the brief so the run returns
+everything in its answer.
+
+With `--write-dir`, it can create and edit files under that directory, using
+the Write or Edit tool or a shell redirect (`>`, `>>`, a heredoc). Writes
+anywhere else are still denied. With `--allow`, it can also run what each
+rule names.
+
+`--bare` narrows the tool set to Bash, Edit and Read. Write, Glob and Grep do
+not exist there, and `--tools` cannot add them back. So under `--bare` the run
+writes through the shell or creates files with Edit, and searches with `grep`.
+Without `--bare`, your plugins, hooks and `CLAUDE.md` load and the full tool
+set is there.
+
+Write the prompt for a session that cannot ask you anything: give it
+everything it needs, say which directory it may write to, and say what to do
+if a step is refused.
 
 ## When the credits run out
 
@@ -107,6 +137,7 @@ the balance and expiry.
 - Nesting: a delegation started inside a delegated session
 - A missing, empty, or group/world-readable key file
 - A key the API rejects
+- An unscoped `--allow` (`Bash`, `Edit`, `Write`), or a `--write-dir` that does not exist
 
 ## Do not
 

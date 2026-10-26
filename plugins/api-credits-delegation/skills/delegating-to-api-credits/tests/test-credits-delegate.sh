@@ -23,6 +23,7 @@ FIXTURE_KEY="sk-ant-fixture-0123456789abcdef"
 cat > "$BIN/claude" <<'FAKE'
 #!/usr/bin/env bash
 printf 'CLAUDE ARGV: %s\n' "$*" >&2
+if [ -t 0 ] || [ "$(readlink /proc/self/fd/0)" != /dev/null ]; then echo 'STDIN not /dev/null' >&2; fi
 for v in ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN ANTHROPIC_BASE_URL CLAUDE_CODE_OAUTH_TOKEN CLAUDE_CODE_USE_BEDROCK CLAUDE_CODE_USE_VERTEX CLAUDE_CODE_USE_FOUNDRY; do
   if [ -n "${!v+x}" ]; then printf 'ENV %s=%s\n' "$v" "${!v}" >&2; fi
 done
@@ -146,6 +147,45 @@ check_missing "bare mode is off by default" "$OUT" "--bare"
 OUT=$(run --bare -- "x")
 check_contains "--bare is forwarded" "$(printf '%s\n' "$OUT" | grep "CLAUDE ARGV")" "--bare"
 check_contains "and keeps the key helper, which bare mode still reads from --settings" "$OUT" "apiKeyHelper"
+
+
+echo "Capabilities:"
+OUT=$(run -- "x")
+check_missing "the session's stdin is /dev/null, so claude -p does not wait 3s for it" "$OUT" "STDIN not /dev/null"
+check_missing "by default no extra tool is allowed" "$(printf '%s\n' "$OUT" | grep 'CLAUDE ARGV')" "--allowedTools"
+
+mkdir -p "$WORK/out dir"
+OUT=$(run --write-dir "$WORK/out dir" -- "x")
+ARGV=$(printf '%s\n' "$OUT" | grep 'CLAUDE ARGV')
+check_contains "--write-dir allows edits under its absolute path" "$ARGV" "--allowedTools Edit(/$WORK/out dir/**)"
+check_contains "and makes it a working directory, so redirects into it are checked as writes there" "$ARGV" "--add-dir $WORK/out dir"
+check_contains "provenance names the write dir" "$OUT" "write_dir=$WORK/out dir"
+
+OUT=$(cd "$WORK" && env -u CREDITS_DELEGATE_DEPTH FAKE_DIR="$WORK" CLAUDE_CREDITS_KEY_FILE="$KEYFILE" PATH="$BIN:$PATH" bash "$SCRIPT" --write-dir "out dir" -- "x" 2>&1)
+check_contains "a relative --write-dir is made absolute" "$OUT" "Edit(/$WORK/out dir/**)"
+
+OUT=$(run --write-dir "$WORK/missing" -- "x")
+check_contains "a --write-dir that does not exist is refused" "$OUT" "no such directory"
+check_missing "and never starts a session" "$OUT" "CLAUDE ARGV"
+
+OUT=$(run --allow "Bash(python3 -I audits/*)" --allow "Read(//etc/hosts)" -- "x")
+ARGV=$(printf '%s\n' "$OUT" | grep 'CLAUDE ARGV')
+check_contains "--allow passes a rule through" "$ARGV" "Bash(python3 -I audits/*)"
+check_contains "--allow can be repeated" "$ARGV" "Read(//etc/hosts)"
+
+for rule in Bash "Bash(*)" Edit Write; do
+  OUT=$(run --allow "$rule" -- "x")
+  check_contains "an unscoped '$rule' is refused" "$OUT" "unscoped"
+  check_missing "an unscoped '$rule' never starts a session" "$OUT" "CLAUDE ARGV"
+done
+
+OUT=$(FAKE_RESULT='{"type":"result","is_error":false,"result":"done","total_cost_usd":0.01,"permission_denials":[{"tool_name":"Write","tool_input":{"file_path":"/x/report.md"}},{"tool_name":"Bash","tool_input":{"command":"python3 part.py"}}]}' run -- "x")
+check_contains "denied tool calls are reported on stderr" "$OUT" "denied: Write /x/report.md"
+check_contains "with the command for Bash" "$OUT" "denied: Bash python3 part.py"
+
+OUT=$(bash "$SCRIPT" --help 2>&1); rc=$?
+check_contains "--help prints usage" "$OUT" "--write-dir"
+check_contains "and exits 0" "rc=$rc" "rc=0"
 
 echo "The preflight:"
 : > "$WORK/curl.log"

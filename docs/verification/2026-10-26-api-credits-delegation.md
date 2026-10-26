@@ -79,6 +79,23 @@ under that organization.
   "$CD/scripts/credits-delegate" --budget 0.001 -- "Read README.md in $CD/../.. and summarise it in 300 words."
   ```
 
+- **A write dir and an allowed helper.** report.md and progress.md must
+  appear in `out/`. stderr must show `denied: Bash echo x > outside.md`, and
+  `outside.md` must not exist:
+
+  ```bash
+  mkdir -p out tools && printf 'print("helper ran")\n' > tools/h.py
+  "$CD/scripts/credits-delegate" --bare --budget 0.05 --write-dir out --allow "Bash(python3 -I tools/*)" -- \
+    "Run python3 -I tools/h.py. Write its output to out/report.md with a heredoc. Run: echo done >> out/progress.md. Then run: echo x > outside.md. Report OK or DENIED per step."
+  ls out; ls outside.md
+  ```
+
+- **Unscoped rules are refused:**
+
+  ```bash
+  "$CD/scripts/credits-delegate" --allow Bash -- "x"     # expect: refusing the unscoped rule
+  ```
+
 - **Nesting.** The script must refuse with `already in progress`:
 
   ```bash
@@ -102,5 +119,5 @@ under that organization.
 These make no network calls and cost nothing:
 
 ```bash
-bash "$CD/tests/test-credits-delegate.sh"     # expect: 51 passed, 0 failed
+bash "$CD/tests/test-credits-delegate.sh"     # expect: 73 passed, 0 failed
 ```

@@ -54,7 +54,7 @@
     {
       "name": "api-credits-delegation",
       "description": "Delegate claude -p runs to the monthly API credits of a Max or Team plan instead of the plan's usage limits. Needs a Console organization linked to the plan and its key in ~/.config/claude-credits/key",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "source": "./plugins/api-credits-delegation"
     }
   ]

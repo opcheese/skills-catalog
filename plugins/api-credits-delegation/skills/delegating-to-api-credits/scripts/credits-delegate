@@ -3,7 +3,18 @@
 # linked to a Max or Team plan, instead of the plan's own usage limits.
 #
 #   credits-delegate [--model NAME] [--budget USD] [--agent NAME] [--cwd DIR]
-#                    [--output text|json|stream-json] [--bare] -- <prompt>
+#                    [--output text|json|stream-json] [--bare]
+#                    [--write-dir DIR] [--allow RULE]... -- <prompt>
+#
+#   --model NAME      default haiku
+#   --budget USD      spend cap per run, default 1 (checked between turns)
+#   --agent NAME      one of your .claude/agents/
+#   --cwd DIR         run there instead of the current directory
+#   --output FORMAT   text (answer only, cost on stderr), json, stream-json
+#   --bare            skip hooks, plugins, CLAUDE.md: far fewer tokens
+#   --write-dir DIR   let the run create and edit files under DIR, and only there
+#   --allow RULE      one more permission rule, e.g. "Bash(python3 -I tools/*)";
+#                     repeatable; unscoped Bash, Edit and Write are refused
 #
 # The plan's API credits cover `claude -p` only when it runs on an API key from
 # the linked organization. Signed in with the plan, the same command draws on
@@ -29,11 +40,13 @@ AGENT=""
 CWD=""
 OUTPUT="text"
 BARE=0
+WRITE_DIR=""
+ALLOW=()
 PROMPT=""
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    --model|--budget|--agent|--cwd|--output)
+    --model|--budget|--agent|--cwd|--output|--write-dir|--allow)
       # `shift 2` on a lone flag fails and leaves $@ unchanged, which spins
       # this loop forever. Require the value before consuming anything.
       [ $# -ge 2 ] || die "missing value for $1"
@@ -43,9 +56,12 @@ while [ $# -gt 0 ]; do
         --agent)  AGENT="$2" ;;
         --cwd)    CWD="$2" ;;
         --output) OUTPUT="$2" ;;
+        --write-dir) WRITE_DIR="$2" ;;
+        --allow)  ALLOW+=("$2") ;;
       esac
       shift 2 ;;
     --bare) BARE=1; shift ;;
+    -h|--help) sed -n '2,/^$/s/^# \{0,1\}//p' "${BASH_SOURCE[0]}"; exit 0 ;;
     --dangerously-skip-permissions|--allow-dangerously-skip-permissions)
       die "refusing --dangerously-skip-permissions; delegation never bypasses permission checks" ;;
     --) shift; PROMPT="$*"; break ;;
@@ -57,6 +73,24 @@ done
 printf '%s' "$BUDGET" | grep -qE '^[0-9]+(\.[0-9]+)?$' || die "--budget must be a dollar amount, got: $BUDGET"
 case "$OUTPUT" in text|json|stream-json) ;; *) die "--output must be text, json or stream-json, got: $OUTPUT" ;; esac
 command -v claude >/dev/null 2>&1 || die "the claude CLI is not on PATH"
+
+# Nothing can approve a prompt in -p, so a tool the caller's settings do not
+# allow is denied. These open exactly what the caller names. An unscoped rule
+# would open every command or every file, which is not a delegation decision
+# this script should make in one word.
+for rule in "${ALLOW[@]}"; do
+  case "$rule" in
+    Bash|"Bash(*)"|"Bash( *)"|Edit|"Edit(*)"|"Edit(**)"|Write|"Write(*)")
+      die "refusing the unscoped rule '$rule'; name the commands or paths, e.g. 'Bash(python3 -I tools/*)'" ;;
+  esac
+done
+if [ -n "$WRITE_DIR" ]; then
+  [ -d "$WRITE_DIR" ] || die "no such directory for --write-dir: $WRITE_DIR"
+  WRITE_DIR="$(cd "$WRITE_DIR" && pwd)"
+  # Edit rules cover the Write tool and shell redirects too; Write(path) rules
+  # never match. `//` anchors the pattern at the filesystem root.
+  ALLOW+=("Edit(/$WRITE_DIR/**)")
+fi
 
 # The key file is the whole credential. Check it here, before any session
 # starts, so a bad file fails with its name instead of an auth error later.
@@ -116,22 +150,27 @@ ARGS=(-p "$PROMPT" --settings "$SETTINGS" --model "$MODEL" --max-budget-usd "$BU
 # Bare mode skips hooks, plugins, CLAUDE.md and auto-memory: fewer input
 # tokens per run. It still reads apiKeyHelper from --settings.
 [ "$BARE" -eq 1 ] && ARGS+=(--bare)
+# A working directory, so a shell redirect into it is judged by the Edit rule
+# rather than refused as a path outside the session.
+[ -n "$WRITE_DIR" ] && ARGS+=(--add-dir "$WRITE_DIR")
+[ ${#ALLOW[@]} -gt 0 ] && ARGS+=(--allowedTools "${ALLOW[@]}")
 
-printf 'credits-delegate: model=%s budget=$%s agent=%s bare=%s auth=api-credits key_file=%s\n' \
-  "$MODEL" "$BUDGET" "${AGENT:-default}" "$BARE" "$KEY_FILE" >&2
+printf 'credits-delegate: model=%s budget=$%s agent=%s bare=%s write_dir=%s allow=%s auth=api-credits key_file=%s\n' \
+  "$MODEL" "$BUDGET" "${AGENT:-default}" "$BARE" "${WRITE_DIR:-none}" "${#ALLOW[@]}" "$KEY_FILE" >&2
 
 CLEAN_ENV=(env -u ANTHROPIC_API_KEY -u ANTHROPIC_AUTH_TOKEN -u ANTHROPIC_BASE_URL
   -u CLAUDE_CODE_OAUTH_TOKEN -u CLAUDE_CODE_USE_BEDROCK -u CLAUDE_CODE_USE_VERTEX
   -u CLAUDE_CODE_USE_FOUNDRY)
 
 case "$OUTPUT" in
-  stream-json) exec "${CLEAN_ENV[@]}" claude "${ARGS[@]}" --output-format stream-json --verbose ;;
-  json)        exec "${CLEAN_ENV[@]}" claude "${ARGS[@]}" --output-format json ;;
+  stream-json) exec "${CLEAN_ENV[@]}" claude "${ARGS[@]}" --output-format stream-json --verbose < /dev/null ;;
+  json)        exec "${CLEAN_ENV[@]}" claude "${ARGS[@]}" --output-format json < /dev/null ;;
 esac
 
 # Text: run as json so the cost can be reported, then print only the answer on
 # stdout and the cost on stderr.
-RAW="$("${CLEAN_ENV[@]}" claude "${ARGS[@]}" --output-format json)"
+# stdin is /dev/null: otherwise claude -p waits 3 s for piped input first.
+RAW="$("${CLEAN_ENV[@]}" claude "${ARGS[@]}" --output-format json < /dev/null)"
 RC=$?
 python3 -c '
 import json, sys
@@ -147,6 +186,12 @@ if d.get("result") is not None:
 # checked between turns, so the cost can land past it.
 for err in d.get("errors") or []:
     sys.stderr.write("credits-delegate: %s (subtype %s)\n" % (err, d.get("subtype")))
+# In text mode the caller sees no tool errors, so a denied write is otherwise
+# invisible until the file it expected is missing.
+for den in d.get("permission_denials") or []:
+    inp = den.get("tool_input") or {}
+    what = inp.get("command") or inp.get("file_path") or inp.get("path") or ""
+    sys.stderr.write("credits-delegate: denied: %s %s\n" % (den.get("tool_name"), what))
 models = ",".join(d.get("modelUsage", {}) or []) or "unknown"
 sys.stderr.write("credits-delegate: cost_usd=%s served_by=%s is_error=%s\n"
                  % (d.get("total_cost_usd"), models, str(d.get("is_error", False)).lower()))
