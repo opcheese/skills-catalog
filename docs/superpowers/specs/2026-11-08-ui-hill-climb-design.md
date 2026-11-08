@@ -34,6 +34,24 @@ out only when a second consumer, such as code review, actually needs it.
 It lives in the skills-catalog marketplace, not in superpowers core, because it
 is UI-specific.
 
+## Two modes: human-piloted and agent-piloted
+
+The same skill and the same output contract serve both modes. The modes differ only in
+who steers between rounds and who signs off.
+
+- **Human-piloted.** After each round the parent shows the score table and the
+  before/after pairs, then asks through the harness's question tool (AskUserQuestion):
+  continue, add a taste constraint, or stop. The human holds the taste veto and gives the
+  final approval. The round cap still applies, but the human may extend it.
+- **Agent-piloted.** Runs unattended within the round cap and the stop rule; no human
+  input mid-run. Taste constraints come only from the constraints file written before the
+  run. It ends by handing over `scores.md`, `changes.json` and `references.json` (in a PR,
+  per the agents spine), and never merges. Galatea's developer seat uses this mode.
+
+The mode is chosen from how the skill was started: a human in the session means
+human-piloted; a headless or scheduled run means agent-piloted. Only the human-piloted
+mode extends the round cap.
+
 ## Rules
 
 - **References in every panel:** competitor screens, or the product's own best
