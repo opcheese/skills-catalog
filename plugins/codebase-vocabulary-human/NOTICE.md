@@ -5,7 +5,7 @@ The skills in this plugin are copied from
 Copyright (c) 2026 Matt Pocock. The full license text is in `LICENSE`.
 
 Provenance: commit `5b15a47f2d7150f545fbcacbfe381787fc0230dc` (2026-08-21).
-Upstream's rename of `CONTEXT.md` to `GLOSSARY.md` (commit `d80fa0f`, 2026-09-17) is applied on top; nothing else from later commits is taken.
+Reconciled with upstream at commit `4ae2317` (2026-11-08): neither skill has changed upstream since.
 
 | Skill | Upstream path |
 |---|---|
@@ -70,7 +70,7 @@ works.
 
 These files are a pinned copy, not a submodule. To refresh them, diff
 against the upstream paths above at a newer commit and re-apply
-deliberately, bumping the provenance SHA here. Everything except the
-guardrails script is unmodified, so those are straight copies; the
-guardrails script needs its branch-awareness re-applied by hand, and the
+deliberately, bumping the provenance SHA here. `domain-modeling` is a straight copy. The guardrails skill is ours in two
+places: its `SKILL.md` and its script carry the branch-aware push rules, and
+both need re-applying by hand, and the
 test suite is what tells you whether you got it right.

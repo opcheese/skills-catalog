@@ -104,14 +104,11 @@ backwards is how you end up with tests that pin the wrong shape in place.
 You rebase onto `main` and hit a conflict in the billing module, because
 somebody else touched retry handling while you were working.
 
-`resolving-merge-conflicts` fires. What it is worth is mostly what it forbids:
-do not invent behaviour that was in neither branch, and never `--abort`. Read
-both intents first — commit messages, the PR, the issue — resolve preserving
-both where possible, then run the project's own checks, because a merge that
-compiles is not a merge that works.
-
-A hundred and seventeen words that mainly stop an agent from doing something
-confident and wrong at the one moment it is least recoverable.
+No skill fires here any more. `resolving-merge-conflicts` was dropped on
+2026-11-08, after its upstream removed it as no longer needed. What it asked
+for is still the right habit: read both intents first (commit messages, the
+PR, the issue), keep both where you can, invent nothing that was on neither
+branch, and run the project's own checks before committing.
 
 ## Finishing — the guardrails
 

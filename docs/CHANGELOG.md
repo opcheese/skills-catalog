@@ -8,6 +8,27 @@ audience: developers
 
 Notable changes to the catalog: what devs install, and what the docs tell them.
 
+## 2026-11-08: codebase-vocabulary reconciled with mattpocock/skills
+
+Checked against upstream commit `4ae2317`.
+
+- **`resolving-merge-conflicts` is gone.** Upstream removed it in v1.3.0 as no longer
+  needed: models resolve conflicts well, and the skill only enforced reading both sides'
+  intent and running the checks. That habit is still right; see `docs/worked-example.md`.
+- **`codebase-design`** takes upstream's one later change: the sub-agents in
+  *Design It Twice* each get a fresh context window.
+- **Both NOTICE files now say what we changed locally.** They used to claim straight
+  copies. The local changes are the *After the design* section in `codebase-design`, and
+  the branch-aware push rules in the guardrails skill and its script.
+- **Five skills new upstream since the last screen, none taken:**
+  - `implement-spec`, `retro`, `chief-of-staff` and `software-factory` are flagged
+    `disable-model-invocation` and would compete with the Superpowers spine;
+  - `pr` would trigger on the same message as finishing-a-development-branch. Its ideas
+    (before/after evidence; a one-way or two-way door with blast radius) are candidates to
+    borrow into the fork's PR template instead.
+
+codebase-vocabulary is now 1.3.0 and codebase-vocabulary-human 1.2.2.
+
 ## 2026-10-26: api-credits-delegation can write where it is told
 
 A first field run, a document review on Sonnet with `--bare`, could not write

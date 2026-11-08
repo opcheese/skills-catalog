@@ -173,7 +173,6 @@ It is split in two, by whether the skill needs you present:
 | Skill | Plugin | Fires when | What it gives you |
 |---|---|---|---|
 | `codebase-design` | codebase-vocabulary | you are deciding where an interface or module boundary goes | the vocabulary — deep modules, seams, adapters, leverage, locality |
-| `resolving-merge-conflicts` | codebase-vocabulary | you are mid-merge or mid-rebase with conflicts | a procedure that does not lose work |
 | `domain-modeling` | codebase-vocabulary-**human** | you are arguing about what a word means, or writing a `GLOSSARY.md` / ADR | a glossary discipline, and a three-part test for whether a decision deserves an ADR |
 | `git-guardrails-claude-code` | codebase-vocabulary-**human** | you run it once per repo | a hook that blocks `reset --hard`, `clean -f`, `checkout .`, `restore .`, force branch deletion (`branch -D`), force pushes, and pushes to a protected branch. Feature-branch pushes still work. |
 

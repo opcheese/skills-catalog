@@ -1,7 +1,7 @@
 {
   "name": "codebase-vocabulary",
-  "description": "Design vocabulary and safety rails that the Superpowers spine does not cover: deep modules and seams, domain glossary and ADRs, merge-conflict resolution, dangerous-git hooks",
-  "version": "1.2.0",
+  "description": "Design vocabulary the Superpowers spine does not cover: deep modules, seams and interfaces",
+  "version": "1.3.0",
   "author": {
     "name": "opcheese"
   },

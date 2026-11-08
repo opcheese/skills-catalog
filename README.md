@@ -50,7 +50,7 @@ and copy-paste ready. What changed recently is in
 |---|---|---|
 | **superpowers-human** | Our [Superpowers](https://github.com/obra/superpowers) fork, `main` branch. The full methodology — brainstorm → spec → plan → implement → review → PR — with human gates kept: a per-task checkpoint that asks you to run the native `/code-review`, and an end-of-run sign-off. | You are working interactively. This is the default for everyone. |
 | **superpowers-agents** | The same fork, `agents` branch. Every human gate is replaced by something an unattended run can actually do: recorded rulings instead of questions, an automated verification gate instead of sign-off, escalation instead of stopping, and always-open-a-PR instead of merging. | You are running `claude -p` with nobody watching. |
-| **codebase-vocabulary** | Two skills from [mattpocock/skills](https://github.com/mattpocock/skills) (MIT, attributed) covering what Superpowers does not: deep modules and seams, and merge-conflict resolution. Neither waits on a person. | Always. It composes with either spine. |
+| **codebase-vocabulary** | One skill from [mattpocock/skills](https://github.com/mattpocock/skills) (MIT, attributed) covering what Superpowers does not: deep modules, seams and interfaces. It never waits on a person. | Always. It composes with either spine. |
 | **codebase-vocabulary-human** | Two more from the same source that need someone at the keyboard: domain glossary and ADR discipline, and a setup skill that installs hooks blocking dangerous git commands. | Interactive work only. See the warning below. |
 | **shadow-learn-memory** | The [shadow learning](https://github.com/Ludentes/Claude-Shadow-Learn) store. Reads your Claude Code, Codex and Kimi transcripts, extracts the corrections and facts worth keeping, and consolidates them into pattern and entity files the agent reads before judgment work. | Interactive work only — every write asks you first. |
 | **kimi-delegation** | Hand a task to Kimi — read-only review and bulk work through its own agents, or Claude Code itself running on its model. Needs either a Kimi Code subscription or a Kimi API key; refuses loudly with neither. | You want a second model's judgment, or want to spare Claude context. |
@@ -205,12 +205,6 @@ that: under test it fires on a repo that has one and declines on a repo that
 does not, without being told. Its three-part test for whether a decision
 deserves an ADR — hard to reverse, surprising without context, a real
 trade-off — earns its place on its own.
-
-**`resolving-merge-conflicts`** is 117 words and has no analogue anywhere in
-Superpowers: read both intents before resolving either, preserve both where
-you can, never invent behaviour, never `--abort`, then run the project's own
-checks. A conflict is exactly where an unsupervised agent does something you
-cannot easily undo.
 
 **`git-guardrails-claude-code`** is the odd one out — not vocabulary but a
 hook, and the only mechanical answer in a catalog otherwise full of procedural
