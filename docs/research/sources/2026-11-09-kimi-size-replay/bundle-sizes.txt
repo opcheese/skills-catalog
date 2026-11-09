@@ -1,0 +1,3 @@
+full 817876 bytes 28 parts
+halfA 415776 bytes 10 parts
+halfB 402159 bytes 18 parts

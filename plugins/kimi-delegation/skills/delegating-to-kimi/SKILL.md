@@ -82,7 +82,7 @@ Claude Code's own permission system:
 | --- | --- | --- |
 | 0 | The delegate finished | Read stdout |
 | 75 | A Kimi quota or rate limit stopped the run. stderr ends with `kimi-delegate: quota-exhausted window=5-hour\|weekly\|unknown reset=window-end` | Move to the next budget, e.g. the Claude API credits. Kimi does not give the reset time. |
-| 65 | Kimi rejected the request itself (`Invalid request`, `tokenization failed`). stderr ends with `kimi-delegate: request-rejected reason=...` | Shrink the input: one bundle of the diff and the touched functions, not whole files, or split the task. The partial reasoning is in stderr. |
+| 65 | Kimi rejected the request itself (`Invalid request`, `tokenization failed`). stderr ends with `kimi-delegate: request-rejected reason=...` | Retry once. The cause is not known, and size is not it: a 255k-token replay passed where the original failed at 85k. If it fails again, shrink the input (one bundle of the diff and the touched functions) or split the task. The partial reasoning is in stderr. |
 | other | The child's own code | Read stderr |
 
 Both limit failures leave stdout empty. A wrapper that only reads stdout for a

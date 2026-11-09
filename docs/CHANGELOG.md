@@ -8,6 +8,12 @@ audience: developers
 
 Notable changes to the catalog: what devs install, and what the docs tell them.
 
+## 2026-11-09: kimi-delegation 1.3.1, exit 65 advice corrected
+
+The S13-C3 replay passed at 255k tokens, where the original run had failed at 85k. So "tokenization
+failed" is not a size limit. Exit 65 now advises retrying once before shrinking the input. The
+evidence is in `docs/research/2026-11-08-ooocv-kimi-field-report.md`.
+
 ## 2026-11-09: kimi-delegation 1.3.0, from OOOCV's field report
 
 Every item from the report (`docs/research/2026-11-08-ooocv-kimi-field-report.md`) is fixed:

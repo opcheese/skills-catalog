@@ -1,0 +1,49 @@
+full events {'context.append_loop_event': 54, 'agent.message.appended': 22, 'llm.request': 11, 'usage.record': 11, 'token_counting.measured': 11, 'context.append_message': 3}
+ read calls 20
+   {"path":"bundle.md","line_offset":1,"max_chars":100000}
+   {"line_offset":1205,"max_chars":100000,"path":"bundle.md"}
+   {"line_offset":2279,"max_chars":100000,"path":"bundle.md"}
+   {"line_offset":3214,"max_chars":100000,"path":"bundle.md"}
+   {"line_offset":4284,"max_chars":100000,"path":"bundle.md"}
+   {"line_offset":5553,"max_chars":100000,"path":"bundle.md"}
+   {"line_offset":6840,"max_chars":100000,"path":"bundle.md"}
+   {"line_offset":8275,"max_chars":100000,"path":"bundle.md"}
+   {"line_offset":9406,"max_chars":100000,"path":"bundle.md"}
+   {"line_offset":10209,"max_chars":100000,"path":"bundle.md"}
+   "{\"
+   "{\"
+   "{\"
+   "{\"
+ max usage fields {'inputOther': 28044}
+halfa events {'context.append_loop_event': 29, 'agent.message.appended': 12, 'llm.request': 6, 'usage.record': 6, 'token_counting.measured': 6, 'context.append_message': 3}
+ read calls 10
+   {"path":"bundle.md","line_offset":1,"max_chars":100000}
+   {"line_offset":1205,"max_chars":100000,"path":"bundle.md"}
+   {"line_offset":2279,"max_chars":100000,"path":"bundle.md"}
+   {"line_offset":3214,"max_chars":100000,"path":"bundle.md"}
+   {"line_offset":4284,"max_chars":100000,"path":"bundle.md"}
+   "{\"
+   "{\"
+   "{\"
+   "{\"
+   "{\"
+ max usage fields {'inputOther': 27690}
+halfb events {'context.append_loop_event': 29, 'agent.message.appended': 12, 'llm.request': 6, 'usage.record': 6, 'token_counting.measured': 6, 'context.append_message': 3}
+ read calls 10
+   {"path":"bundle.md","max_chars":100000}
+   {"line_offset":1315,"max_chars":100000,"path":"bundle.md"}
+   {"line_offset":2735,"max_chars":100000,"path":"bundle.md"}
+   {"line_offset":3861,"max_chars":100000,"path":"bundle.md"}
+   {"line_offset":4677,"max_chars":100000,"path":"bundle.md"}
+   "{\"
+   "{\"
+   "{\"
+   "{\"
+   "{\"
+ max usage fields {'inputOther': 27001}
+full last usage.record: {"type": "usage.record", "agentId": "main", "model": "kimi-for-coding/k3.1-pro", "usage": {"inputOther": 18160, "output": 86, "inputCacheRead": 236544, "inputCacheCreation": 0}, "usageScope": "turn", "time": 1794236937186}
+ last measured: {"type": "token_counting.measured", "agentId": "main", "length": 24, "tokens": 254790, "time": 1794236937186}
+halfa last usage.record: {"type": "usage.record", "agentId": "main", "model": "kimi-for-coding/k3.1-pro", "usage": {"inputOther": 26723, "output": 115, "inputCacheRead": 106496, "inputCacheCreation": 0}, "usageScope": "turn", "time": 1794236978364}
+ last measured: {"type": "token_counting.measured", "agentId": "main", "length": 14, "tokens": 133334, "time": 1794236978365}
+halfb last usage.record: {"type": "usage.record", "agentId": "main", "model": "kimi-for-coding/k3.1-pro", "usage": {"inputOther": 19608, "output": 73, "inputCacheRead": 103424, "inputCacheCreation": 0}, "usageScope": "turn", "time": 1794237013572}
+ last measured: {"type": "token_counting.measured", "agentId": "main", "length": 14, "tokens": 123105, "time": 1794237013572}

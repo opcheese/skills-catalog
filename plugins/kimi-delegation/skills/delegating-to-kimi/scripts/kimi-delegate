@@ -133,7 +133,7 @@ classify_failure() {
   reason="$(printf '%s\n' "$all" | grep -oiE '(invalid request|tokenization failed|context (length|window)|request too large)[^.]*' | head -1)"
   if [ -n "$reason" ]; then
     printf 'kimi-delegate: request-rejected reason=%s\n' "$reason" >&2
-    printf 'kimi-delegate: Kimi refused the request itself. Try a smaller input: one bundle of the diff and the touched functions instead of whole files, or split the task. Any partial reasoning is in the stderr above.\n' >&2
+    printf 'kimi-delegate: Kimi refused the request itself. Retrying once is reasonable: an S13-C3 replay of 255k tokens passed where the original failed at 85k. If it fails again, try a smaller input: one bundle of the diff and the touched functions, or split the task. Any partial reasoning is in the stderr above.\n' >&2
     return 65
   fi
   return "$3"

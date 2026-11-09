@@ -1,0 +1,3 @@
+full rc=0 secs=76 answer====== END OF BUNDLE full — SENTINEL FULL-7Q4 ===== tail=
+halfA rc=0 secs=41 answer====== END OF BUNDLE halfA — SENTINEL HALFA-7Q4 ===== tail=
+halfB rc=0 secs=35 answer====== END OF BUNDLE halfB — SENTINEL HALFB-7Q4 ===== tail=

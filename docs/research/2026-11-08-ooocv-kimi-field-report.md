@@ -98,3 +98,40 @@ Added to the 1.3.0 plan:
 
 See `2026-11-09-kimi-cli-settings.md`. It adds items 8 (a safe environment on every run) and 9
 (`--effort`) to the plan, and corrects SKILL.md's claim that no per-invocation effort dial exists.
+
+## Follow-up, 2026-11-09: S13-C3 replay. Size is ruled out; the cause is not found
+
+The replay ran on `kimi-for-coding/k3.1-pro` (office key), through kimi-delegation 1.3.0. Raw
+outputs are in `sources/2026-11-09-kimi-size-replay/`.
+
+| Run | Bundle | Context at the end | Result |
+| --- | --- | --- | --- |
+| full | 817,876 bytes (diff and all 27 touched files, whole) | 254,790 tokens, 10 contiguous Reads | completed; returned the end marker |
+| halfA | 415,776 bytes | 133,334 tokens | completed |
+| halfB | 402,159 bytes | 123,105 tokens | completed |
+
+The two original failures died at **85,404 and 192,991 tokens**, below what the full replay
+carried. Ruled out, using Kimi's own session wire logs (`~/.kimi-code/sessions/*/agents/main/wire.jsonl`):
+
+- **Request size,** at least up to 255k tokens of this very material.
+- **Bad characters:** no control, surrogate, private-use, unassigned, BOM or U+FFFD characters
+  anywhere in the failed contexts.
+- **Special-token look-alikes** (`<|...|>`, `<s>`, `[EOS]` and similar): none.
+- **Preserved thinking alone:** every run, failed or not, sends `thinkingKeep: all`. The full
+  replay carried 22 encrypted thinking blocks and passed.
+- **Parallel tool calls alone:** the failed runs made 6 and 10 batches of 5–6 calls each, but
+  OOOCV's S13-C4 reviews on the same key and model made 9–10 batches of up to 9 calls and
+  completed.
+
+Still open:
+- **A transient server-side fault.** Both failures fell within four minutes (06:27 and 06:31
+  UTC), and a third S13-C3 session at 07:14 completed. The traceIds are
+  `29fe7b298af12f95217edf1fc341c6b9` and `20c6009405fe8570a74a9bf4e4c48595`.
+- **A content trigger on the server that is invisible client-side.**
+
+The next test that tells them apart: replay OOOCV's exact narrow brief (the `turn.prompt` of
+session `07ba4cd0` holds it) on the same tree. If it completes, the fault was transient.
+
+What changes for users: 1.3.0 already reports this as exit 65 with a hint to shrink the input.
+The hint stays, because shrinking is harmless. But the evidence no longer says size is the
+cause, so the hint now also says that retrying once is reasonable.
