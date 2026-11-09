@@ -1,0 +1,5 @@
+kimi-delegate: via=kimi model=kimi-code/kimi-for-coding served=unconfirmed endpoint=https://api.kimi.com/coding/v1 agent=delegate-readonly (pinned file) auth=subscription-token thinking=on (effort from config.toml)
+kimi version 2.5.1
+error: failed to run prompt: provider.api_error: You've reached your weekly (7-day) usage limit. Your quota will reset when the current 7-day window ends. To continue now, purchase extra usage or upgrade your plan: https://www.kimi.com/settings/subscription?tab=quota
+See log: /home/newub/.kimi-code/logs/kimi-code.log
+kimi-delegate: quota-exhausted window=weekly reset=window-end

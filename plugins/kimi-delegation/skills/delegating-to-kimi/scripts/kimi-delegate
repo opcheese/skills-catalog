@@ -2,7 +2,11 @@
 # Run one delegated task on Kimi and stream the result back.
 #
 #   kimi-delegate --via kimi|claude [--agent NAME] [--cwd DIR]
-#                 [--output text|stream-json] -- <prompt>
+#                 [--output text|stream-json] [--final-only]
+#                 -- <prompt>
+#
+# Exit codes: the child's own, except 75 when a Kimi quota or rate limit
+# stopped the run and 65 when Kimi rejected the request itself.
 #
 # --via kimi    Kimi's own agent system. Defaults to the read-only `explore`
 #               agent, because an unqualified `kimi -p` edits the working
@@ -14,7 +18,11 @@ set -uo pipefail
 
 MIN_KIMI_VERSION="0.38.0"
 KIMI_HOME="${KIMI_CODE_HOME:-$HOME/.kimi-code}"
-DEFAULT_MODEL="k3"
+# k3.1-pro, not k3: on the Kimi Code plan quota is metered per model, and `k3`
+# is the 1M-context variant at about twice the quota. `k3` is also offered by
+# both the managed provider and an imported office key on a typical machine,
+# where an unqualified default is refused as ambiguous.
+DEFAULT_MODEL="k3.1-pro"
 MODEL="${KIMI_DELEGATE_MODEL:-$DEFAULT_MODEL}"
 # Overridable, because a key issued somewhere other than the coding plan is
 # answered somewhere other than the coding plan -- api.moonshot.ai/anthropic,
@@ -64,9 +72,97 @@ die() { printf 'kimi-delegate: %s\n' "$1" >&2; exit 1; }
 # API key and a run on a subscription token are two different accounts, two
 # different bills, and potentially two different model pools. An answer that
 # does not say which one produced it cannot be compared with the next.
+# `served=unconfirmed` because nothing here can see which model answered: Kimi
+# answers HTTP 200 for any name, falls back silently on a mistyped one, and
+# neither its output nor its log names the model that replied.
 provenance() {
-  printf 'kimi-delegate: via=%s model=%s%s endpoint=%s agent=%s auth=%s thinking=%s\n' \
+  printf 'kimi-delegate: via=%s model=%s%s served=unconfirmed endpoint=%s agent=%s auth=%s thinking=%s\n' \
     "$1" "$MODEL" "$MODEL_NOTE" "$3" "$2" "$AUTH" "$4" >&2
+}
+
+# A delegated run must not change the machine under its peers or hang on a
+# spent quota. The CLI's update preflight can install a new version in the
+# background, for every session at once (0.38.0 -> 2.5.1 mid-run, 2026-11-05);
+# infinite retry turns a quota failure into a run that never ends.
+export KIMI_CODE_NO_AUTO_UPDATE=1 KIMI_DISABLE_TELEMETRY=1
+unset KIMI_CODE_INFINITE_RETRY
+
+# Run the delegate, passing its output through live, then classify a failure.
+# Not `exec`: once the child has exited, only this script is left to read why.
+# Quota and rejected-request errors come back as exit 1 with an empty stdout,
+# so a wrapper that reads stdout for a verdict sees "no verdict" and nothing
+# else. FIFOs rather than process substitution, so bash 3.2 runs it too.
+run_child() {
+  local tmp rc po pe child
+  tmp="$(mktemp -d)" || die "cannot create a temporary directory"
+  mkfifo "$tmp/o" "$tmp/e" || die "cannot create FIFOs in $tmp"
+  if [ "$FINAL_ONLY" -eq 1 ]; then
+    cat < "$tmp/o" > "$tmp/out" & po=$!
+  else
+    tee "$tmp/out" < "$tmp/o" & po=$!
+  fi
+  tee "$tmp/err" < "$tmp/e" >&2 & pe=$!
+  # A background job's stdin defaults to /dev/null; give it ours explicitly.
+  "$@" <&0 > "$tmp/o" 2> "$tmp/e" & child=$!
+  trap 'kill -TERM "$child" 2>/dev/null' TERM INT HUP
+  wait "$child"; rc=$?
+  # A trapped signal interrupts wait; wait again for the child's real status.
+  if kill -0 "$child" 2>/dev/null; then wait "$child"; rc=$?; fi
+  trap - TERM INT HUP
+  wait "$po" "$pe" 2>/dev/null
+
+  if [ "$rc" -ne 0 ]; then
+    classify_failure "$tmp/out" "$tmp/err" "$rc"; rc=$?
+  elif [ "$FINAL_ONLY" -eq 1 ]; then
+    final_answer "$tmp/out"; rc=$?
+  fi
+  rm -rf "$tmp"
+  exit "$rc"
+}
+
+classify_failure() {
+  local all window reason
+  all="$(cat "$1" "$2" 2>/dev/null)"
+  if printf '%s' "$all" | grep -qiE 'usage limit|\(429\)|rate limit|too many requests'; then
+    window=unknown
+    if printf '%s' "$all" | grep -qiE '5-hour'; then window=5-hour; fi
+    if printf '%s' "$all" | grep -qiE 'weekly|7-day'; then window=weekly; fi
+    printf 'kimi-delegate: quota-exhausted window=%s reset=window-end\n' "$window" >&2
+    return 75
+  fi
+  reason="$(printf '%s\n' "$all" | grep -oiE '(invalid request|tokenization failed|context (length|window)|request too large)[^.]*' | head -1)"
+  if [ -n "$reason" ]; then
+    printf 'kimi-delegate: request-rejected reason=%s\n' "$reason" >&2
+    printf 'kimi-delegate: Kimi refused the request itself. Try a smaller input: one bundle of the diff and the touched functions instead of whole files, or split the task. Any partial reasoning is in the stderr above.\n' >&2
+    return 65
+  fi
+  return "$3"
+}
+
+# stream-json carries every assistant message in order; the last non-empty one
+# is the answer, and everything before it is progress chatter.
+final_answer() {
+  python3 - "$1" <<'FINALPY'
+import json, sys
+last = None
+for line in open(sys.argv[1], errors="replace"):
+    try:
+        obj = json.loads(line)
+    except ValueError:
+        continue
+    if not isinstance(obj, dict) or obj.get("role") != "assistant":
+        continue
+    content = obj.get("content")
+    if isinstance(content, list):
+        content = "".join(p.get("text", "") for p in content
+                          if isinstance(p, dict) and p.get("type") == "text")
+    if isinstance(content, str) and content.strip():
+        last = content
+if last is None:
+    sys.stderr.write("kimi-delegate: --final-only found no final answer in the output\n")
+    sys.exit(1)
+print(last)
+FINALPY
 }
 
 if [ "${KIMI_DELEGATE_DEPTH:-0}" -ge 1 ]; then
@@ -78,10 +174,13 @@ VIA=""
 AGENT=""
 CWD=""
 OUTPUT="text"
+OUTPUT_SET=0
+FINAL_ONLY=0
 PROMPT=""
 
 while [ $# -gt 0 ]; do
   case "$1" in
+    --final-only) FINAL_ONLY=1; shift ;;
     --via|--agent|--cwd|--output)
       # `shift 2` on a lone flag fails and leaves $@ unchanged, which spins
       # this loop forever. Require the value before consuming anything.
@@ -90,7 +189,7 @@ while [ $# -gt 0 ]; do
         --via)    VIA="$2" ;;
         --agent)  AGENT="$2" ;;
         --cwd)    CWD="$2" ;;
-        --output) OUTPUT="$2" ;;
+        --output) OUTPUT="$2"; OUTPUT_SET=1 ;;
       esac
       shift 2 ;;
     --dangerously-skip-permissions|--allow-dangerously-skip-permissions)
@@ -102,6 +201,9 @@ done
 
 [ -n "$VIA" ] || die "--via kimi|claude is required"
 [ -n "$PROMPT" ] || die "a prompt is required after --"
+if [ "$FINAL_ONLY" -eq 1 ] && [ "$OUTPUT_SET" -eq 1 ]; then
+  die "--final-only reads stream-json itself and prints the answer as text; drop --output"
+fi
 
 KIMI_BIN="${KIMI_BIN:-$(command -v kimi 2>/dev/null || printf '%s' "$KIMI_HOME/bin/kimi")}"
 
@@ -209,10 +311,14 @@ else:
 print("MODELS=" + " ".join(sorted(models)))
 if len(matches) == 1:
     qualified = matches[0]
-    prov = providers.get(qualified.split("/", 1)[0], {})
+    prov = providers.get(qualified.split("/", 1)[0])
     print("QUALIFIED=" + qualified)
-    print("ENDPOINT=" + (prov.get("base_url") or ""))
-    print("AUTHKIND=" + ("subscription-token" if prov.get("oauth") else "provider-api-key"))
+    print("ENDPOINT=" + ((prov or {}).get("base_url") or ""))
+    # A provider the file does not declare tells us nothing about its
+    # credential. Reporting it as a key would be a guess, and the --via claude
+    # guard below refuses on exactly that word.
+    if prov is not None:
+        print("AUTHKIND=" + ("subscription-token" if prov.get("oauth") else "provider-api-key"))
 elif len(matches) > 1:
     print("AMBIGUOUS=" + " ".join(sorted(matches)))
 PYRESOLVE
@@ -249,7 +355,25 @@ purpose: KIMI_DELEGATE_SKIP_MODEL_CHECK=1"
   MODEL_NOTE=" (unverified)"
 elif [ -z "$QUALIFIED" ]; then
   die "'$MODEL' is not a model this Kimi install offers. Available:
-$(printf '%s\n' "$KNOWN_MODELS" | sed 's/^/  /')"
+$(printf '%s\n' "$KNOWN_MODELS" | sed 's/^/  /')
+This list is read from $KIMI_HOME/config.toml and may be stale. The plan's
+models are cached at \`kimi login\`: run it again to refresh them. An imported
+provider's list is hand-written there; add the model under that provider."
+fi
+
+# Path B authenticates with the subscription token or KIMI_API_KEY, never with
+# a provider's own key from config.toml. A model resolved to a key-bearing
+# provider would otherwise run on the subscription, whatever its name says:
+# three passes burned a weekly window that way (2026-10-29).
+if [ "$VIA" = "claude" ] && [ "$RESOLVED_AUTH" = "provider-api-key" ]; then
+  KEY_PROVIDER="${QUALIFIED%%/*}"
+  if [ "$API_KEY_PRESENT" -eq 0 ]; then
+    die "--via claude cannot spend the key of provider '$KEY_PROVIDER': it authenticates
+with the subscription token or KIMI_API_KEY only, so this run would bill the
+subscription. Use --via kimi, which spends that provider's key, or export
+the key as KIMI_API_KEY."
+  fi
+  printf "kimi-delegate: warning: '%s' belongs to provider '%s', but --via claude spends KIMI_API_KEY, not that provider's configured key\n" "$QUALIFIED" "$KEY_PROVIDER" >&2
 fi
 
 # Path A and Path B want different halves of the same name, and conflating them
@@ -274,18 +398,27 @@ case "$VIA" in
   kimi)
     MODEL="$PATHA_MODEL"
     [ -n "$RESOLVED_AUTH" ] && AUTH="$RESOLVED_AUTH"
+    # Kimi documents KIMI_MODEL_THINKING_EFFORT as a per-run override, for
+    # `type = "kimi"` providers only. It is not a flag here: on an
+    # anthropic-type provider it does nothing, and no run has yet shown it
+    # changing anything on the wire. If the caller set it, say so.
+    THINKING="on (effort from config.toml)"
+    if [ -n "${KIMI_MODEL_THINKING_EFFORT:-}" ]; then
+      THINKING="on (KIMI_MODEL_THINKING_EFFORT=$KIMI_MODEL_THINKING_EFFORT, kimi-type providers only)"
+    fi
+    [ "$FINAL_ONLY" -eq 1 ] && OUTPUT="stream-json"
     if [ -n "$AGENT" ]; then
       # An explicitly named agent is the caller's choice, and is resolved by
       # Kimi's normal discovery order -- which a repo-local definition can win.
-      provenance "kimi" "$AGENT (caller's choice, resolved by Kimi)" "$KIMI_CLI_ENDPOINT" "on (effort from config.toml)"
-      exec "$KIMI_BIN" -p "$PROMPT" -m "$MODEL" --agent "$AGENT" --output-format "$OUTPUT"
+      provenance "kimi" "$AGENT (caller's choice, resolved by Kimi)" "$KIMI_CLI_ENDPOINT" "$THINKING"
+      run_child "$KIMI_BIN" -p "$PROMPT" -m "$MODEL" --agent "$AGENT" --output-format "$OUTPUT"
     fi
     # The default is pinned to the definition shipped beside this script.
     # A bare `--agent explore` would be resolved project-first, so any repo
     # could override the read-only built-in and take back write access.
     [ -f "$AGENT_FILE" ] || die "the read-only agent definition is missing: $AGENT_FILE"
-    provenance "kimi" "delegate-readonly (pinned file)" "$KIMI_CLI_ENDPOINT" "on (effort from config.toml)"
-    exec "$KIMI_BIN" -p "$PROMPT" -m "$MODEL" --agent-file "$AGENT_FILE" --output-format "$OUTPUT"
+    provenance "kimi" "delegate-readonly (pinned file)" "$KIMI_CLI_ENDPOINT" "$THINKING"
+    run_child "$KIMI_BIN" -p "$PROMPT" -m "$MODEL" --agent-file "$AGENT_FILE" --output-format "$OUTPUT"
     ;;
   claude)
     command -v claude >/dev/null 2>&1 || die "the claude CLI is not on PATH"
@@ -314,10 +447,12 @@ PY
     [ "$OUTPUT" = "stream-json" ] && OUTPUT_FLAGS+=(--verbose)
     if [ -n "$AGENT" ]; then
       provenance "claude" "$AGENT" "$BASE_URL" "on (no dial exists)"
-      exec claude -p "$PROMPT" --settings "$SETTINGS" --agent "$AGENT" "${OUTPUT_FLAGS[@]}"
+      FINAL_ONLY=0  # claude -p text output is already the final answer only
+      run_child claude -p "$PROMPT" --settings "$SETTINGS" --agent "$AGENT" "${OUTPUT_FLAGS[@]}"
     fi
     provenance "claude" "default" "$BASE_URL" "on (no dial exists)"
-    exec claude -p "$PROMPT" --settings "$SETTINGS" "${OUTPUT_FLAGS[@]}"
+    FINAL_ONLY=0  # claude -p text output is already the final answer only
+    run_child claude -p "$PROMPT" --settings "$SETTINGS" "${OUTPUT_FLAGS[@]}"
     ;;
   *) die "--via must be kimi or claude, got: $VIA" ;;
 esac

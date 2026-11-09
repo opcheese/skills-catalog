@@ -84,7 +84,7 @@ chmod +x "$BIN/claude"
 
 OUT=$(run --via claude --agent reviewer -- "review this")
 check_contains "base url points at kimi" "$OUT" "api.kimi.com/coding"
-check_contains "model defaults to k3" "$OUT" '"ANTHROPIC_MODEL": "k3"'
+check_contains "model defaults to k3.1-pro" "$OUT" '"ANTHROPIC_MODEL": "k3.1-pro"'
 check_contains "apiKeyHelper is an absolute path" "$OUT" "/kimi-credential"
 check_contains "the agent is forwarded" "$OUT" "--agent reviewer"
 check_contains "the prompt is passed" "$OUT" "review this"
@@ -98,6 +98,8 @@ check_contains "stream-json gets the --verbose claude requires" "$OUT" "--output
 cat > "$WORK/home/config.toml" <<'TOML'
 [models."kimi-code/k3"]
 model = "k3"
+[models."kimi-code/k3.1-pro"]
+model = "k3.1-pro"
 [models."kimi-code/kimi-for-coding"]
 model = "kimi-for-coding"
 TOML
@@ -221,11 +223,11 @@ check_contains "but the default still runs when the list is unreadable" "$OUT" "
 
 echo "Every run says what it ran on:"
 cat > "$WORK/home/config.toml" <<'TOML'
-[models."kimi-code/k3"]
-model = "k3"
+[models."kimi-code/k3.1-pro"]
+model = "k3.1-pro"
 TOML
 OUT=$(run --via claude -- "x")
-check_contains "path B reports the model" "$OUT" "model=k3"
+check_contains "path B reports the model" "$OUT" "model=k3.1-pro"
 check_contains "path B reports the endpoint" "$OUT" "endpoint=https://api.kimi.com/coding"
 check_contains "path B reports that thinking is on and unswitchable" "$OUT" "thinking=on"
 OUT=$(run --via kimi -- "x")
@@ -238,8 +240,8 @@ cat > "$WORK/home/config.toml" <<'TOML'
 base_url = "https://api.kimi.com/coding/v1/search"
 [providers."managed:kimi-code"]
 base_url = "https://api.kimi.com/coding/v1"
-[models."kimi-code/k3"]
-model = "k3"
+[models."kimi-code/k3.1-pro"]
+model = "k3.1-pro"
 TOML
 OUT=$(run --via kimi -- "x")
 check_contains "path A reports the provider endpoint" "$OUT" "endpoint=https://api.kimi.com/coding/v1 "
@@ -259,7 +261,7 @@ model = "k3"
 [models."kimi-for-coding/k3"]
 model = "k3"
 TOML
-OUT=$(run --via kimi -- "x" 2>&1 || true)
+OUT=$(KIMI_DELEGATE_MODEL=k3 run --via kimi -- "x" 2>&1 || true)
 check_contains "a bare name offered by two providers is refused" "$OUT" "more than one provider"
 check_contains "and both candidates are named" "$OUT" "kimi-for-coding/k3"
 check_missing "and nothing is sent" "$OUT" "KIMI ARGV"
@@ -286,8 +288,8 @@ cat > "$WORK/home/config.toml" <<'TOML'
 base_url = "https://api.kimi.com/coding/v1"
 [providers."managed:kimi-code".oauth]
 storage = "file"
-[models."kimi-code/k3"]
-model = "k3"
+[models."kimi-code/k3.1-pro"]
+model = "k3.1-pro"
 TOML
 
 # The banner must not contaminate the delegated answer.
@@ -353,7 +355,7 @@ check_contains "and the refusal names the way through" "$OUT" "KIMI_DELEGATE_SKI
 # The run must say so, or the provenance line claims more than it knows.
 OUT=$(run_bare KIMI_API_KEY=sk-fixture-key -- --via claude -- "x")
 check_contains "the default still runs when there is no list" "$OUT" "CLAUDE ARGV"
-check_contains "but provenance does not pretend it was checked" "$OUT" "model=k3 (unverified)"
+check_contains "but provenance does not pretend it was checked" "$OUT" "model=k3.1-pro (unverified)"
 
 # The same default, on an install that does declare a model list, IS checked.
 # The marker must not leak onto a run that earned its verification.
@@ -374,6 +376,113 @@ check_contains "which still refuses by name" "$OUT" "not a model this Kimi insta
 # Without a key, nothing about the old route changes.
 OUT=$(run --via claude -- "x")
 check_contains "the subscription route still reports its credential type" "$OUT" "auth=subscription"
+
+
+echo "1.3.0: the default model is k3.1-pro, not the double-quota k3:"
+cat > "$WORK/home/config.toml" <<'TOML'
+[providers."managed:kimi-code"]
+base_url = "https://api.kimi.com/coding/v1"
+[providers."managed:kimi-code".oauth]
+storage = "file"
+[providers.kimi-for-coding]
+base_url = "https://api.kimi.com/coding"
+api_key = "sk-fixture"
+[models."kimi-code/k3"]
+model = "k3"
+[models."kimi-for-coding/k3"]
+model = "k3"
+[models."kimi-code/k3.1-pro"]
+model = "k3.1-pro"
+[models."kimi-for-coding/kimi-for-coding"]
+model = "kimi-for-coding"
+TOML
+printf '#!/usr/bin/env bash\nif [ "$1" = "--version" ]; then echo "2.5.1"; exit 0; fi\necho "KIMI ARGV: $*"\nenv | grep -E "^KIMI_(CODE_NO_AUTO_UPDATE|DISABLE_TELEMETRY|CODE_INFINITE_RETRY|MODEL_THINKING_EFFORT)=" | sed "s/^/KIMI ENV: /"\n' > "$BIN/kimi"
+chmod +x "$BIN/kimi"
+OUT=$(run --via kimi -- "x")
+check_contains "the default reaches the wire as k3.1-pro" "$OUT" "-m kimi-code/k3.1-pro"
+check_missing "the default is not ambiguous when two providers offer k3" "$OUT" "more than one provider"
+
+echo "1.3.0: a refused model says the list may be stale:"
+OUT=$(KIMI_DELEGATE_MODEL=k9-new run --via kimi -- "x")
+check_contains "the refusal names kimi login" "$OUT" "kimi login"
+check_contains "and says imported providers are hand-written" "$OUT" "hand-written"
+
+echo "1.3.0: provenance does not claim the served model:"
+OUT=$(run --via kimi -- "x")
+check_contains "provenance says the served model is unconfirmed" "$OUT" "served=unconfirmed"
+
+echo "1.3.0: a safe environment on every run:"
+OUT=$(KIMI_CODE_INFINITE_RETRY=1 run --via kimi -- "x")
+check_contains "auto-update is off" "$OUT" "KIMI ENV: KIMI_CODE_NO_AUTO_UPDATE=1"
+check_contains "telemetry is off" "$OUT" "KIMI ENV: KIMI_DISABLE_TELEMETRY=1"
+check_missing "infinite retry is cleared" "$OUT" "KIMI_CODE_INFINITE_RETRY"
+
+echo "1.3.0: a caller's own effort override is reported, never invented:"
+OUT=$(KIMI_MODEL_THINKING_EFFORT=max run --via kimi -- "x")
+check_contains "a caller-set effort is passed through" "$OUT" "KIMI ENV: KIMI_MODEL_THINKING_EFFORT=max"
+check_contains "and provenance names it" "$OUT" "KIMI_MODEL_THINKING_EFFORT=max, kimi-type providers only"
+OUT=$(run --via kimi -- "x")
+check_missing "no effort is forced by default" "$OUT" "KIMI_MODEL_THINKING_EFFORT"
+OUT=$(run --via kimi --effort max -- "x")
+check_contains "there is no --effort flag" "$OUT" "unknown argument: --effort"
+
+echo "1.3.0: --via claude never silently spends the wrong account:"
+OUT=$(KIMI_DELEGATE_MODEL=kimi-for-coding/kimi-for-coding run --via claude -- "x")
+check_contains "a key-bearing provider with --via claude is refused" "$OUT" "cannot spend the key of provider"
+check_contains "and the refusal points at --via kimi" "$OUT" "--via kimi"
+check_missing "and nothing runs" "$OUT" "CLAUDE ARGV"
+OUT=$(env KIMI_API_KEY=sk-fixture-key KIMI_CODE_HOME="$WORK/home" KIMI_DELEGATE_MODEL=kimi-for-coding/kimi-for-coding PATH="$BIN:$PATH" bash "$SCRIPT" --via claude -- "x" 2>&1)
+check_contains "with an env key it runs" "$OUT" "CLAUDE ARGV"
+check_contains "but warns which key is spent" "$OUT" "spends KIMI_API_KEY"
+OUT=$(KIMI_DELEGATE_MODEL=kimi-code/k3.1-pro run --via claude -- "x")
+check_contains "the subscription provider still runs on path B" "$OUT" "CLAUDE ARGV"
+
+echo "1.3.0: quota and rejected requests get their own exit codes:"
+fake_fail() {
+  # $1 = stream for the message (out|err), $2 = message
+  local redir='>&2'; [ "$1" = out ] && redir=''
+  printf '#!/usr/bin/env bash\nif [ "$1" = "--version" ]; then echo "2.5.1"; exit 0; fi\necho "• thinking about it" >&2\neval "printf \\"%%s\\\\n\\" \\"$FAKE_MSG\\" %s"\nexit 1\n' "$redir" > "$BIN/kimi"
+  chmod +x "$BIN/kimi"
+}
+fake_fail err
+OUT=$(FAKE_MSG="error: failed to run prompt: provider.api_error: You've reached your 5-hour usage limit. Your quota will reset when the current 5-hour window ends." run --via kimi -- "x"); RC=$?
+check_contains "a 5-hour limit exits 75" "rc=$RC" "rc=75"
+check_contains "with one parsable line" "$OUT" "kimi-delegate: quota-exhausted window=5-hour reset=window-end"
+check_contains "and the reason still shows" "$OUT" "5-hour usage limit"
+OUT=$(FAKE_MSG="error: failed to run prompt: provider.api_error: You've reached your weekly (7-day) usage limit." run --via kimi -- "x"); RC=$?
+check_contains "a weekly limit exits 75" "rc=$RC" "rc=75"
+check_contains "and names the weekly window" "$OUT" "window=weekly"
+fake_fail out
+OUT=$(FAKE_MSG="API Error: Request rejected (429) · You've reached your 5-hour usage limit." run --via kimi -- "x"); RC=$?
+check_contains "a 429 on stdout (path B's shape) is caught too" "rc=$RC" "rc=75"
+fake_fail err
+OUT=$(FAKE_MSG="error: failed to run prompt: provider.api_error: Invalid request: tokenization failed" run --via kimi -- "x"); RC=$?
+check_contains "a rejected request exits 65" "rc=$RC" "rc=65"
+check_contains "with a parsable line" "$OUT" "kimi-delegate: request-rejected reason="
+check_contains "and a hint to shrink the input" "$OUT" "smaller"
+check_contains "and the partial reasoning still reached stderr" "$OUT" "thinking about it"
+OUT=$(FAKE_MSG="something else broke" run --via kimi -- "x"); RC=$?
+check_contains "any other failure keeps the child's exit code" "rc=$RC" "rc=1"
+check_missing "and is not labelled" "$OUT" "quota-exhausted"
+
+echo "1.3.0: --final-only prints only the final answer:"
+cat > "$BIN/kimi" <<'EOF'
+#!/usr/bin/env bash
+if [ "$1" = "--version" ]; then echo "2.5.1"; exit 0; fi
+case "$*" in *"--output-format stream-json"*) ;; *) echo "• not stream-json: $*"; exit 0 ;; esac
+echo '{"role":"meta","type":"system.version","version":"2.5.1"}'
+echo '{"role":"assistant","content":"I will read the files first."}'
+echo '{"role":"assistant","content":[{"type":"text","text":"# Verdict\nCLEAN"}]}'
+echo '{"role":"meta","type":"session.resume_hint","content":"To resume"}'
+EOF
+chmod +x "$BIN/kimi"
+ONLY=$(KIMI_CODE_HOME="$WORK/home" PATH="$BIN:$PATH" bash "$SCRIPT" --via kimi --final-only -- "x" 2>/dev/null)
+check_contains "the last assistant message is printed" "$ONLY" "# Verdict"
+check_missing "progress chatter is dropped" "$ONLY" "read the files first"
+check_missing "meta lines are dropped" "$ONLY" "resume"
+check_missing "no bullet prefix" "$ONLY" "•"
+OUT=$(run --via kimi --final-only --output stream-json -- "x")
+check_contains "--final-only with --output stream-json is refused" "$OUT" "--final-only"
 
 printf '\n%d passed, %d failed\n' "$PASS" "$FAIL"
 [ "$FAIL" -eq 0 ]

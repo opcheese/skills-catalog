@@ -1,0 +1,5 @@
+kimi-delegate: via=kimi model=kimi-for-coding/kimi-for-coding served=unconfirmed endpoint=https://api.kimi.com/coding agent=delegate-readonly (pinned file) auth=provider-api-key thinking=on (effort from config.toml)
+kimi version 2.5.1
+• The user wants me to read version.txt in the current directory and reply with "# Version" then its contents. Let me read the file.The file contains "2.5.1". Reply in two lines: "# Version" then its contents.
+
+To resume this session: kimi -r session_23ff8acf-9349-4a98-af4e-a9d6e3c5e20e

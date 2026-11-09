@@ -142,7 +142,7 @@ Either works, and they buy different things:
 On a key-only machine there is no Kimi CLI config, so there is no model list
 to check a name against, and that changes how the model argument behaves:
 
-- The default, `k3`, is still sent — blocking it would break every delegation
+- The default, `k3.1-pro`, is still sent — blocking it would break every delegation
   over a config we merely failed to parse — but it is not checked. It is a
   Kimi Code plan name; if your key is not on that plan, Kimi answers HTTP 200
   with some other model rather than an error, and you are billed for it.

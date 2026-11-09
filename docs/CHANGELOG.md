@@ -8,6 +8,34 @@ audience: developers
 
 Notable changes to the catalog: what devs install, and what the docs tell them.
 
+## 2026-11-09: kimi-delegation 1.3.0, from OOOCV's field report
+
+Every item from the report (`docs/research/2026-11-08-ooocv-kimi-field-report.md`) is fixed:
+
+- **The default model is `k3.1-pro`,** not `k3`. `k3` is the 1M-context variant at about twice
+  the quota, and on a machine with both the subscription and the office key it was refused as
+  ambiguous.
+- **Exit 75 when a quota or rate limit stops a run,** with one line:
+  `quota-exhausted window=5-hour|weekly|unknown`. **Exit 65 when Kimi rejects the request**
+  (`tokenization failed`), with a hint to shrink the input. Both used to be exit 1 with an empty
+  stdout.
+- **`--via claude` refuses a model on a key-bearing provider** when no `KIMI_API_KEY` is set.
+  It used to bill the subscription in silence.
+- **A refused model name says the list may be stale** (cached at `kimi login`, or hand-written
+  for an imported provider).
+- **The provenance line says `served=unconfirmed`,** because nothing can see which model
+  answered.
+- **`--final-only`** prints only the final answer (Path A reads stream-json for it).
+- **Every run sets `KIMI_CODE_NO_AUTO_UPDATE=1` and `KIMI_DISABLE_TELEMETRY=1`,** and unsets
+  `KIMI_CODE_INFINITE_RETRY`.
+- **Docs:** the per-model quota cost; `api_key_env` and `overrides` for imported providers; K3.1
+  Pro rejects thinking-off; a reviewer's counterexample is checked against the production write
+  path before anyone acts on it.
+
+No `--effort` flag. Kimi's `KIMI_MODEL_THINKING_EFFORT` works on `kimi`-type providers only. The
+office key is `anthropic`-type, and there it made no measurable difference. It stays a documented
+pass-through until a run on the subscription shows it working.
+
 ## 2026-11-08: codebase-vocabulary reconciled with mattpocock/skills
 
 Checked against upstream commit `4ae2317`.
