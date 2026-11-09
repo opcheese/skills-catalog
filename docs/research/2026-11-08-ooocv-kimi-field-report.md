@@ -61,3 +61,35 @@ formats. Its stderr is a third real sample of the quota message. Resume once the
 - **Tests first,** in the hermetic `test-kimi-delegate.sh`, for each item (fake `kimi` and
   `claude` that print the 5-hour and weekly messages). Then one live run per path once quota
   is back.
+
+## Follow-up, 2026-11-09: "tokenization failed" (OOOCV, S13-C3)
+
+Two `--via kimi` reviews on `kimi-for-coding/k3.1-pro` (office key) died with
+`provider.api_error: Invalid request: tokenization failed`, rc 1 and empty stdout. Checked
+locally without spending quota:
+
+- **Not the model alias or the account.** Four runs on the same alias and key succeeded
+  between 03:35 and 05:45 (S13-C2, S13-C4).
+- **Not bad bytes.** The patch (98,665 bytes) and all 27 files it touches (707,493 bytes) are
+  valid UTF-8, with no control characters, BOMs, private-use or astral code points. The text is
+  heavily Cyrillic.
+- **Kimi's log records nothing about it,** only unrelated index-flush warnings.
+- **Likely cause, unconfirmed: request size.** If the agent reads every touched file whole, the
+  request is about 800 KB of text, mostly Cyrillic, which tokenizes densely. The second brief
+  asked for touched functions only, but the read-only agent's Read tool may still load whole
+  files.
+- **The office provider entry is hand-written** (`config.toml:136`). It differs from the plan's
+  `kimi-code/k3.1-pro` entry: no `always_thinking` and no `dynamically_loaded_tools`
+  capability, and a `max_output_size` of 131072. That is not the cause, since the same entry
+  succeeded earlier, but it is item 2 in practice.
+- **The partial reasoning is already kept.** In CLI 2.5.1 the text format writes thinking to
+  stderr (the `•` lines), so the stderr file holds the half-written findings. That also settles
+  part of item 6: in text mode, stdout carries only the answer.
+
+Added to the 1.3.0 plan:
+- **7. Request-rejected errors:** match `provider.api_error: Invalid request` and exit 65,
+  with `kimi-delegate: request-rejected reason=<text>` and a hint to shrink the input (pass the
+  diff and function excerpts, not whole files) or split the review. Keep the stderr path in that
+  line so the partial reasoning is easy to find.
+- **To confirm once quota is back:** replay S13-C3 with a pre-cut excerpt bundle. If it passes,
+  size is the cause; then bisect for the threshold.
