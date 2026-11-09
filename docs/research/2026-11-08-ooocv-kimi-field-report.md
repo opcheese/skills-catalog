@@ -32,3 +32,32 @@ runs from 05.11 to 08.11. Their full evidence is in `~/w/ooocv/.demo-ooocv/.buil
 
 - **K3.1 Pro** is a strong reviewer: it found real blockers in a code review, and all eight findings of a design review were confirmed. Quota is its practical limit.
 - **K2.8 Preview** (`kimi-for-coding`) is good for mechanical coding and drafting, not for reviews.
+
+## Fix plan for 1.3.0 (paused 2026-11-08: the 5-hour quota is spent)
+
+The output-shape probe in `sources/2026-11-08-kimi-output-probe/` hit the 5-hour limit on both
+formats. Its stderr is a third real sample of the quota message. Resume once the window resets.
+
+- **1. Default model:** change `DEFAULT_MODEL` to `k3.1-pro`. An ambiguous bare name stays
+  refused: the script never picks which account to bill.
+- **2. Stale list:** the "not a model" refusal adds that the plan's list is cached at
+  `kimi login` (run it again), and that an imported provider's list is hand-written in
+  `config.toml`. SKILL.md says the same.
+- **3. Served model:** the provenance line gains `served=unconfirmed`, and SKILL.md carries a
+  caveat about the silent fallback to K2.8 Preview.
+- **4. Quota:** run the child instead of `exec`-ing it, and tee its stdout and stderr. On a
+  non-zero exit, match `usage limit` or `(429)` and exit 75, with one line:
+  `kimi-delegate: quota-exhausted window=5-hour|weekly|unknown reset=window-end`. Kimi gives no
+  reset time. Path A reports it on stderr (`provider.api_error`); Path B on stdout
+  (`API Error: Request rejected (429)`).
+- **5. `--via claude` with a provider-qualified model:** if the provider holds its own key
+  (not OAuth) and no `KIMI_API_KEY` is set, refuse, naming `--via kimi`. If a key is set, warn
+  that the env key is what gets spent.
+- **6. Output:** add `--final-only`. Its shape needs the probe to finish first: does the text
+  format put thinking on stdout, and what does stream-json's final assistant message look like?
+- **Docs:** per-model quota cost; K3.1 Pro rejects thinking-off; switching model mid-session
+  loses the cache; CLI upgrades are machine-wide; check both quota windows; under *Do not*,
+  check a reviewer's counterexample against the production write path.
+- **Tests first,** in the hermetic `test-kimi-delegate.sh`, for each item (fake `kimi` and
+  `claude` that print the 5-hour and weekly messages). Then one live run per path once quota
+  is back.
