@@ -93,3 +93,8 @@ Added to the 1.3.0 plan:
   line so the partial reasoning is easy to find.
 - **To confirm once quota is back:** replay S13-C3 with a pre-cut excerpt bundle. If it passes,
   size is the cause; then bisect for the threshold.
+
+## Follow-up, 2026-11-09: CLI settings
+
+See `2026-11-09-kimi-cli-settings.md`. It adds items 8 (a safe environment on every run) and 9
+(`--effort`) to the plan, and corrects SKILL.md's claim that no per-invocation effort dial exists.

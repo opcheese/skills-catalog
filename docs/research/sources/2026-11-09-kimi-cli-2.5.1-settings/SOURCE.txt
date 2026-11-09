@@ -1,0 +1,5 @@
+Kimi Code CLI 2.5.1 settings sources, collected 2026-11-09.
+- *.html: raw pages from https://moonshotai.github.io/kimi-code/en/..., as served (status, URL and sha256 prefix in fetch-log.tsv; customization/subagents is a 404)
+- *.txt beside them: text extracted mechanically by a local script
+- env-vars-from-binary.txt: every KIMI_* / MOONSHOT_* name found by `strings` in ~/.kimi-code/bin/kimi (2.5.1), with occurrence counts
+- env-var-contexts.txt: up to two source contexts per name from the same binary

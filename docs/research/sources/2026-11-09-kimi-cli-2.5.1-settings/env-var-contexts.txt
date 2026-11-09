@@ -1,0 +1,698 @@
+=== KIMI_CODE_BASE_URL
+rride("KIMI_OAUTH_HOST") ?? "https://auth.kimi.com", 		clientId: "17e5f671-d194-4dfb-9706-5516cb48c098" // ../../packages/oauth/src/managed-usage.ts function kimiCodeBaseUrl() { 	return (process.env["KIMI_CODE_BASE_URL"] ?? "https://api.kimi.com/coding/v1").replace(/\/+$/, ""); function kimiCodeUsageUrl() { 	return `${kimiCodeBaseUrl()}/usages`; function isManagedKimiCodeBaseUrl(baseUrl) { 	if (baseUrl === void 0) return false; 	const candidate = parseNormalizedUr
+
+=== KIMI_CODE_BASE_URL
+n isManagedKimiCodeBaseUrl(baseUrl) { 	if (baseUrl === void 0) return false; 	const candidate = parseNormalizedUrl(baseUrl); 	if (candidate === void 0) return false; 	const envOverride = process.env["KIMI_CODE_BASE_URL"]; 	return (envOverride !== void 0 ? [envOverride] : [DEFAULT_KIMI_CODE_BASE_URL, GLOBAL_KIMI_CODE_BASE_URL]).some((url) => parseNormalizedUrl(url) === candidate); function parseNormalizedUrl(value) { 	try { 		const url = new URL(value); 		return `$
+
+=== KIMI_CODE_OAUTH_HOST
+in browser bundles that have no `process` global (browser consumers of the ./device entry land on the default host). */ function envOverride(key) { 	return globalThis.process?.env?.[key]; var DEFAULT_KIMI_CODE_OAUTH_HOST, KIMI_CODE_FLOW_CONFIG; var init_constants$7 = __esmMin((() => { 	DEFAULT_KIMI_CODE_OAUTH_HOST = "https://auth.kimi.com"; 	KIMI_CODE_FLOW_CONFIG = { 		name: "kimi-code", 		oauthHost: envOverride("KIMI_CODE_OAUTH_HOST") ?? envOverride("KIMI_OAUTH_HOS
+
+=== KIMI_CODE_OAUTH_HOST
+on the default host). */ function envOverride(key) { 	return globalThis.process?.env?.[key]; var DEFAULT_KIMI_CODE_OAUTH_HOST, KIMI_CODE_FLOW_CONFIG; var init_constants$7 = __esmMin((() => { 	DEFAULT_KIMI_CODE_OAUTH_HOST = "https://auth.kimi.com"; 	KIMI_CODE_FLOW_CONFIG = { 		name: "kimi-code", 		oauthHost: envOverride("KIMI_CODE_OAUTH_HOST") ?? envOverride("KIMI_OAUTH_HOST") ?? "https://auth.kimi.com", 		clientId: "17e5f671-d194-4dfb-9706-5516cb48c098" // ../../pac
+
+=== KIMI_OAUTH_HOST
+nstants$7 = __esmMin((() => { 	DEFAULT_KIMI_CODE_OAUTH_HOST = "https://auth.kimi.com"; 	KIMI_CODE_FLOW_CONFIG = { 		name: "kimi-code", 		oauthHost: envOverride("KIMI_CODE_OAUTH_HOST") ?? envOverride("KIMI_OAUTH_HOST") ?? "https://auth.kimi.com", 		clientId: "17e5f671-d194-4dfb-9706-5516cb48c098" // ../../packages/oauth/src/managed-usage.ts function kimiCodeBaseUrl() { 	return (process.env["KIMI_CODE_BASE_URL"] ?? "https://api.kimi.com/coding/v1").replace(/\/+$/
+
+=== KIMI_OAUTH_HOST
+uthHost: oauthRef.oauthHost function kimiCodeEnvBaseUrl(env = process.env) { 	return env.KIMI_CODE_BASE_URL; function kimiCodeEnvOAuthHost(env = process.env) { 	return env.KIMI_CODE_OAUTH_HOST ?? env.KIMI_OAUTH_HOST; function resolveKimiCodeOAuthKey(options) { 	const oauthHost = normalizeEndpoint(options.oauthHost ?? "https://auth.kimi.com"); 	const baseUrl = defaultBaseUrl(options.baseUrl); 	if (oauthHost === normalizeEndpoint("https://auth.kimi.com") && SHARE
+
+=== KIMI_CODE_HOME
+lDeviceImpl ?? ((config, deviceCode) => pollDeviceToken(config, deviceCode, { deviceHeaders: this.resolveDeviceHeaders() })); 			const envConfigDir = process.env["NODE_ENV"] === "test" ? process.env["KIMI_CODE_HOME"] : void 0; 			this.configDir = options.configDir ?? envConfigDir; 		resolveDeviceHeaders() { 			return this.deviceHeaders?.(); 		async loadState() { 			return classifyToken(await this.storage.load(this.config.name)); 		notifyRefresh(outcome) { 			i
+
+=== KIMI_CODE_HOME
+RKER_FILENAME), "utf-8"); 	} catch { 		return; 	const value = raw.trim(); 	return value === "mainland-cn" || value === "global" ? value : void 0; function defaultHomeDir(env) { 	const override = env["KIMI_CODE_HOME"]; 	if (override !== void 0 && override.length > 0) return override; 	return (0, node_path.join)((0, node_os.homedir)(), ".kimi-code"); * The env   login   marker   default resolution prefix as a pure function: * every input arrives as a value, so c
+
+=== KIMI_CODE_PLUGIN_MARKETPLACE_URL
+		local, 		latest 	return { 		kind: "up-to-date", 		version: local function resolveMarketplaceLocation(source, workDir) { 	const trimmed = source.trim(); 	if (trimmed.length === 0) throw new Error(`${KIMI_CODE_PLUGIN_MARKETPLACE_URL_ENV} cannot be empty.`); 	if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) return { 		raw: trimmed, 		kind: "remote", 		resolved: trimmed 	if (trimmed.startsWith("file://")) return { 		raw: trimmed, 		kind: "local", 		resolved: (
+
+=== KIMI_CODE_PLUGIN_MARKETPLACE_URL
+{ 	return typeof value === "object" && value !== null && !Array.isArray(value); function formatParseError(error) { 	return error instanceof Error ? error.message : String(error); var import_semver$5, KIMI_CODE_PLUGIN_MARKETPLACE_URL_ENV, PLUGIN_MARKETPLACE_CLASSIFICATIONS, PLUGIN_MARKETPLACE_TIERS, PLUGIN_MARKETPLACE_PLATFORMS, PLUGIN_MARKETPLACE_CLIENTS; var init_marketplace = __esmMin((() => { 	init_src$14(); 	import_semver$5 = require_semver(); 	KIMI_CODE_PLUGIN_MARKETPLACE_
+
+=== KIMI_MODEL_MAX_OUTPUT_SIZE
+_SIZE")); 			const maxContextSize = maxContextRaw === void 0 ? DEFAULT_MAX_CONTEXT_SIZE$1 : parsePositiveInt$2(maxContextRaw, "KIMI_MODEL_MAX_CONTEXT_SIZE"); 			const maxOutputRaw = trimmed$1(getEnv("KIMI_MODEL_MAX_OUTPUT_SIZE")); 			const maxOutputSize = maxOutputRaw === void 0 ? void 0 : parsePositiveInt$2(maxOutputRaw, "KIMI_MODEL_MAX_OUTPUT_SIZE"); 			const capabilities = parseCapabilities$1(getEnv("KIMI_MODEL_CAPABILITIES")) ?? DEFAULT_CAPABILITIES$1; 			const displa
+
+=== KIMI_MODEL_MAX_OUTPUT_SIZE
+ "KIMI_MODEL_MAX_CONTEXT_SIZE"); 			const maxOutputRaw = trimmed$1(getEnv("KIMI_MODEL_MAX_OUTPUT_SIZE")); 			const maxOutputSize = maxOutputRaw === void 0 ? void 0 : parsePositiveInt$2(maxOutputRaw, "KIMI_MODEL_MAX_OUTPUT_SIZE"); 			const capabilities = parseCapabilities$1(getEnv("KIMI_MODEL_CAPABILITIES")) ?? DEFAULT_CAPABILITIES$1; 			const displayName = trimmed$1(getEnv("KIMI_MODEL_DISPLAY_NAME")); 			const reasoningKey = trimmed$1(getEnv("KIMI_MODEL_REASONING_KEY")); 
+
+=== KIMI_MODEL_MAX_CONTEXT_SIZE
+ens 				}); 				if (modelOverrides !== void 0) { 					effective["modelOverrides"] = modelOverrides; 					changed.push("modelOverrides"); 				return changed; 			const maxContextRaw = trimmed$1(getEnv("KIMI_MODEL_MAX_CONTEXT_SIZE")); 			const maxContextSize = maxContextRaw === void 0 ? DEFAULT_MAX_CONTEXT_SIZE$1 : parsePositiveInt$2(maxContextRaw, "KIMI_MODEL_MAX_CONTEXT_SIZE"); 			const maxOutputRaw = trimmed$1(getEnv("KIMI_MODEL_MAX_OUTPUT_SIZE")); 			const maxOutputSize =
+
+=== KIMI_MODEL_MAX_CONTEXT_SIZE
+hanged; 			const maxContextRaw = trimmed$1(getEnv("KIMI_MODEL_MAX_CONTEXT_SIZE")); 			const maxContextSize = maxContextRaw === void 0 ? DEFAULT_MAX_CONTEXT_SIZE$1 : parsePositiveInt$2(maxContextRaw, "KIMI_MODEL_MAX_CONTEXT_SIZE"); 			const maxOutputRaw = trimmed$1(getEnv("KIMI_MODEL_MAX_OUTPUT_SIZE")); 			const maxOutputSize = maxOutputRaw === void 0 ? void 0 : parsePositiveInt$2(maxOutputRaw, "KIMI_MODEL_MAX_OUTPUT_SIZE"); 			const capabilities = parseCapabilities$1(getEn
+
+=== KIMI_MODEL_ADAPTIVE_THINKING
+ES$1; 			const displayName = trimmed$1(getEnv("KIMI_MODEL_DISPLAY_NAME")); 			const reasoningKey = trimmed$1(getEnv("KIMI_MODEL_REASONING_KEY")); 			const adaptiveThinking = parseBooleanVar$1(getEnv("KIMI_MODEL_ADAPTIVE_THINKING"), "KIMI_MODEL_ADAPTIVE_THINKING"); 			const alias = { 				provider: ENV_MODEL_PROVIDER_KEY$1, 				model, 				maxContextSize, 				capabilities 			if (displayName !== void 0) alias["displayName"] = displayName; 			if (maxOutputSize !== void 0) alias[
+
+=== KIMI_MODEL_ADAPTIVE_THINKING
+med$1(getEnv("KIMI_MODEL_DISPLAY_NAME")); 			const reasoningKey = trimmed$1(getEnv("KIMI_MODEL_REASONING_KEY")); 			const adaptiveThinking = parseBooleanVar$1(getEnv("KIMI_MODEL_ADAPTIVE_THINKING"), "KIMI_MODEL_ADAPTIVE_THINKING"); 			const alias = { 				provider: ENV_MODEL_PROVIDER_KEY$1, 				model, 				maxContextSize, 				capabilities 			if (displayName !== void 0) alias["displayName"] = displayName; 			if (maxOutputSize !== void 0) alias["maxOutputSize"] = maxOutputSize;
+
+=== KIMI_CODE_REGION_MARKER
+strap) { 			super(); 			this.providers = providers; 			this.resolver = createKimiRegionResolver({ 				homeDir: bootstrap.homeDir, 				env: kimiRegionEnv(bootstrap), 				readMarker: (bootstrap.getEnv("KIMI_CODE_REGION_MARKER") ?? process.env["KIMI_CODE_REGION_MARKER"]) !== "off", 				readAuth: () => { 					if (!this.providerHydrated) return { status: "unreadable" }; 					const ref = this.providers.get(KIMI_CODE_PROVIDER_NAME)?.oauth; 					return ref === void 0 ? { statu
+
+=== KIMI_CODE_REGION_MARKER
+roviders; 			this.resolver = createKimiRegionResolver({ 				homeDir: bootstrap.homeDir, 				env: kimiRegionEnv(bootstrap), 				readMarker: (bootstrap.getEnv("KIMI_CODE_REGION_MARKER") ?? process.env["KIMI_CODE_REGION_MARKER"]) !== "off", 				readAuth: () => { 					if (!this.providerHydrated) return { status: "unreadable" }; 					const ref = this.providers.get(KIMI_CODE_PROVIDER_NAME)?.oauth; 					return ref === void 0 ? { status: "logged-out" } : { 						status: "logge
+
+=== KIMI_API_KEY
+s * Resolves the Bearer key for `type: 'kimi'` providers: the inline `apiKey` * wins, then a declared `apiKeyEnv` naming an environment variable (read from * `process.env` at refresh time), with `env.KIMI_API_KEY` as the documented * config-file fallback. A declared `apiKeyEnv` whose variable is unset or * empty throws   silently falling through to another key source could send * requests (and bill) under the wrong account. * Credential conflicts (`apiKey`+`
+
+=== KIMI_API_KEY
+ 		if (value === void 0) throw new Error(apiKeyEnvMissingMessage(providerName, declared.apiKeyEnv)); 		return value; 	if (isRecord$26(provider.env)) { 		const fromEnv = nonEmptyString$6(provider.env["KIMI_API_KEY"]); 		if (fromEnv !== void 0) { 			if (provider.oauth !== void 0) throw new Error(credentialConflictMessage("Provider", providerName, "apiKey", "oauth")); 			return fromEnv; function readProvider(config, providerId) { 	const provider = config.provid
+
+=== KIMI_STARTUP_TRACE
+nc)(logPath, `${(performance.now() - t0).toFixed(0).padStart(7)}ms ${label}\n`); 	} catch {} var enabled$1, logPath, t0, prepared; var init_startup_trace = __esmMin((() => { 	enabled$1 = process.env["KIMI_STARTUP_TRACE"] !== void 0 && process.env["KIMI_STARTUP_TRACE"] !== ""; 	logPath = process.env["KIMI_STARTUP_TRACE_LOG"] ?? "/tmp/kimi-startup-trace.log"; 	t0 = performance.now(); 	prepared = false; // src/cli/host-identity.ts function createKimiCodeHostIdentity(
+
+=== KIMI_STARTUP_TRACE
+(0).padStart(7)}ms ${label}\n`); 	} catch {} var enabled$1, logPath, t0, prepared; var init_startup_trace = __esmMin((() => { 	enabled$1 = process.env["KIMI_STARTUP_TRACE"] !== void 0 && process.env["KIMI_STARTUP_TRACE"] !== ""; 	logPath = process.env["KIMI_STARTUP_TRACE_LOG"] ?? "/tmp/kimi-startup-trace.log"; 	t0 = performance.now(); 	prepared = false; // src/cli/host-identity.ts function createKimiCodeHostIdentity(version = getVersion()) { 	return { 		productNam
+
+=== KIMI_SHARE_DIR
+= __esmMin((() => { 	init_src$6(); // src/migration/legacy-source.ts function resolveLegacySourceHome(env, home, cwd) { 	const defaultHome = (0, node_path.join)(home, ".kimi"); 	const shareDir = env["KIMI_SHARE_DIR"]; 	if (shareDir === void 0 || shareDir.trim() === "") return { 		sourceHome: defaultHome, 		origin: "default" 	const sourceHome = (0, node_path.isAbsolute)(shareDir) ? (0, node_path.resolve)(shareDir) : (0, node_path.resolve)(cwd, shareDir); 	retur
+
+=== KIMI_SHARE_DIR
+`[kimi-migrate ${timestamp()}] ${msg}`); 	const source = resolveLegacySourceHome(resolved.env, resolved.userHome, resolved.cwd); 	log(`source: ${source.sourceHome} (${source.origin === "share-dir" ? "KIMI_SHARE_DIR" : "default ~/.kimi"})`); 	if (source.skillsSourceHome !== void 0) log(`skills source: ${source.skillsSourceHome} (kimi-cli skills are not relocated by KIMI_SHARE_DIR)`); 	log(`target: ${resolved.targetHome}`); 	if (sameLegacyPath(source.sourceHome,
+
+=== KIMI_MODEL_TOP_P
+idate) { 			const model = trimmed$1(getEnv("KIMI_MODEL_NAME")); 			const temperature = parseFloatEnv(getEnv("KIMI_MODEL_TEMPERATURE"), "KIMI_MODEL_TEMPERATURE"); 			const topP = parseFloatEnv(getEnv("KIMI_MODEL_TOP_P"), "KIMI_MODEL_TOP_P"); 			const thinkingKeep = trimmed$1(getEnv("KIMI_MODEL_THINKING_KEEP")); 			const maxCompletionTokens = parseCompletionTokens(getEnv("KIMI_MODEL_MAX_COMPLETION_TOKENS")) ?? parseCompletionTokens(getEnv("KIMI_MODEL_MAX_TOKENS"))
+
+=== KIMI_MODEL_TOP_P
+el = trimmed$1(getEnv("KIMI_MODEL_NAME")); 			const temperature = parseFloatEnv(getEnv("KIMI_MODEL_TEMPERATURE"), "KIMI_MODEL_TEMPERATURE"); 			const topP = parseFloatEnv(getEnv("KIMI_MODEL_TOP_P"), "KIMI_MODEL_TOP_P"); 			const thinkingKeep = trimmed$1(getEnv("KIMI_MODEL_THINKING_KEEP")); 			const maxCompletionTokens = parseCompletionTokens(getEnv("KIMI_MODEL_MAX_COMPLETION_TOKENS")) ?? parseCompletionTokens(getEnv("KIMI_MODEL_MAX_TOKENS")); 			const changed = 
+
+=== KIMI_MODEL_THINKING_EFFORT
+bled: boolean().optional(), 		effort: string().optional(), 		forcedEffort: string().optional(), 		keep: string().optional() 	thinkingEnvBindings = envBindings(ThinkingConfigSchema$1, { forcedEffort: "KIMI_MODEL_THINKING_EFFORT" }); 	stripThinkingEnv = (value) => { 		const result = { ...value }; 		delete result.forcedEffort; 		return result; 	registerConfigSection(THINKING_SECTION, ThinkingConfigSchema$1, { 		env: thinkingEnvBindings, 		stripEnv: stripThinkingEnv 	MODEL_CA
+
+=== KIMI_MODEL_THINKING_EFFORT
+OutputSize !== void 0 ? { maxOutputSize } : {}, 		...reasoningKey !== void 0 ? { reasoningKey } : {}, 		...adaptiveThinking !== void 0 ? { adaptiveThinking } : {} 	const thinkingEffort = trimmed(env["KIMI_MODEL_THINKING_EFFORT"]); 	const thinking = thinkingEffort !== void 0 ? { 		...config.thinking, 		effort: thinkingEffort 	} : config.thinking; 	return validateConfig({ 		...config, 		providers: { 			...config.providers, 			[ENV_MODEL_PROVIDER_KEY]: provider 		models: { 	
+
+=== KIMI_MODEL_TEMPERATURE
+ITIES$1 = ["image_in", "thinking"]; 	kimiModelEnvOverlay = { 		apply(effective, getEnv, validate) { 			const model = trimmed$1(getEnv("KIMI_MODEL_NAME")); 			const temperature = parseFloatEnv(getEnv("KIMI_MODEL_TEMPERATURE"), "KIMI_MODEL_TEMPERATURE"); 			const topP = parseFloatEnv(getEnv("KIMI_MODEL_TOP_P"), "KIMI_MODEL_TOP_P"); 			const thinkingKeep = trimmed$1(getEnv("KIMI_MODEL_THINKING_KEEP")); 			const maxCompletionTokens = parseCompletionTokens(getEnv("KIMI_MOD
+
+=== KIMI_MODEL_TEMPERATURE
+nking"]; 	kimiModelEnvOverlay = { 		apply(effective, getEnv, validate) { 			const model = trimmed$1(getEnv("KIMI_MODEL_NAME")); 			const temperature = parseFloatEnv(getEnv("KIMI_MODEL_TEMPERATURE"), "KIMI_MODEL_TEMPERATURE"); 			const topP = parseFloatEnv(getEnv("KIMI_MODEL_TOP_P"), "KIMI_MODEL_TOP_P"); 			const thinkingKeep = trimmed$1(getEnv("KIMI_MODEL_THINKING_KEEP")); 			const maxCompletionTokens = parseCompletionTokens(getEnv("KIMI_MODEL_MAX_COMPLETION_TOKENS"))
+
+=== KIMI_MODEL_REASONING_KEY
+ties = parseCapabilities$1(getEnv("KIMI_MODEL_CAPABILITIES")) ?? DEFAULT_CAPABILITIES$1; 			const displayName = trimmed$1(getEnv("KIMI_MODEL_DISPLAY_NAME")); 			const reasoningKey = trimmed$1(getEnv("KIMI_MODEL_REASONING_KEY")); 			const adaptiveThinking = parseBooleanVar$1(getEnv("KIMI_MODEL_ADAPTIVE_THINKING"), "KIMI_MODEL_ADAPTIVE_THINKING"); 			const alias = { 				provider: ENV_MODEL_PROVIDER_KEY$1, 				model, 				maxContextSize, 				capabilities 			if (displayName 
+
+=== KIMI_MODEL_REASONING_KEY
+id 0; 	const capabilities = parseCapabilities(env["KIMI_MODEL_CAPABILITIES"]) ?? DEFAULT_CAPABILITIES; 	const displayName = trimmed(env["KIMI_MODEL_DISPLAY_NAME"]); 	const reasoningKey = trimmed(env["KIMI_MODEL_REASONING_KEY"]); 	const adaptiveThinking = parseBooleanVar(env["KIMI_MODEL_ADAPTIVE_THINKING"], "KIMI_MODEL_ADAPTIVE_THINKING"); 	const alias = { 		provider: ENV_MODEL_PROVIDER_KEY, 		model, 		maxContextSize, 		capabilities, 		...displayName !== void 0 ? { displ
+
+=== KIMI_MODEL_PROVIDER_TYPE
+ng(), ProviderConfigSchema$1); 	providersEnvBindings = envBindings(ProvidersSectionSchema, { [ENV_MODEL_PROVIDER_KEY$1]: envBindings(ProviderConfigSchema$1, { 		apiKey: "KIMI_MODEL_API_KEY", 		type: "KIMI_MODEL_PROVIDER_TYPE", 		baseUrl: "KIMI_MODEL_BASE_URL" 	}) }); 	stripProvidersEnv = (value) => { 		if (value === void 0 || value === null || typeof value !== "object") return value; 		if (!("__kimi_env__" in value)) return value; 		const out = { ...value }; 		delete ou
+
+=== KIMI_MODEL_PROVIDER_TYPE
+r, got "${raw}".`); 	return Number(raw); function parseProviderType(raw) { 	if (raw === void 0) return "kimi"; 	const normalized = raw.toLowerCase(); 	if (!ALLOWED_TYPES.includes(normalized)) fail$2(`KIMI_MODEL_PROVIDER_TYPE must be one of ${ALLOWED_TYPES.join(", ")}, got "${raw}".`); 	return normalized; function parseCapabilities(raw) { 	if (raw === void 0) return void 0; 	const caps = raw.split(",").map((c) => c.trim().toLowerCase()).filter((c) => c.length > 0); 	retu
+
+=== KIMI_MODEL_OUTPUT_FORMAT
+it_app$2(); // src/cli/options.ts function isOutputFormat(value) { 	return OUTPUT_FORMATS.includes(value); * Resolve the effective `-p` output format. * Precedence: explicit `--output-format` flag   `KIMI_MODEL_OUTPUT_FORMAT` env * (prompt mode only)   `text`. The env var is ignored outside prompt mode so an * ambient value never affects interactive `kimi`. An invalid env value fails * fast via `OptionConflictError`. function resolveOutputFormat(opts, env = process.env)
+
+=== KIMI_MODEL_OUTPUT_FORMAT
+tionConflictError`. function resolveOutputFormat(opts, env = process.env) { 	if (opts.outputFormat !== void 0) return opts.outputFormat; 	if (opts.prompt === void 0) return "text"; 	const raw = (env["KIMI_MODEL_OUTPUT_FORMAT"] ?? "").trim(); 	if (raw.length === 0) return "text"; 	if (!isOutputFormat(raw)) throw new OptionConflictError(`Invalid ${OUTPUT_FORMAT_ENV} value "${raw}". Expected one of: text, stream-json.`); 	return raw; function validateOptions(opts, env = pr
+
+=== KIMI_MODEL_NAME
+_model__"; 	DEFAULT_MAX_CONTEXT_SIZE$1 = 262144; 	DEFAULT_CAPABILITIES$1 = ["image_in", "thinking"]; 	kimiModelEnvOverlay = { 		apply(effective, getEnv, validate) { 			const model = trimmed$1(getEnv("KIMI_MODEL_NAME")); 			const temperature = parseFloatEnv(getEnv("KIMI_MODEL_TEMPERATURE"), "KIMI_MODEL_TEMPERATURE"); 			const topP = parseFloatEnv(getEnv("KIMI_MODEL_TOP_P"), "KIMI_MODEL_TOP_P"); 			const thinkingKeep = trimmed$1(getEnv("KIMI_MODEL_THINKING_KEEP")
+
+=== KIMI_MODEL_NAME
+=== void 0) fail$2(`${varName} must be a boolean (true/false/1/0/yes/no/on/off), got "${raw}".`); 	return parsed; function applyEnvModelConfig(config, env = process.env) { 	const model = trimmed(env["KIMI_MODEL_NAME"]); 	if (model === void 0) return config; 	const apiKey = trimmed(env["KIMI_MODEL_API_KEY"]); 	if (apiKey === void 0) fail$2("KIMI_MODEL_NAME is set but KIMI_MODEL_API_KEY is missing."); 	const maxContextRaw = trimmed(env["KIMI_MODEL_MAX_CONTEXT_SIZ
+
+=== KIMI_MODEL_DISPLAY_NAME
+veInt$2(maxOutputRaw, "KIMI_MODEL_MAX_OUTPUT_SIZE"); 			const capabilities = parseCapabilities$1(getEnv("KIMI_MODEL_CAPABILITIES")) ?? DEFAULT_CAPABILITIES$1; 			const displayName = trimmed$1(getEnv("KIMI_MODEL_DISPLAY_NAME")); 			const reasoningKey = trimmed$1(getEnv("KIMI_MODEL_REASONING_KEY")); 			const adaptiveThinking = parseBooleanVar$1(getEnv("KIMI_MODEL_ADAPTIVE_THINKING"), "KIMI_MODEL_ADAPTIVE_THINKING"); 			const alias = { 				provider: ENV_MODEL_PROVIDER_KEY
+
+=== KIMI_MODEL_DISPLAY_NAME
+rsePositiveInt(maxOutputRaw, "KIMI_MODEL_MAX_OUTPUT_SIZE") : void 0; 	const capabilities = parseCapabilities(env["KIMI_MODEL_CAPABILITIES"]) ?? DEFAULT_CAPABILITIES; 	const displayName = trimmed(env["KIMI_MODEL_DISPLAY_NAME"]); 	const reasoningKey = trimmed(env["KIMI_MODEL_REASONING_KEY"]); 	const adaptiveThinking = parseBooleanVar(env["KIMI_MODEL_ADAPTIVE_THINKING"], "KIMI_MODEL_ADAPTIVE_THINKING"); 	const alias = { 		provider: ENV_MODEL_PROVIDER_KEY, 		model, 		maxCo
+
+=== KIMI_MODEL_CAPABILITIES
+DEL_MAX_OUTPUT_SIZE")); 			const maxOutputSize = maxOutputRaw === void 0 ? void 0 : parsePositiveInt$2(maxOutputRaw, "KIMI_MODEL_MAX_OUTPUT_SIZE"); 			const capabilities = parseCapabilities$1(getEnv("KIMI_MODEL_CAPABILITIES")) ?? DEFAULT_CAPABILITIES$1; 			const displayName = trimmed$1(getEnv("KIMI_MODEL_DISPLAY_NAME")); 			const reasoningKey = trimmed$1(getEnv("KIMI_MODEL_REASONING_KEY")); 			const adaptiveThinking = parseBooleanVar$1(getEnv("KIMI_MODEL_ADAPTIVE_THINK
+
+=== KIMI_MODEL_CAPABILITIES
+nv["KIMI_MODEL_MAX_OUTPUT_SIZE"]); 	const maxOutputSize = maxOutputRaw !== void 0 ? parsePositiveInt(maxOutputRaw, "KIMI_MODEL_MAX_OUTPUT_SIZE") : void 0; 	const capabilities = parseCapabilities(env["KIMI_MODEL_CAPABILITIES"]) ?? DEFAULT_CAPABILITIES; 	const displayName = trimmed(env["KIMI_MODEL_DISPLAY_NAME"]); 	const reasoningKey = trimmed(env["KIMI_MODEL_REASONING_KEY"]); 	const adaptiveThinking = parseBooleanVar(env["KIMI_MODEL_ADAPTIVE_THINKING"], "KIMI_MODEL_ADAP
+
+=== KIMI_MODEL_BASE_URL
+rsEnvBindings = envBindings(ProvidersSectionSchema, { [ENV_MODEL_PROVIDER_KEY$1]: envBindings(ProviderConfigSchema$1, { 		apiKey: "KIMI_MODEL_API_KEY", 		type: "KIMI_MODEL_PROVIDER_TYPE", 		baseUrl: "KIMI_MODEL_BASE_URL" 	}) }); 	stripProvidersEnv = (value) => { 		if (value === void 0 || value === null || typeof value !== "object") return value; 		if (!("__kimi_env__" in value)) return value; 		const out = { ...value }; 		delete out[ENV_MODEL_PROVIDER_KEY$1]; 		ret
+
+=== KIMI_MODEL_BASE_URL
+0 ? DEFAULT_MAX_CONTEXT_SIZE : parsePositiveInt(maxContextRaw, "KIMI_MODEL_MAX_CONTEXT_SIZE"); 	const type = parseProviderType(trimmed(env["KIMI_MODEL_PROVIDER_TYPE"])); 	const baseUrl = trimmed(env["KIMI_MODEL_BASE_URL"]) ?? DEFAULT_BASE_URL[type]; 	const provider = { 		type, 		apiKey, 		...baseUrl !== void 0 ? { baseUrl } : {} 	const maxOutputRaw = trimmed(env["KIMI_MODEL_MAX_OUTPUT_SIZE"]); 	const maxOutputSize = maxOutputRaw !== void 0 ? parsePositiveInt(maxOut
+
+=== KIMI_MODEL_API_KEY
+sSectionSchema = record$1(string(), ProviderConfigSchema$1); 	providersEnvBindings = envBindings(ProvidersSectionSchema, { [ENV_MODEL_PROVIDER_KEY$1]: envBindings(ProviderConfigSchema$1, { 		apiKey: "KIMI_MODEL_API_KEY", 		type: "KIMI_MODEL_PROVIDER_TYPE", 		baseUrl: "KIMI_MODEL_BASE_URL" 	}) }); 	stripProvidersEnv = (value) => { 		if (value === void 0 || value === null || typeof value !== "object") return value; 		if (!("__kimi_env__" in value)) return value; 		c
+
+=== KIMI_MODEL_API_KEY
+{raw}".`); 	return parsed; function applyEnvModelConfig(config, env = process.env) { 	const model = trimmed(env["KIMI_MODEL_NAME"]); 	if (model === void 0) return config; 	const apiKey = trimmed(env["KIMI_MODEL_API_KEY"]); 	if (apiKey === void 0) fail$2("KIMI_MODEL_NAME is set but KIMI_MODEL_API_KEY is missing."); 	const maxContextRaw = trimmed(env["KIMI_MODEL_MAX_CONTEXT_SIZE"]); 	const maxContextSize = maxContextRaw === void 0 ? DEFAULT_MAX_CONTEXT_SIZE : parseP
+
+=== KIMI_DISABLE_TELEMETRY
+tch(() => {}); var TELEMETRY_DISABLE_ENV$1, TRUE_ENV_VALUES; var init_bootstrap = __esmMin((() => { 	init_client(); 	init_sink(); 	init_systemMetrics(); 	init_transport(); 	TELEMETRY_DISABLE_ENV$1 = "KIMI_DISABLE_TELEMETRY"; 	TRUE_ENV_VALUES = /* @__PURE__ */ new Set([ 		"1", 		"true", 		"t", 		"yes", // ../../packages/telemetry/src/crash.ts function setCrashPhase(nextPhase) { 	phase = nextPhase; function installCrashHandlers() { 	return installCrashHandlersForClient(
+
+=== KIMI_DISABLE_TELEMETRY
+_SHUTDOWN_TIMEOUT_MS; var init_telemetry = __esmMin((() => { 	init_src$10(); 	init_src$14(); 	SERVER_TELEMETRY_APP_NAME = "kimi-code-cli"; 	SERVER_TELEMETRY_UI_MODE = "web"; 	TELEMETRY_DISABLE_ENV = "KIMI_DISABLE_TELEMETRY"; 	TELEMETRY_DISABLE_ENV_VALUES = /* @__PURE__ */ new Set([ 		"1", 		"true", 		"t", 		"yes", 	TELEMETRY_SHUTDOWN_TIMEOUT_MS = 3e3; // ../../packages/kap-server/src/services/sessionRating.ts function createServerSessionRating(core, options) { 	const 
+
+=== KIMI_CODE_UPDATE_REEXEC
+CODE_UPDATE_INSTALL_LOCK_FILE_NAME, KIMI_CODE_UPDATE_ROLLOUT_LOG_FILE_NAME, KIMI_CODE_PLUGIN_UPDATE_NOTICE_STATE_FILE_NAME, KIMI_CODE_NATIVE_STAGING_DIR_NAME, KIMI_CODE_NATIVE_STAGED_STATE_FILE_NAME, KIMI_CODE_UPDATE_REEXEC_ENV, KIMI_CODE_INPUT_HISTORY_DIR_NAME, KIMI_CODE_BANNER_DIR_NAME, KIMI_CODE_BANNER_STATE_FILE_NAME, KIMI_CODE_RECOMMENDED_EFFORT_STATE_FILE_NAME, KIMI_CODE_MODEL_MIGRATION_STATE_FILE_NAME, DEFAULT_OAUTH_PROVIDER_NAME, OAUTH_LOGIN_REQUIRED_CODE, FEED
+
+=== KIMI_CODE_UPDATE_REEXEC
+E = "rollout.log"; 	KIMI_CODE_PLUGIN_UPDATE_NOTICE_STATE_FILE_NAME = "plugin-notices.json"; 	KIMI_CODE_NATIVE_STAGING_DIR_NAME = ".staging"; 	KIMI_CODE_NATIVE_STAGED_STATE_FILE_NAME = "staged.json"; 	KIMI_CODE_UPDATE_REEXEC_ENV = "KIMI_CODE_UPDATE_REEXEC"; 	KIMI_CODE_INPUT_HISTORY_DIR_NAME = "user-history"; 	KIMI_CODE_BANNER_DIR_NAME = "banner"; 	KIMI_CODE_BANNER_STATE_FILE_NAME = "state.json"; 	KIMI_CODE_RECOMMENDED_EFFORT_STATE_FILE_NAME = "recommended-effort-state.j
+
+=== KIMI_CODE_UPDATE_CHANNEL
+nstallSource, env = process.env) { 	if (installSource === "homebrew") return { 		channel: "stable", 		origin: "homebrew" 	const installed = updateChannelForVersion(currentVersion); 	const raw = (env["KIMI_CODE_UPDATE_CHANNEL"] ?? "").trim(); 	if (raw === "") return { 		channel: installed, 		origin: "default" 	const normalized = raw.toLowerCase(); 	if (normalized === "stable" || normalized === "canary") return { 		channel: normalized, 		origin: "env" 	return { 		channel:
+
+=== KIMI_CODE_UPDATE_CHANNEL
+: "none" }; 	return { 		kind: "upgrade", 		target var import_semver, UPDATE_CHANNEL_ENV; var init_select = __esmMin((() => { 	import_semver = require_semver(); 	init_types$4(); 	UPDATE_CHANNEL_ENV = "KIMI_CODE_UPDATE_CHANNEL"; // src/cli/update/install-state.ts async function readUpdateInstallState(filePath = getUpdateInstallStateFile()) { 	try { 		return await readJsonFile(filePath, UpdateInstallStateSchema, emptyUpdateInstallState()); 	} catch { 		return emptyUpdateIn
+
+=== KIMI_CODE_SSH_ASKPASS_TOKEN
+ let http2 = require("http2"); // ../../packages/agent-core-v2/src/remote/askpass.ts function isSshAskpassEnvironment(env = process.env) { 	return env["KIMI_CODE_SSH_ASKPASS_PORT"] !== void 0 && env["KIMI_CODE_SSH_ASKPASS_TOKEN"] !== void 0; function runSshAskpass(env = process.env) { 	const port = Number(env[SSH_ASKPASS_PORT_ENV]); 	const token = env[SSH_ASKPASS_TOKEN_ENV]; 	if (!Number.isInteger(port) || port <= 0 || port > 65535 || token === void 0 || token.length === 0
+
+=== KIMI_CODE_SSH_ASKPASS_TOKEN
+on("error", () => { 			finish(1); var SSH_ASKPASS_PORT_ENV, SSH_ASKPASS_TOKEN_ENV; var init_askpass = __esmMin((() => { 	SSH_ASKPASS_PORT_ENV = "KIMI_CODE_SSH_ASKPASS_PORT"; 	SSH_ASKPASS_TOKEN_ENV = "KIMI_CODE_SSH_ASKPASS_TOKEN"; // src/cli/build-info.ts function optionalBuildString(value) { 	return typeof value === "string" && value.length > 0 ? value : void 0; var KIMI_BUILD_INFO; var init_build_info = __esmMin((() => { 	KIMI_BUILD_INFO = { 		version: optionalBuildString
+
+=== KIMI_CODE_SSH_ASKPASS_PORT
+ne_promises = require("node:readline/promises"); let http2 = require("http2"); // ../../packages/agent-core-v2/src/remote/askpass.ts function isSshAskpassEnvironment(env = process.env) { 	return env["KIMI_CODE_SSH_ASKPASS_PORT"] !== void 0 && env["KIMI_CODE_SSH_ASKPASS_TOKEN"] !== void 0; function runSshAskpass(env = process.env) { 	const port = Number(env[SSH_ASKPASS_PORT_ENV]); 	const token = env[SSH_ASKPASS_TOKEN_ENV]; 	if (!Number.isInteger(port) || port <= 0 || port 
+
+=== KIMI_CODE_SSH_ASKPASS_PORT
+0, result.value); 			} catch { 				finish(1); 		socket.on("error", () => { 			finish(1); var SSH_ASKPASS_PORT_ENV, SSH_ASKPASS_TOKEN_ENV; var init_askpass = __esmMin((() => { 	SSH_ASKPASS_PORT_ENV = "KIMI_CODE_SSH_ASKPASS_PORT"; 	SSH_ASKPASS_TOKEN_ENV = "KIMI_CODE_SSH_ASKPASS_TOKEN"; // src/cli/build-info.ts function optionalBuildString(value) { 	return typeof value === "string" && value.length > 0 ? value : void 0; var KIMI_BUILD_INFO; var init_build_info = __esmMin((() 
+
+=== KIMI_CODE_PLUGIN_MARKETPLACE_FROM_DEV_SERVER
+tMarketplace() { 			return (await this.load()).marketplace; 		async isDefaultMarketplace() { 			if (this.bootstrap.getEnv("KIMI_CODE_PLUGIN_MARKETPLACE_URL") !== void 0) return this.bootstrap.getEnv("KIMI_CODE_PLUGIN_MARKETPLACE_FROM_DEV_SERVER") === "1"; 			return true; 		async resolveInstall(marketplaceId, expectedVersion, expectedSha256, marketplaceSource) { 			if (marketplaceId === "kimi-webbridge") throw new Error2(ErrorCodes$1.VALIDATION_FAILED, "Marketplace plugin \"kimi-webbridge\"
+
+=== KIMI_CODE_PLUGIN_MARKETPLACE_FROM_DEV_SERVER
+tions?.marketplaceSource); function isDefaultMarketplaceCatalog(source, env = process.env) { 	if (source !== void 0) return false; 	if (env["KIMI_CODE_PLUGIN_MARKETPLACE_URL"] !== void 0) return env["KIMI_CODE_PLUGIN_MARKETPLACE_FROM_DEV_SERVER"] === "1"; 	return true; async function loadMarketplaceCatalog(host, panel, source) { 	try { 		const catalog = await loadPluginMarketplace({ 			workDir: host.state.appState.workDir, 			source, 			reconcileAvailability: async (changed) => { 				if (!
+
+=== KIMI_CODE_PASSWORD
+(((exports, module) => { 	module.exports = require_bcrypt(); // ../../packages/kap-server/src/services/auth/password.ts async function resolvePasswordHash(env = process.env) { 	const plaintext = env["KIMI_CODE_PASSWORD"]; 	if (!plaintext) return; 	return hash(plaintext, BCRYPT_COST); async function verifyPassword(candidate, passwordHash) { 	if (passwordHash === void 0) return false; 	return compare(candidate, passwordHash); var import_bcryptjs, compare, hash, BCRY
+
+=== KIMI_CODE_PASSWORD
+-loopback host without TLS   use a reverse proxy or tunnel in production"); 		if (!passwordConfigured) logger.warn({ 			host, 			exposureClass 		}, "binding non-loopback host with token-only auth (no KIMI_CODE_PASSWORD)   the bearer token printed in the startup banner is the only credential protecting this server"); 	const modelCatalogRefreshScheduler = new ModelCatalogRefreshScheduler(core.accessor.get(IProviderDiscoveryService), core.accessor.get(IConfigService)
+
+=== KIMI_CODE_EXPERIMENTAL_FLAG
+oid 0) return this.state(def, override, "env", configValue); 			if (configValue !== void 0) return this.state(def, configValue, "config", configValue); 			if (parseBooleanEnv$1(this.bootstrap.getEnv("KIMI_CODE_EXPERIMENTAL_FLAG")) === true) return this.state(def, true, "master-env", configValue); 			return this.state(def, def.default, "default", void 0); 		snapshot() { 			return Object.fromEntries(this.registry.list().map((def) => [def.id, this.enabled(def.id)])); 		enable
+
+=== KIMI_CODE_EXPERIMENTAL_FLAG
+env") return `id ${feature.id}   ${source}`; 	return `id ${feature.id}   ${source}   ${feature.env}`; function sourceLabel(feature) { 	switch (feature.source) { 		case "master-env": return "locked by KIMI_CODE_EXPERIMENTAL_FLAG"; 		case "env": return `locked by ${feature.env}`; 		case "config": return "config"; 		case "default": return "default"; function wrapText(text, width) { 	const maxWidth = Math.max(1, width); 	const words = text.trim().split(/\s+/).filter((word) => 
+
+=== KIMI_CODE_BUILTIN_PRODUCT_SKILLS
+vailableSkillsConfigSchema, { defaultValue: true }); 	BUILTIN_PRODUCT_SKILLS_SECTION = "builtinProductSkills"; 	BuiltinProductSkillsConfigSchema = boolean().optional(); 	BUILTIN_PRODUCT_SKILLS_ENV = "KIMI_CODE_BUILTIN_PRODUCT_SKILLS"; 	builtinProductSkillsEnvBindings = envBindings(BuiltinProductSkillsConfigSchema, { 		env: BUILTIN_PRODUCT_SKILLS_ENV, 		parse: parseBooleanEnv$1 	stripBuiltinProductSkillsEnv = (value, raw, getEnv) => { 		if (getEnv === void 0) return value; 		if 
+
+=== KIMI_CODE_BUILTIN_PRODUCT_SKILLS
+chema, { 		env: BUILTIN_PRODUCT_SKILLS_ENV, 		parse: parseBooleanEnv$1 	stripBuiltinProductSkillsEnv = (value, raw, getEnv) => { 		if (getEnv === void 0) return value; 		if (parseBooleanEnv$1(getEnv("KIMI_CODE_BUILTIN_PRODUCT_SKILLS")) === void 0) return value; 		return typeof raw === "boolean" ? raw : void 0; 	registerConfigSection(BUILTIN_PRODUCT_SKILLS_SECTION, BuiltinProductSkillsConfigSchema, { 		defaultValue: true, 		env: builtinProductSkillsEnvBindings, 		stripEnv: strip
+
+=== KIMI_WINDOWS
+rs(); // ../../packages/agent-core-v2/src/remote/client/remoteSession.ts async function detectSshPlatform(host, env, timeoutMs) { 	const probes = ["uname -s", powerShellCommand("[Console]::WriteLine('KIMI_WINDOWS')")]; 	for (const [index, command] of probes.entries()) { 		const launcher = resolveSshCommand(host, command, env !== void 0); 		const result = await new Promise((resolve, reject) => { 			(0, node_child_process.execFile)(launcher.program, [...launch
+
+=== KIMI_WINDOWS
+ntication" : "executor-exit", 				exitCode: 255 			}); 		if (result.code === 0 && output) { 			if (index === 0) return /^(?:MINGW|MSYS|CYGWIN)/i.test(output) ? "windows" : "posix"; 			if (output === "KIMI_WINDOWS") return "windows"; 		if (index === probes.length - 1) throw new HandshakeError(`Could not detect the SSH target platform: ${result.stderr.trim() || result.stdout.trim() || `probe exited with code ${result.code}`}`, { 			kind: "executor-exit", 			ex
+
+=== KIMI_WEB_SEARCH_BASE_URL
+ervicesConfigSchema$1 = object$1({ 		moonshotSearch: MoonshotServiceConfigSchema$1.optional(), 		moonshotFetch: MoonshotServiceConfigSchema$1.optional() 	}).passthrough(); 	WEB_SEARCH_BASE_URL_ENV = "KIMI_WEB_SEARCH_BASE_URL"; 	WEB_SEARCH_API_KEY_ENV = "KIMI_WEB_SEARCH_API_KEY"; 	WEB_FETCH_BASE_URL_ENV = "KIMI_WEB_FETCH_BASE_URL"; 	WEB_FETCH_API_KEY_ENV = "KIMI_WEB_FETCH_API_KEY"; 	nonBlankEnv = (raw) => { 		const trimmed = raw.trim(); 		return trimmed.length > 0 ? trim
+
+=== KIMI_WEB_SEARCH_BASE_URL
+AfterSuccess provisionProvider RerTNs$ refreshOAuthProviderModelsBestEffort deprovisionProvider handleFailure setTerminal toFlowStart toolkit summarize ensureReady (SdDpW moonshotSearch moonshotFetch KIMI_WEB_SEARCH_BASE_URL KIMI_WEB_SEARCH_API_KEY KIMI_WEB_FETCH_BASE_URL KIMI_WEB_FETCH_API_KEY (SdDpW defaultHeaders (SdDpW getWebSearchProvider hasWebSearchProvider configuredSearcha managedTokenProvider fromServicesConfig fromManagedOAutha (SdDpW authenticated expired re
+
+=== KIMI_WEB_SEARCH_API_KEY
+oonshotServiceConfigSchema$1.optional(), 		moonshotFetch: MoonshotServiceConfigSchema$1.optional() 	}).passthrough(); 	WEB_SEARCH_BASE_URL_ENV = "KIMI_WEB_SEARCH_BASE_URL"; 	WEB_SEARCH_API_KEY_ENV = "KIMI_WEB_SEARCH_API_KEY"; 	WEB_FETCH_BASE_URL_ENV = "KIMI_WEB_FETCH_BASE_URL"; 	WEB_FETCH_API_KEY_ENV = "KIMI_WEB_FETCH_API_KEY"; 	nonBlankEnv = (raw) => { 		const trimmed = raw.trim(); 		return trimmed.length > 0 ? trimmed : void 0; 	moonshotSearchEnvBindings = envBinding
+
+=== KIMI_WEB_SEARCH_API_KEY
+vider RerTNs$ refreshOAuthProviderModelsBestEffort deprovisionProvider handleFailure setTerminal toFlowStart toolkit summarize ensureReady (SdDpW moonshotSearch moonshotFetch KIMI_WEB_SEARCH_BASE_URL KIMI_WEB_SEARCH_API_KEY KIMI_WEB_FETCH_BASE_URL KIMI_WEB_FETCH_API_KEY (SdDpW defaultHeaders (SdDpW getWebSearchProvider hasWebSearchProvider configuredSearcha managedTokenProvider fromServicesConfig fromManagedOAutha (SdDpW authenticated expired revoked unauthenticated mo
+
+=== KIMI_WEB_FETCH_BASE_URL
+tch: MoonshotServiceConfigSchema$1.optional() 	}).passthrough(); 	WEB_SEARCH_BASE_URL_ENV = "KIMI_WEB_SEARCH_BASE_URL"; 	WEB_SEARCH_API_KEY_ENV = "KIMI_WEB_SEARCH_API_KEY"; 	WEB_FETCH_BASE_URL_ENV = "KIMI_WEB_FETCH_BASE_URL"; 	WEB_FETCH_API_KEY_ENV = "KIMI_WEB_FETCH_API_KEY"; 	nonBlankEnv = (raw) => { 		const trimmed = raw.trim(); 		return trimmed.length > 0 ? trimmed : void 0; 	moonshotSearchEnvBindings = envBindings(MoonshotServiceConfigSchema$1, { 		baseUrl: { 			en
+
+=== KIMI_WEB_FETCH_BASE_URL
+thProviderModelsBestEffort deprovisionProvider handleFailure setTerminal toFlowStart toolkit summarize ensureReady (SdDpW moonshotSearch moonshotFetch KIMI_WEB_SEARCH_BASE_URL KIMI_WEB_SEARCH_API_KEY KIMI_WEB_FETCH_BASE_URL KIMI_WEB_FETCH_API_KEY (SdDpW defaultHeaders (SdDpW getWebSearchProvider hasWebSearchProvider configuredSearcha managedTokenProvider fromServicesConfig fromManagedOAutha (SdDpW authenticated expired revoked unauthenticated models_ready providers_cou
+
+=== KIMI_WEB_FETCH_API_KEY
+ssthrough(); 	WEB_SEARCH_BASE_URL_ENV = "KIMI_WEB_SEARCH_BASE_URL"; 	WEB_SEARCH_API_KEY_ENV = "KIMI_WEB_SEARCH_API_KEY"; 	WEB_FETCH_BASE_URL_ENV = "KIMI_WEB_FETCH_BASE_URL"; 	WEB_FETCH_API_KEY_ENV = "KIMI_WEB_FETCH_API_KEY"; 	nonBlankEnv = (raw) => { 		const trimmed = raw.trim(); 		return trimmed.length > 0 ? trimmed : void 0; 	moonshotSearchEnvBindings = envBindings(MoonshotServiceConfigSchema$1, { 		baseUrl: { 			env: WEB_SEARCH_BASE_URL_ENV, 			parse: nonBlankEnv 	
+
+=== KIMI_WEB_FETCH_API_KEY
+rt deprovisionProvider handleFailure setTerminal toFlowStart toolkit summarize ensureReady (SdDpW moonshotSearch moonshotFetch KIMI_WEB_SEARCH_BASE_URL KIMI_WEB_SEARCH_API_KEY KIMI_WEB_FETCH_BASE_URL KIMI_WEB_FETCH_API_KEY (SdDpW defaultHeaders (SdDpW getWebSearchProvider hasWebSearchProvider configuredSearcha managedTokenProvider fromServicesConfig fromManagedOAutha (SdDpW authenticated expired revoked unauthenticated models_ready providers_count managed_providerC au
+
+=== KIMI_TUI_NO_RENDER_CACHE
+?:\x1b\]133;[ABC](?:\x07|\x1b\\))+/; // src/tui/utils/render-cache.ts function isRenderCacheEnabled() { 	return enabled; var enabled; var init_render_cache = __esmMin((() => { 	enabled = process.env["KIMI_TUI_NO_RENDER_CACHE"] !== "1"; // src/tui/components/chrome/gutter-container.ts function dispatchToChild(child, event) { 	const result = child.handleMouse?.(event); 	if (!result) return void 0; 	if ("target" in result) return result; 	if (!result.handled && !result.cap
+
+=== KIMI_TUI_NO_RENDER_CACHE
+fort invalidates the existing prompt cache. Use /new to avoid extra token costs. (SdDpW ]133;A ]133;B ]133;C \u001B(?:\[[0-9;?]*[ -/]*[@-~]|\][^\u0007\u001B]*(?:\u0007|\u001B\\)) (SdDpW (SdDpW Rc>2S( KIMI_TUI_NO_RENDER_CACHE (SdDpW setUnhandledClick getRenderedLayout childHeights leftPad rightPad renderCache renderedLayout unhandledClick (SdDpW get isScrollbarVisible scrollBody bodyOverflows scrollBodyToTop handlePartMouse bodyScroll (SdDpW (SdDpW renderPart renderFoot 
+
+=== KIMI_TUI_INPUT_LATENCY_LOG
+tall the probe on a running TUI (call only when the env flag is set). */ function installInputLatencyProbe(tui) { 	const stats = new LatencyStats(); 	const pending = []; 	const logPath = process.env["KIMI_TUI_INPUT_LATENCY_LOG"]; 	if (logPath) (0, node_fs.mkdirSync)(node_path.default.dirname(logPath), { recursive: true }); 	tui.addInputListener(() => { 		pending.push(performance.now()); 	tui.showOverlay({ 		invalidate: () => {}, 		render: () => { 			if (pending.length > 0
+
+=== KIMI_TUI_INPUT_LATENCY
+tall the probe on a running TUI (call only when the env flag is set). */ function installInputLatencyProbe(tui) { 	const stats = new LatencyStats(); 	const pending = []; 	const logPath = process.env["KIMI_TUI_INPUT_LATENCY_LOG"]; 	if (logPath) (0, node_fs.mkdirSync)(node_path.default.dirname(logPath), { recursive: true }); 	tui.addInputListener(() => { 		pending.push(performance.now()); 	tui.showOverlay({ 		invalidate: () => {}, 		render: () => { 			if (pending.length
+
+=== KIMI_TUI_INPUT_LATENCY
+PromptStartedLoop) { 						this.disposeTerminalTracking(); 						this.state.ui.stop(); 					} 					throw error; 				startupSpinner.dismiss(); 				startupTrace("initMainTui:end"); 				if (process.env["KIMI_TUI_INPUT_LATENCY"]) installInputLatencyProbe(this.state.ui); 				startupTrace("eventLoop:started"); 				try { 					this.startBackgroundFdAutocomplete(); 					startupTrace("finishStartup:begin"); 					await this.finishStartup(shouldReplayHistory); 					startupTrace("
+
+=== KIMI_TOKEN_COUNTING_STRATEGY
+NG_CONFIG; var init_configSection$2 = __esmMin((() => { 	init_zod$1(); 	init_config$7(); 	init_configSectionContributions(); 	TOKEN_COUNTING_SECTION = "tokenCounting"; 	TOKEN_COUNTING_STRATEGY_ENV = "KIMI_TOKEN_COUNTING_STRATEGY"; 	TOKEN_COUNTING_STRATEGIES = [ 		"measured+estimated", 		"measured", 		"estimated" 	TokenCountingConfigSchema = object$1({ strategy: _enum(TOKEN_COUNTING_STRATEGIES) }); 	tokenCountingEnvBindings = envBindings(TokenCountingConfigSchema, { strategy
+
+=== KIMI_TOKEN_COUNTING_STRATEGY
+Rcz76f token_counting.measured token_counting.truncated token_counting.rebased token_counting.turn_recorded (SdDpW latestMeasured statusSize recordTruncationa recordTurn latestAnchor .initial` (SdDpW KIMI_TOKEN_COUNTING_STRATEGY measured+estimated estimated strategyC (SdDpW requestSize estimateText estimateMessage estimateTools get strategy (SdDpW (SdDpW agentPluginService (SdDpW plugin.session_start pluginSessionStartSnapshot (SdDpW plugin_session_start plugin_change enabl
+
+=== KIMI_SUBAGENT_TIMEOUT_MS
+.optional(), 		models: record$1(string(), string()).optional(), 		model: string().min(1).optional(), 		defaultEffort: string().optional() 	DEFAULT_SUBAGENT_TIMEOUT_MS = 72e5; 	SUBAGENT_TIMEOUT_ENV = "KIMI_SUBAGENT_TIMEOUT_MS"; 	subagentEnvBindings = envBindings(SubagentConfigSchema$1, { timeoutMs: { 		env: SUBAGENT_TIMEOUT_ENV, 		parse: parseTimeoutMsEnv 	} }); 	stripSubagentEnv = stripEnvBoundFields(subagentEnvBindings); 	registerConfigSection(SUBAGENT_SECTION, Subagen
+
+=== KIMI_SUBAGENT_TIMEOUT_MS
+_SUBAGENT_FORK Fork context for subagents Let the Agent and AgentSwarm tools start a subagent with a snapshot of the calling agent's conversation history via the fork parameter. (SdDpW secondaryModel KIMI_SUBAGENT_TIMEOUT_MS [secondary_model] 'force' is no longer supported and is ignored: a lone default_model already pins every Agent and AgentSwarm subagent to that model, and a [secondary_model.models] table only offers its own entries. Remove the key; run /update-confi
+
+=== KIMI_STARTUP_TRACE_LOG
+led$1, logPath, t0, prepared; var init_startup_trace = __esmMin((() => { 	enabled$1 = process.env["KIMI_STARTUP_TRACE"] !== void 0 && process.env["KIMI_STARTUP_TRACE"] !== ""; 	logPath = process.env["KIMI_STARTUP_TRACE_LOG"] ?? "/tmp/kimi-startup-trace.log"; 	t0 = performance.now(); 	prepared = false; // src/cli/host-identity.ts function createKimiCodeHostIdentity(version = getVersion()) { 	return { 		productName: CLI_USER_AGENT_PRODUCT, 		version, 		platform: CLI_MSH
+
+=== KIMI_STARTUP_TRACE_LOG
+h-worker runtime/kap-server/search-worker.mjs (SdDpW (SdDpW (SdDpW native[\\/](?:win32|darwin|linux)[\\/]prebuilds[\\/].+\.node$ (SdDpW (SdDpW (SdDpW @mariozechner/clipboard (SdDpW KIMI_STARTUP_TRACE KIMI_STARTUP_TRACE_LOG /tmp/kimi-startup-trace.log (SdDpW (SdDpW (SdDpW (SdDpW Rb"]Cy input_image local_image ENOTSUP ENOSYS (SdDpW attachment permission-mode atis-latch file-history-snapshot last-prompt ai-title queue-operation cost-state file-history-delta pr-link frame
+
+=== KIMI_SHELL_PATH
+nd, 		osArch, 		osVersion, 		shellName: "sh", 		shellPath: "/bin/sh", 		pathClass, 		homeDir: deps.homeDir async function locateWindowsGitBash(deps) { 	const checked = []; 	const override = deps.env["KIMI_SHELL_PATH"]?.trim(); 	if (override !== void 0 && override.length > 0) { 		checked.push(override); 		if (await deps.isFile(override)) return override; 	const gitExecutables = await findExecutablesOnPath("git.exe", deps.env["PATH"], deps.platform, deps.isFile);
+
+=== KIMI_SHELL_PATH
+; 		if (await deps.isFile(candidate)) return candidate; 	throw new ProbeShellNotFoundError("Git Bash was not found on this Windows host. Install Git for Windows from https://gitforwindows.org/ or set KIMI_SHELL_PATH to a bash.exe.", checked); async function readGitExecPath(deps, gitExe) { 	if (deps.platform === "win32" && !isAbsoluteWindowsPath(gitExe)) return void 0; 	const stdout = await deps.execFileText(gitExe, ["--exec-path"], GIT_EXEC_PATH_TIMEOUT_MS); 	i
+
+=== KIMI_REGISTRY_API_KEY
+uffix}: ${errorMessage$6(error)}\n`); 		if (apiKey === void 0 && (error.status === 401 || error.status === 403)) deps.stderr.write("This registry requires authentication   pass --api-key <key> or set KIMI_REGISTRY_API_KEY.\n"); 		deps.exit(1); 	const count = result.providers.length; 	deps.stdout.write(`Imported ${String(count)} provider${count === 1 ? "" : "s"} (${String(result.modelsImported)} model${result.modelsImported === 1 ? "" : "s"}) from ${trimmedUrl}:\n`); 
+
+=== KIMI_REGISTRY_API_KEY
+c function handleCatalogAdd(deps, providerId, opts) { 	const apiKey = resolveApiKey(opts.apiKey, deps.env); 	if (apiKey === void 0) { 		deps.stderr.write("Missing API key. Pass --api-key <key> or set KIMI_REGISTRY_API_KEY.\n"); 		deps.exit(1); 	const url = opts.url ?? "https://models.dev/api.json"; 	const entry = (await loadCatalogOrExit(deps, url))[providerId]; 	if (entry === void 0) { 		deps.stderr.write(`Provider "${providerId}" not found in catalog at ${url}.\n`)
+
+=== KIMI_PLUGIN_ROOT
+ml: hooksFromToml, 		toToml: hooksToToml // ../../packages/agent-core-v2/src/app/plugin/manifest.ts async function parseManifest(pluginRoot) { 	const rootJsonPath = node_path.default.join(pluginRoot, KIMI_PLUGIN_ROOT_PATH); 	const dirJsonPath = node_path.default.join(pluginRoot, KIMI_PLUGIN_DIR_PATH); 	const rootJsonExists = await isFile$1(rootJsonPath); 	const dirJsonExists = await isFile$1(dirJsonPath); 	if (!rootJsonExists && !dirJsonExists) return { diagnost
+
+=== KIMI_PLUGIN_ROOT
+ = await isFile$1(rootJsonPath); 	const dirJsonExists = await isFile$1(dirJsonPath); 	if (!rootJsonExists && !dirJsonExists) return { diagnostics: [{ 		severity: "error", 		message: `No manifest at ${KIMI_PLUGIN_ROOT_PATH} or ${KIMI_PLUGIN_DIR_PATH}` 	}] }; 	const manifestPath = rootJsonExists ? rootJsonPath : dirJsonPath; 	const manifestKind = rootJsonExists ? "kimi-plugin-root" : "kimi-plugin-dir"; 	const shadowedManifestPath = rootJsonExists && dirJsonExists 
+
+=== KIMI_MODEL_THINKING_KEEP
+e = parseFloatEnv(getEnv("KIMI_MODEL_TEMPERATURE"), "KIMI_MODEL_TEMPERATURE"); 			const topP = parseFloatEnv(getEnv("KIMI_MODEL_TOP_P"), "KIMI_MODEL_TOP_P"); 			const thinkingKeep = trimmed$1(getEnv("KIMI_MODEL_THINKING_KEEP")); 			const maxCompletionTokens = parseCompletionTokens(getEnv("KIMI_MODEL_MAX_COMPLETION_TOKENS")) ?? parseCompletionTokens(getEnv("KIMI_MODEL_MAX_TOKENS")); 			const changed = []; 			if (model === void 0) { 				const modelOverrides = collectModel
+
+=== KIMI_MODEL_MAX_TOKENS
+		const thinkingKeep = trimmed$1(getEnv("KIMI_MODEL_THINKING_KEEP")); 			const maxCompletionTokens = parseCompletionTokens(getEnv("KIMI_MODEL_MAX_COMPLETION_TOKENS")) ?? parseCompletionTokens(getEnv("KIMI_MODEL_MAX_TOKENS")); 			const changed = []; 			if (model === void 0) { 				const modelOverrides = collectModelOverrides({ 					temperature, 					topP, 					thinkingKeep, 					maxCompletionTokens 				}); 				if (modelOverrides !== void 0) { 					effective["modelOverr
+
+=== KIMI_MODEL_MAX_COMPLETION_TOKENS
+pP = parseFloatEnv(getEnv("KIMI_MODEL_TOP_P"), "KIMI_MODEL_TOP_P"); 			const thinkingKeep = trimmed$1(getEnv("KIMI_MODEL_THINKING_KEEP")); 			const maxCompletionTokens = parseCompletionTokens(getEnv("KIMI_MODEL_MAX_COMPLETION_TOKENS")) ?? parseCompletionTokens(getEnv("KIMI_MODEL_MAX_TOKENS")); 			const changed = []; 			if (model === void 0) { 				const modelOverrides = collectModelOverrides({ 					temperature, 					topP, 					thinkingKeep, 					maxCompletionTokens 				}); 				i
+
+=== KIMI_MCP_TOOL_TIMEOUT_MS
+, 		reconnectInitialDelayMs: McpTimeoutMsSchema$1.optional(), 		reconnectMaxDelayMs: McpTimeoutMsSchema$1.optional() 	MCP_STARTUP_TIMEOUT_ENV = "KIMI_MCP_STARTUP_TIMEOUT_MS"; 	MCP_TOOL_TIMEOUT_ENV = "KIMI_MCP_TOOL_TIMEOUT_MS"; 	MCP_RECONNECT_INITIAL_DELAY_ENV = "KIMI_MCP_RECONNECT_INITIAL_DELAY_MS"; 	MCP_RECONNECT_MAX_DELAY_ENV = "KIMI_MCP_RECONNECT_MAX_DELAY_MS"; 	mcpEnvBindings = envBindings(McpSectionSchema, { 		startupTimeoutMs: { 			env: MCP_STARTUP_TIMEOUT_ENV, 		
+
+=== KIMI_MCP_TOOL_TIMEOUT_MS
+rite\n`startupTimeoutMs` / `toolTimeoutMs` into each entry   the global defaults\nlive in `config.toml` (`[mcp] startup_timeout_ms` / `[mcp] tool_timeout_ms`)\nor the `KIMI_MCP_STARTUP_TIMEOUT_MS` / `KIMI_MCP_TOOL_TIMEOUT_MS` env vars;\nper-server fields override them. Every timeout must be an integer from `1` to\n`2147483647` milliseconds.\n\nIf the user only wants to **see** what's configured, read all three files,\nshow a merged view with enough source-path context t
+
+=== KIMI_MCP_STARTUP_TIMEOUT_MS
+a$1.optional(), 		defaultDeferred: boolean().optional(), 		reconnectInitialDelayMs: McpTimeoutMsSchema$1.optional(), 		reconnectMaxDelayMs: McpTimeoutMsSchema$1.optional() 	MCP_STARTUP_TIMEOUT_ENV = "KIMI_MCP_STARTUP_TIMEOUT_MS"; 	MCP_TOOL_TIMEOUT_ENV = "KIMI_MCP_TOOL_TIMEOUT_MS"; 	MCP_RECONNECT_INITIAL_DELAY_ENV = "KIMI_MCP_RECONNECT_INITIAL_DELAY_MS"; 	MCP_RECONNECT_MAX_DELAY_ENV = "KIMI_MCP_RECONNECT_MAX_DELAY_MS"; 	mcpEnvBindings = envBindings(McpSectionSchema, { 		sta
+
+=== KIMI_MCP_STARTUP_TIMEOUT_MS
+eout for *every* server, don't write\n`startupTimeoutMs` / `toolTimeoutMs` into each entry   the global defaults\nlive in `config.toml` (`[mcp] startup_timeout_ms` / `[mcp] tool_timeout_ms`)\nor the `KIMI_MCP_STARTUP_TIMEOUT_MS` / `KIMI_MCP_TOOL_TIMEOUT_MS` env vars;\nper-server fields override them. Every timeout must be an integer from `1` to\n`2147483647` milliseconds.\n\nIf the user only wants to **see** what's configured, read all three files,\nshow a merged view with
+
+=== KIMI_MCP_RECONNECT_MAX_DELAY_MS
+EOUT_ENV = "KIMI_MCP_STARTUP_TIMEOUT_MS"; 	MCP_TOOL_TIMEOUT_ENV = "KIMI_MCP_TOOL_TIMEOUT_MS"; 	MCP_RECONNECT_INITIAL_DELAY_ENV = "KIMI_MCP_RECONNECT_INITIAL_DELAY_MS"; 	MCP_RECONNECT_MAX_DELAY_ENV = "KIMI_MCP_RECONNECT_MAX_DELAY_MS"; 	mcpEnvBindings = envBindings(McpSectionSchema, { 		startupTimeoutMs: { 			env: MCP_STARTUP_TIMEOUT_ENV, 			parse: parseTimeoutMsEnv$2 		toolTimeoutMs: { 			env: MCP_TOOL_TIMEOUT_ENV, 			parse: parseTimeoutMsEnv$2 		reconnectInitialDelayMs: { 			e
+
+=== KIMI_MCP_RECONNECT_MAX_DELAY_MS
+ironment_id bearerTokenEnvVar (SdDpW (SdDpW RbB_MN defaultDeferred reconnectInitialDelayMs reconnectMaxDelayMs KIMI_MCP_STARTUP_TIMEOUT_MS KIMI_MCP_TOOL_TIMEOUT_MS KIMI_MCP_RECONNECT_INITIAL_DELAY_MS KIMI_MCP_RECONNECT_MAX_DELAY_MS RaviO- stripEnvC (SdDpW mcpConfigStore mcp.json writeEmitter onDidWrite writePending (SdDpW pluginService (SdDpW workspaceTrust (SdDpW l!\!x!p FILE_TYPE DIR_TYPE directories FILE_DIR_TYPE files_directories EVERYTHING_TYPE fileFilter directoryFilter 
+
+=== KIMI_MCP_RECONNECT_INITIAL_DELAY_MS
+	reconnectMaxDelayMs: McpTimeoutMsSchema$1.optional() 	MCP_STARTUP_TIMEOUT_ENV = "KIMI_MCP_STARTUP_TIMEOUT_MS"; 	MCP_TOOL_TIMEOUT_ENV = "KIMI_MCP_TOOL_TIMEOUT_MS"; 	MCP_RECONNECT_INITIAL_DELAY_ENV = "KIMI_MCP_RECONNECT_INITIAL_DELAY_MS"; 	MCP_RECONNECT_MAX_DELAY_ENV = "KIMI_MCP_RECONNECT_MAX_DELAY_MS"; 	mcpEnvBindings = envBindings(McpSectionSchema, { 		startupTimeoutMs: { 			env: MCP_STARTUP_TIMEOUT_ENV, 			parse: parseTimeoutMsEnv$2 		toolTimeoutMs: { 			env: MCP_TOOL_TIMEOUT_EN
+
+=== KIMI_MCP_RECONNECT_INITIAL_DELAY_MS
+ledTools disabledTools executorC environment_id bearerTokenEnvVar (SdDpW (SdDpW RbB_MN defaultDeferred reconnectInitialDelayMs reconnectMaxDelayMs KIMI_MCP_STARTUP_TIMEOUT_MS KIMI_MCP_TOOL_TIMEOUT_MS KIMI_MCP_RECONNECT_INITIAL_DELAY_MS KIMI_MCP_RECONNECT_MAX_DELAY_MS RaviO- stripEnvC (SdDpW mcpConfigStore mcp.json writeEmitter onDidWrite writePending (SdDpW pluginService (SdDpW workspaceTrust (SdDpW l!\!x!p FILE_TYPE DIR_TYPE directories FILE_DIR_TYPE files_directories EVERYTHING_
+
+=== KIMI_LOOP_MAX_STEPS_PER_TURN
+ar init_configSection$8 = __esmMin((() => { 	init_zod$1(); 	init_config$7(); 	init_configSectionContributions(); 	init_toml$1(); 	LOOP_CONTROL_SECTION = "loopControl"; 	LOOP_MAX_STEPS_PER_TURN_ENV = "KIMI_LOOP_MAX_STEPS_PER_TURN"; 	LOOP_MAX_ATTEMPTS_PER_STEP_ENV = "KIMI_LOOP_MAX_ATTEMPTS_PER_STEP"; 	LOOP_MAX_RETRIES_PER_STEP_ENV = "KIMI_LOOP_MAX_RETRIES_PER_STEP"; 	LoopControlSchema$1 = object$1({ 		maxStepsPerTurn: number$1().int().min(0).optional(), 		maxAttemptsPerStep: 
+
+=== KIMI_LOOP_MAX_STEPS_PER_TURN
+e nearing a budget. Converge on the objective and avoid starting new discretionary work. Budget guidance: you are within budget. Make steady, focused progress toward the objective. (SdDpW loopControl KIMI_LOOP_MAX_STEPS_PER_TURN KIMI_LOOP_MAX_ATTEMPTS_PER_STEP KIMI_LOOP_MAX_RETRIES_PER_STEP maxStepsPerTurn maxAttemptsPerStep maxRalphIterations reservedContextSize compactionTriggerRatio compactionMaxAttempts deprecatedEnv deprecations max_retries_per_step replacement max_att
+
+=== KIMI_LOOP_MAX_RETRIES_PER_STEP
+arning names the exact section and replacement key   use those; never guess other renames. After `/reload`, the warning disappears.\n- **Deprecated environment variable**   e.g. `Environment variable KIMI_LOOP_MAX_RETRIES_PER_STEP is deprecated; use KIMI_LOOP_MAX_ATTEMPTS_PER_STEP instead.` The old variable still works, but this is **not** fixable by editing `config.toml`/`tui.toml`   tell the user to rename the variable where they set it (shell profile, CI environment, launc
+
+=== KIMI_LOOP_MAX_RETRIES_PER_STEP
+_CONTROL_SECTION = "loopControl"; 	LOOP_MAX_STEPS_PER_TURN_ENV = "KIMI_LOOP_MAX_STEPS_PER_TURN"; 	LOOP_MAX_ATTEMPTS_PER_STEP_ENV = "KIMI_LOOP_MAX_ATTEMPTS_PER_STEP"; 	LOOP_MAX_RETRIES_PER_STEP_ENV = "KIMI_LOOP_MAX_RETRIES_PER_STEP"; 	LoopControlSchema$1 = object$1({ 		maxStepsPerTurn: number$1().int().min(0).optional(), 		maxAttemptsPerStep: number$1().int().min(0).optional(), 		maxRalphIterations: number$1().int().min(-1).optional(), 		reservedContextSize: number$1().int().m
+
+=== KIMI_LOOP_MAX_ATTEMPTS_PER_STEP
+   use those; never guess other renames. After `/reload`, the warning disappears.\n- **Deprecated environment variable**   e.g. `Environment variable KIMI_LOOP_MAX_RETRIES_PER_STEP is deprecated; use KIMI_LOOP_MAX_ATTEMPTS_PER_STEP instead.` The old variable still works, but this is **not** fixable by editing `config.toml`/`tui.toml`   tell the user to rename the variable where they set it (shell profile, CI environment, launcher script). Do not add anything to the config file
+
+=== KIMI_LOOP_MAX_ATTEMPTS_PER_STEP
+onfig$7(); 	init_configSectionContributions(); 	init_toml$1(); 	LOOP_CONTROL_SECTION = "loopControl"; 	LOOP_MAX_STEPS_PER_TURN_ENV = "KIMI_LOOP_MAX_STEPS_PER_TURN"; 	LOOP_MAX_ATTEMPTS_PER_STEP_ENV = "KIMI_LOOP_MAX_ATTEMPTS_PER_STEP"; 	LOOP_MAX_RETRIES_PER_STEP_ENV = "KIMI_LOOP_MAX_RETRIES_PER_STEP"; 	LoopControlSchema$1 = object$1({ 		maxStepsPerTurn: number$1().int().min(0).optional(), 		maxAttemptsPerStep: number$1().int().min(0).optional(), 		maxRalphIterations: number$1().
+
+=== KIMI_LOG_SESSION_MAX_BYTES
+r), 		globalMaxBytes: parsePositiveInt$4(env["KIMI_LOG_GLOBAL_MAX_BYTES"]) ?? 6291456, 		globalFiles: parsePositiveInt$4(env["KIMI_LOG_GLOBAL_FILES"]) ?? 5, 		sessionMaxBytes: parsePositiveInt$4(env["KIMI_LOG_SESSION_MAX_BYTES"]) ?? 5242880, 		sessionFiles: parsePositiveInt$4(env["KIMI_LOG_SESSION_FILES"]) ?? 3 function logSeed(config) { 	return [[ILogOptions, config]]; function parseLevel(value) { 	if (value === void 0) return void 0; 	const v = value.toLowerCase().trim(
+
+=== KIMI_LOG_SESSION_FILES
+456, 		globalFiles: parsePositiveInt$4(env["KIMI_LOG_GLOBAL_FILES"]) ?? 5, 		sessionMaxBytes: parsePositiveInt$4(env["KIMI_LOG_SESSION_MAX_BYTES"]) ?? 5242880, 		sessionFiles: parsePositiveInt$4(env["KIMI_LOG_SESSION_FILES"]) ?? 3 function logSeed(config) { 	return [[ILogOptions, config]]; function parseLevel(value) { 	if (value === void 0) return void 0; 	const v = value.toLowerCase().trim(); 	if (v === "off" || v === "error" || v === "warn" || v === "info" || v === 
+
+=== KIMI_LOG_LEVEL
+; function resolveSessionLogPath(sessionDir) { 	return join$104(sessionDir, "logs", "kimi-code.log"); function resolveLoggingConfig(input) { 	const env = input.env; 	return { 		level: parseLevel(env["KIMI_LOG_LEVEL"]) ?? "info", 		globalLogPath: resolveGlobalLogPath$1(input.homeDir), 		globalMaxBytes: parsePositiveInt$4(env["KIMI_LOG_GLOBAL_MAX_BYTES"]) ?? 6291456, 		globalFiles: parsePositiveInt$4(env["KIMI_LOG_GLOBAL_FILES"]) ?? 5, 		sessionMaxBytes: parsePo
+
+=== KIMI_LOG_GLOBAL_MAX_BYTES
+nfig(input) { 	const env = input.env; 	return { 		level: parseLevel(env["KIMI_LOG_LEVEL"]) ?? "info", 		globalLogPath: resolveGlobalLogPath$1(input.homeDir), 		globalMaxBytes: parsePositiveInt$4(env["KIMI_LOG_GLOBAL_MAX_BYTES"]) ?? 6291456, 		globalFiles: parsePositiveInt$4(env["KIMI_LOG_GLOBAL_FILES"]) ?? 5, 		sessionMaxBytes: parsePositiveInt$4(env["KIMI_LOG_SESSION_MAX_BYTES"]) ?? 5242880, 		sessionFiles: parsePositiveInt$4(env["KIMI_LOG_SESSION_FILES"]) ?? 3 function
+
+=== KIMI_LOG_GLOBAL_FILES
+G_LEVEL"]) ?? "info", 		globalLogPath: resolveGlobalLogPath$1(input.homeDir), 		globalMaxBytes: parsePositiveInt$4(env["KIMI_LOG_GLOBAL_MAX_BYTES"]) ?? 6291456, 		globalFiles: parsePositiveInt$4(env["KIMI_LOG_GLOBAL_FILES"]) ?? 5, 		sessionMaxBytes: parsePositiveInt$4(env["KIMI_LOG_SESSION_MAX_BYTES"]) ?? 5242880, 		sessionFiles: parsePositiveInt$4(env["KIMI_LOG_SESSION_FILES"]) ?? 3 function logSeed(config) { 	return [[ILogOptions, config]]; function parseLevel(valu
+
+=== KIMI_IMAGE_READ_BYTE_BUDGET
+ion$1 = __esmMin((() => { 	init_zod$1(); 	init_config$7(); 	init_configSectionContributions(); 	IMAGE_SECTION = "image"; 	IMAGE_MAX_EDGE_ENV = "KIMI_IMAGE_MAX_EDGE_PX"; 	IMAGE_READ_BYTE_BUDGET_ENV = "KIMI_IMAGE_READ_BYTE_BUDGET"; 	ImageConfigSchema$1 = object$1({ 		maxEdgePx: number$1().int().min(1).optional(), 		readByteBudget: number$1().int().min(1).optional() 	imageEnvBindings = envBindings(ImageConfigSchema$1, { 		maxEdgePx: { 			env: IMAGE_MAX_EDGE_ENV, 			parse: par
+
+=== KIMI_IMAGE_READ_BYTE_BUDGET
+emoedOutcome resolveVideoUncached readMedia readCachedUploada writeCachedUpload get resolved get budgetDropped mediaStore imageMemo imageMemoBytes imageUploadUnsupported (SdDpW KIMI_IMAGE_MAX_EDGE_PX KIMI_IMAGE_READ_BYTE_BUDGET maxEdgePx readByteBudget (SdDpW imageConfigBridge (SdDpW Auto permission mode is active. Tool approvals will be handled automatically while this mode remains enabled.   - Continue normally without pausing for approval prompts.   - Do NOT call AskUse
+
+=== KIMI_IMAGE_MAX_EDGE_PX
+$1, imageEnvBindings, stripImageEnv; var init_configSection$1 = __esmMin((() => { 	init_zod$1(); 	init_config$7(); 	init_configSectionContributions(); 	IMAGE_SECTION = "image"; 	IMAGE_MAX_EDGE_ENV = "KIMI_IMAGE_MAX_EDGE_PX"; 	IMAGE_READ_BYTE_BUDGET_ENV = "KIMI_IMAGE_READ_BYTE_BUDGET"; 	ImageConfigSchema$1 = object$1({ 		maxEdgePx: number$1().int().min(1).optional(), 		readByteBudget: number$1().int().min(1).optional() 	imageEnvBindings = envBindings(ImageConfigSchema$
+
+=== KIMI_IMAGE_MAX_EDGE_PX
+age resolveVideoParta memoedOutcome resolveVideoUncached readMedia readCachedUploada writeCachedUpload get resolved get budgetDropped mediaStore imageMemo imageMemoBytes imageUploadUnsupported (SdDpW KIMI_IMAGE_MAX_EDGE_PX KIMI_IMAGE_READ_BYTE_BUDGET maxEdgePx readByteBudget (SdDpW imageConfigBridge (SdDpW Auto permission mode is active. Tool approvals will be handled automatically while this mode remains enabled.   - Continue normally without pausing for approval pro
+
+=== KIMI_DISABLE_OAUTH_LOCK
+ame}.lock`. Returns `undefined` when 		* locking is opted out (no configDir, Windows, env kill switch). 		resolveLockTarget() { 			if (process.platform === "win32") return void 0; 			if (process.env["KIMI_DISABLE_OAUTH_LOCK"] === "1") return void 0; 			if (this.configDir === void 0) return void 0; 			return `${this.configDir}/oauth/${this.config.name}`; 		* Acquire the cross-process lock around the refresh critical section. 		* Returns a `release` closure; when locking
+
+=== KIMI_DISABLE_CRON
+ma, { 		debug: { 			env: "KIMI_CRON_DEBUG", 			parse: on$1 		noJitter: { 			env: "KIMI_CRON_NO_JITTER", 			parse: on$1 		noStale: { 			env: "KIMI_CRON_NO_STALE", 			parse: on$1 		disabled: { 			env: "KIMI_DISABLE_CRON", 			parse: on$1 		manualTick: { 			env: "KIMI_CRON_MANUAL_TICK", 			parse: on$1 		clock: "KIMI_CRON_CLOCK", 		pollIntervalMs: { 			env: "KIMI_CRON_POLL_INTERVAL_MS", 			parse: parsePollIntervalMs 	stripCronEnv = () => void 0; 	registerConfigSection
+
+=== KIMI_DISABLE_CRON
+ntOnlyExecution(this.scopeContext, CRON_MAIN_AGENT_ONLY); 			if (denied !== void 0) return denied; 			if (this.cron.isDisabled()) return { 				isError: true, 				output: "Cron scheduling is disabled (KIMI_DISABLE_CRON=1)." 			const normalizedCron = args.cron.trim().split(/\s+/).join(" "); 			let parsed; 			try { 				parsed = parseCronExpression(normalizedCron); 			} catch (err) { 				return { 					isError: true, 					output: `Invalid cron expression: ${err instan
+
+=== KIMI_CRON_POLL_INTERVAL_MS
+ALE", 			parse: on$1 		disabled: { 			env: "KIMI_DISABLE_CRON", 			parse: on$1 		manualTick: { 			env: "KIMI_CRON_MANUAL_TICK", 			parse: on$1 		clock: "KIMI_CRON_CLOCK", 		pollIntervalMs: { 			env: "KIMI_CRON_POLL_INTERVAL_MS", 			parse: parsePollIntervalMs 	stripCronEnv = () => void 0; 	registerConfigSection(CRON_SECTION, cronConfigSchema, { 		defaultValue: DEFAULT_CRON_CONFIG, 		env: cronEnvBindings, 		stripEnv: stripCronEnv // ../../packages/agent-core-v2/src/features
+
+=== KIMI_CRON_POLL_INTERVAL_MS
+W wallNow monoNowMs .wallNow`1 (SdDpW noJitterH noStale manualTick .parse KIMI_CRON_CLOCK pollIntervalMs KIMI_CRON_DEBUG KIMI_CRON_NO_JITTER KIMI_CRON_NO_STALE KIMI_DISABLE_CRON KIMI_CRON_MANUAL_TICK KIMI_CRON_POLL_INTERVAL_MS (SdDpW January February August September October November December Sunday Monday Tuesday Wednesday Thursday Friday Saturdayl (SdDpW (SdDpW recurringMaxFractionOfPeriod recurringMaxMs oneShotMaxMs (SdDpW (SdDpW prompt recurring lastFiredAt cron.add 1
+
+=== KIMI_CRON_NO_STALE
+ raw === "1"; 	cronEnvBindings = envBindings(cronConfigSchema, { 		debug: { 			env: "KIMI_CRON_DEBUG", 			parse: on$1 		noJitter: { 			env: "KIMI_CRON_NO_JITTER", 			parse: on$1 		noStale: { 			env: "KIMI_CRON_NO_STALE", 			parse: on$1 		disabled: { 			env: "KIMI_DISABLE_CRON", 			parse: on$1 		manualTick: { 			env: "KIMI_CRON_MANUAL_TICK", 			parse: on$1 		clock: "KIMI_CRON_CLOCK", 		pollIntervalMs: { 			env: "KIMI_CRON_POLL_INTERVAL_MS", 			parse: parsePollInter
+
+=== KIMI_CRON_NO_STALE
+Rbj*D! UNEXPECTED Unexpected UUID_INVALID UUIDInvalid (SdDpW wallNow monoNowMs .wallNow`1 (SdDpW noJitterH noStale manualTick .parse KIMI_CRON_CLOCK pollIntervalMs KIMI_CRON_DEBUG KIMI_CRON_NO_JITTER KIMI_CRON_NO_STALE KIMI_DISABLE_CRON KIMI_CRON_MANUAL_TICK KIMI_CRON_POLL_INTERVAL_MS (SdDpW January February August September October November December Sunday Monday Tuesday Wednesday Thursday Friday Saturdayl (SdDpW (SdDpW recurringMaxFractionOfPeriod recurringMaxMs
+
+=== KIMI_CRON_NO_JITTER
+onfigSchema = { parse: (value) => value }; 	on$1 = (raw) => raw === "1"; 	cronEnvBindings = envBindings(cronConfigSchema, { 		debug: { 			env: "KIMI_CRON_DEBUG", 			parse: on$1 		noJitter: { 			env: "KIMI_CRON_NO_JITTER", 			parse: on$1 		noStale: { 			env: "KIMI_CRON_NO_STALE", 			parse: on$1 		disabled: { 			env: "KIMI_DISABLE_CRON", 			parse: on$1 		manualTick: { 			env: "KIMI_CRON_MANUAL_TICK", 			parse: on$1 		clock: "KIMI_CRON_CLOCK", 		pollIntervalMs: { 			e
+
+=== KIMI_CRON_NO_JITTER
+INVALID ULIDInvalid Rbj*D! UNEXPECTED Unexpected UUID_INVALID UUIDInvalid (SdDpW wallNow monoNowMs .wallNow`1 (SdDpW noJitterH noStale manualTick .parse KIMI_CRON_CLOCK pollIntervalMs KIMI_CRON_DEBUG KIMI_CRON_NO_JITTER KIMI_CRON_NO_STALE KIMI_DISABLE_CRON KIMI_CRON_MANUAL_TICK KIMI_CRON_POLL_INTERVAL_MS (SdDpW January February August September October November December Sunday Monday Tuesday Wednesday Thursday Friday Saturdayl (SdDpW (SdDpW recurringMaxFractionOfPe
+
+=== KIMI_CRON_MANUAL_TICK
+	noJitter: { 			env: "KIMI_CRON_NO_JITTER", 			parse: on$1 		noStale: { 			env: "KIMI_CRON_NO_STALE", 			parse: on$1 		disabled: { 			env: "KIMI_DISABLE_CRON", 			parse: on$1 		manualTick: { 			env: "KIMI_CRON_MANUAL_TICK", 			parse: on$1 		clock: "KIMI_CRON_CLOCK", 		pollIntervalMs: { 			env: "KIMI_CRON_POLL_INTERVAL_MS", 			parse: parsePollIntervalMs 	stripCronEnv = () => void 0; 	registerConfigSection(CRON_SECTION, cronConfigSchema, { 		defaultValue: DEFAULT_CRON_
+
+=== KIMI_CRON_MANUAL_TICK
+ALID UUIDInvalid (SdDpW wallNow monoNowMs .wallNow`1 (SdDpW noJitterH noStale manualTick .parse KIMI_CRON_CLOCK pollIntervalMs KIMI_CRON_DEBUG KIMI_CRON_NO_JITTER KIMI_CRON_NO_STALE KIMI_DISABLE_CRON KIMI_CRON_MANUAL_TICK KIMI_CRON_POLL_INTERVAL_MS (SdDpW January February August September October November December Sunday Monday Tuesday Wednesday Thursday Friday Saturdayl (SdDpW (SdDpW recurringMaxFractionOfPeriod recurringMaxMs oneShotMaxMs (SdDpW (SdDpW prompt recur
+
+=== KIMI_CRON_DEBUG
+le: false, 		disabled: false, 		manualTick: false 	cronConfigSchema = { parse: (value) => value }; 	on$1 = (raw) => raw === "1"; 	cronEnvBindings = envBindings(cronConfigSchema, { 		debug: { 			env: "KIMI_CRON_DEBUG", 			parse: on$1 		noJitter: { 			env: "KIMI_CRON_NO_JITTER", 			parse: on$1 		noStale: { 			env: "KIMI_CRON_NO_STALE", 			parse: on$1 		disabled: { 			env: "KIMI_DISABLE_CRON", 			parse: on$1 		manualTick: { 			env: "KIMI_CRON_MANUAL_TICK", 			pars
+
+=== KIMI_CRON_DEBUG
+ectFailure ULID_INVALID ULIDInvalid Rbj*D! UNEXPECTED Unexpected UUID_INVALID UUIDInvalid (SdDpW wallNow monoNowMs .wallNow`1 (SdDpW noJitterH noStale manualTick .parse KIMI_CRON_CLOCK pollIntervalMs KIMI_CRON_DEBUG KIMI_CRON_NO_JITTER KIMI_CRON_NO_STALE KIMI_DISABLE_CRON KIMI_CRON_MANUAL_TICK KIMI_CRON_POLL_INTERVAL_MS (SdDpW January February August September October November December Sunday Monday Tuesday Wednesday Thursday Friday Saturdayl (SdDpW (SdDpW recu
+
+=== KIMI_CRON_CLOCK
+t parsed = Number(firstLine); 	if (!Number.isFinite(parsed)) return Date.now(); 	return parsed; function debugInvalidSpec(spec, reason, debug) { 	if (debug) process.stderr.write(`[cron/clock] invalid KIMI_CRON_CLOCK spec ${JSON.stringify(spec)}: ${reason}   falling back to system clock\n`); var systemMonoNowMs, SYSTEM_CLOCKS, MAX_CLOCK_FILE_BYTES; var init_clock$1 = __esmMin((() => { 	systemMonoNowMs = () => Number(process.hrtime.bigint() / 1000000n); 	SYSTEM_C
+
+=== KIMI_CRON_CLOCK
+rse: on$1 		noStale: { 			env: "KIMI_CRON_NO_STALE", 			parse: on$1 		disabled: { 			env: "KIMI_DISABLE_CRON", 			parse: on$1 		manualTick: { 			env: "KIMI_CRON_MANUAL_TICK", 			parse: on$1 		clock: "KIMI_CRON_CLOCK", 		pollIntervalMs: { 			env: "KIMI_CRON_POLL_INTERVAL_MS", 			parse: parsePollIntervalMs 	stripCronEnv = () => void 0; 	registerConfigSection(CRON_SECTION, cronConfigSchema, { 		defaultValue: DEFAULT_CRON_CONFIG, 		env: cronEnvBindings, 		stripEnv:
+
+=== KIMI_CODE_WATCH
+ettle(error) { 			if (this.settled) return; 			this.settled = true; 			if (error === void 0) this.settleReady(); 			else this.rejectReady(error); 	defaultService = createWatchService(); 	WATCH_ENV = "KIMI_CODE_WATCH"; 	TRUE_WATCH_ENV = /* @__PURE__ */ new Set([ 		"1", 		"true", 		"yes", 		"on" 	FALSE_WATCH_ENV = /* @__PURE__ */ new Set([ 		"0", 		"false", 		"no", 		"off" 	watchEnabledFromConfig = true; 	CandidateWatchHandle = class { 		root; 		candidates; 		opt
+
+=== KIMI_CODE_WATCH
+ayMs .guard .context` leg.retryFired invoke.input watchRoot .context`> watch.subscribe watch.unsubscribe subscriptions Rbvh?E onSnapshot settle toRequestedPath release settled settleReady rejectReady KIMI_CODE_WATCH rebuild candidates handles (SdDpW servers Ra:Skt tunablesa reloadAfterTrustChange reconcileUntrustedOAuthServers merged watchConfigFilesa watchPaths scheduleFileReload reloadFileServers reloadPluginServers publishIfChangeda syncOAuthConfiguration in
+
+=== KIMI_CODE_TUI_MAX_TURNS
+TERESIS, TRANSCRIPT_KEEP_RECENT_STEPS, TRANSCRIPT_KEEP_RECENT_ASSISTANT, TRANSCRIPT_KEEP_RECENT_ASSISTANT_COMPLETED; var init_transcript_window = __esmMin((() => { 	TRANSCRIPT_MAX_TURNS = readEnvInt("KIMI_CODE_TUI_MAX_TURNS", 15); 	TRANSCRIPT_EXPAND_TURNS = readEnvInt("KIMI_CODE_TUI_EXPAND_TURNS", 3); 	TRANSCRIPT_HYSTERESIS = readEnvInt("KIMI_CODE_TUI_HYSTERESIS", 5); 	TRANSCRIPT_KEEP_RECENT_STEPS = readEnvInt("KIMI_CODE_TUI_KEEP_RECENT_STEPS", 30); 	TRANSCRIPT_KEEP_RE
+
+=== KIMI_CODE_TUI_MAX_TURNS
+tended-keys on` to ~/.tmux.conf and restart tmux. tmux extended-keys-format is xterm. Kimi Code works best with csi-u. Add `set -g extended-keys-format csi-u` to ~/.tmux.conf and restart tmux. (SdDpW KIMI_CODE_TUI_MAX_TURNS KIMI_CODE_TUI_EXPAND_TURNS KIMI_CODE_TUI_HYSTERESIS KIMI_CODE_TUI_KEEP_RECENT_STEPS KIMI_CODE_TUI_KEEP_RECENT_ASSISTANT KIMI_CODE_TUI_KEEP_RECENT_ASSISTANT_COMPLETED (SdDpW getSlashCommandsa setupAutocomplete environmentIdOf footerGitBindinga refres
+
+=== KIMI_CODE_TUI_KEEP_RECENT_STEPS
+AX_TURNS", 15); 	TRANSCRIPT_EXPAND_TURNS = readEnvInt("KIMI_CODE_TUI_EXPAND_TURNS", 3); 	TRANSCRIPT_HYSTERESIS = readEnvInt("KIMI_CODE_TUI_HYSTERESIS", 5); 	TRANSCRIPT_KEEP_RECENT_STEPS = readEnvInt("KIMI_CODE_TUI_KEEP_RECENT_STEPS", 30); 	TRANSCRIPT_KEEP_RECENT_ASSISTANT = readEnvInt("KIMI_CODE_TUI_KEEP_RECENT_ASSISTANT", 20); 	TRANSCRIPT_KEEP_RECENT_ASSISTANT_COMPLETED = readEnvInt("KIMI_CODE_TUI_KEEP_RECENT_ASSISTANT_COMPLETED", 2); // src/tui/kimi-tui.ts function loadingTi
+
+=== KIMI_CODE_TUI_KEEP_RECENT_STEPS
+is xterm. Kimi Code works best with csi-u. Add `set -g extended-keys-format csi-u` to ~/.tmux.conf and restart tmux. (SdDpW KIMI_CODE_TUI_MAX_TURNS KIMI_CODE_TUI_EXPAND_TURNS KIMI_CODE_TUI_HYSTERESIS KIMI_CODE_TUI_KEEP_RECENT_STEPS KIMI_CODE_TUI_KEEP_RECENT_ASSISTANT KIMI_CODE_TUI_KEEP_RECENT_ASSISTANT_COMPLETED (SdDpW getSlashCommandsa setupAutocomplete environmentIdOf footerGitBindinga refreshSlashCommandAutocomplete refreshSkillCommands applySkillCommands refreshPluginComma
+
+=== KIMI_CODE_TUI_KEEP_RECENT_ASSISTANT_COMPLETED
+readEnvInt("KIMI_CODE_TUI_KEEP_RECENT_STEPS", 30); 	TRANSCRIPT_KEEP_RECENT_ASSISTANT = readEnvInt("KIMI_CODE_TUI_KEEP_RECENT_ASSISTANT", 20); 	TRANSCRIPT_KEEP_RECENT_ASSISTANT_COMPLETED = readEnvInt("KIMI_CODE_TUI_KEEP_RECENT_ASSISTANT_COMPLETED", 2); // src/tui/kimi-tui.ts function loadingTipKind(mode) { 	if (mode === "waiting" || mode === "tool") return "moon"; 	if (mode === "composing" || mode === "thinking" || mode === "compacting") return "braille"; function waitingSpinnerLabel(retry) 
+
+=== KIMI_CODE_TUI_KEEP_RECENT_ASSISTANT_COMPLETED
+-format csi-u` to ~/.tmux.conf and restart tmux. (SdDpW KIMI_CODE_TUI_MAX_TURNS KIMI_CODE_TUI_EXPAND_TURNS KIMI_CODE_TUI_HYSTERESIS KIMI_CODE_TUI_KEEP_RECENT_STEPS KIMI_CODE_TUI_KEEP_RECENT_ASSISTANT KIMI_CODE_TUI_KEEP_RECENT_ASSISTANT_COMPLETED (SdDpW getSlashCommandsa setupAutocomplete environmentIdOf footerGitBindinga refreshSlashCommandAutocomplete refreshSkillCommands applySkillCommands refreshPluginCommands applyPluginCommands loadBanner renderBanner initMainTui startEventLoop startup
+
+=== KIMI_CODE_TUI_KEEP_RECENT_ASSISTANT
+ 	TRANSCRIPT_HYSTERESIS = readEnvInt("KIMI_CODE_TUI_HYSTERESIS", 5); 	TRANSCRIPT_KEEP_RECENT_STEPS = readEnvInt("KIMI_CODE_TUI_KEEP_RECENT_STEPS", 30); 	TRANSCRIPT_KEEP_RECENT_ASSISTANT = readEnvInt("KIMI_CODE_TUI_KEEP_RECENT_ASSISTANT", 20); 	TRANSCRIPT_KEEP_RECENT_ASSISTANT_COMPLETED = readEnvInt("KIMI_CODE_TUI_KEEP_RECENT_ASSISTANT_COMPLETED", 2); // src/tui/kimi-tui.ts function loadingTipKind(mode) { 	if (mode === "waiting" || mode === "tool") return "moon"; 	if (mode === "com
+
+=== KIMI_CODE_TUI_KEEP_RECENT_ASSISTANT
+readEnvInt("KIMI_CODE_TUI_KEEP_RECENT_STEPS", 30); 	TRANSCRIPT_KEEP_RECENT_ASSISTANT = readEnvInt("KIMI_CODE_TUI_KEEP_RECENT_ASSISTANT", 20); 	TRANSCRIPT_KEEP_RECENT_ASSISTANT_COMPLETED = readEnvInt("KIMI_CODE_TUI_KEEP_RECENT_ASSISTANT_COMPLETED", 2); // src/tui/kimi-tui.ts function loadingTipKind(mode) { 	if (mode === "waiting" || mode === "tool") return "moon"; 	if (mode === "composing" || mode === "thinking" || mode === "compacting") return "braille"; function waitingSpinnerLab
+
+=== KIMI_CODE_TUI_HYSTERESIS
+dow = __esmMin((() => { 	TRANSCRIPT_MAX_TURNS = readEnvInt("KIMI_CODE_TUI_MAX_TURNS", 15); 	TRANSCRIPT_EXPAND_TURNS = readEnvInt("KIMI_CODE_TUI_EXPAND_TURNS", 3); 	TRANSCRIPT_HYSTERESIS = readEnvInt("KIMI_CODE_TUI_HYSTERESIS", 5); 	TRANSCRIPT_KEEP_RECENT_STEPS = readEnvInt("KIMI_CODE_TUI_KEEP_RECENT_STEPS", 30); 	TRANSCRIPT_KEEP_RECENT_ASSISTANT = readEnvInt("KIMI_CODE_TUI_KEEP_RECENT_ASSISTANT", 20); 	TRANSCRIPT_KEEP_RECENT_ASSISTANT_COMPLETED = readEnvInt("KIMI_CODE_T
+
+=== KIMI_CODE_TUI_HYSTERESIS
+mux extended-keys-format is xterm. Kimi Code works best with csi-u. Add `set -g extended-keys-format csi-u` to ~/.tmux.conf and restart tmux. (SdDpW KIMI_CODE_TUI_MAX_TURNS KIMI_CODE_TUI_EXPAND_TURNS KIMI_CODE_TUI_HYSTERESIS KIMI_CODE_TUI_KEEP_RECENT_STEPS KIMI_CODE_TUI_KEEP_RECENT_ASSISTANT KIMI_CODE_TUI_KEEP_RECENT_ASSISTANT_COMPLETED (SdDpW getSlashCommandsa setupAutocomplete environmentIdOf footerGitBindinga refreshSlashCommandAutocomplete refreshSkillCommands apply
+
+=== KIMI_CODE_TUI_FULL_SCREEN
+* Agent/runtime settings live in core's `config.toml`; this file owns * kimi-code client preferences such as terminal UI and update behavior. function legacyFullscreenEnvMode() { 	return process.env["KIMI_CODE_TUI_FULL_SCREEN"] === "1" ? "fullscreen" : void 0; function getTuiConfigPath() { 	return (0, node_path.join)(getDataDir(), "tui.toml"); async function loadTuiConfig(filePath = getTuiConfigPath(), warn) { 	if (!(0, node_fs.existsSync)(filePath)) { 		const envTuiMode
+
+=== KIMI_CODE_TUI_EXPAND_TURNS
+T, TRANSCRIPT_KEEP_RECENT_ASSISTANT_COMPLETED; var init_transcript_window = __esmMin((() => { 	TRANSCRIPT_MAX_TURNS = readEnvInt("KIMI_CODE_TUI_MAX_TURNS", 15); 	TRANSCRIPT_EXPAND_TURNS = readEnvInt("KIMI_CODE_TUI_EXPAND_TURNS", 3); 	TRANSCRIPT_HYSTERESIS = readEnvInt("KIMI_CODE_TUI_HYSTERESIS", 5); 	TRANSCRIPT_KEEP_RECENT_STEPS = readEnvInt("KIMI_CODE_TUI_KEEP_RECENT_STEPS", 30); 	TRANSCRIPT_KEEP_RECENT_ASSISTANT = readEnvInt("KIMI_CODE_TUI_KEEP_RECENT_ASSISTANT", 20); 	
+
+=== KIMI_CODE_TUI_EXPAND_TURNS
+ux.conf and restart tmux. tmux extended-keys-format is xterm. Kimi Code works best with csi-u. Add `set -g extended-keys-format csi-u` to ~/.tmux.conf and restart tmux. (SdDpW KIMI_CODE_TUI_MAX_TURNS KIMI_CODE_TUI_EXPAND_TURNS KIMI_CODE_TUI_HYSTERESIS KIMI_CODE_TUI_KEEP_RECENT_STEPS KIMI_CODE_TUI_KEEP_RECENT_ASSISTANT KIMI_CODE_TUI_KEEP_RECENT_ASSISTANT_COMPLETED (SdDpW getSlashCommandsa setupAutocomplete environmentIdOf footerGitBindinga refreshSlashCommandAutocomplete r
+
+=== KIMI_CODE_TRUST_WORKSPACE
+ustWorkspaceEnvTrusted(getEnv) { 	return parseBooleanEnv$1(getEnv(TRUST_WORKSPACE_ENV)) === true; var TRUST_WORKSPACE_ENV; var init_trustEnv = __esmMin((() => { 	init_env$3(); 	TRUST_WORKSPACE_ENV = "KIMI_CODE_TRUST_WORKSPACE"; // ../../packages/agent-core-v2/src/workspace/workspaceTrust/trustRecord.ts async function readWorkspaceTrust(docs, root, telemetry) { 	try { 		const canonicalKey = trustKey(root); 		if (await docs.get(TRUST_SCOPE, canonicalKey) !== void 0) return
+
+=== KIMI_CODE_TRUST_WORKSPACE
+${server.target})`).join(", "); 	return `Warning: this folder is not trusted; skipped ${servers.length} project-level MCP ${noun}: ${list}.\n  Run \`kimi\` here and choose "Trust this folder", or set KIMI_CODE_TRUST_WORKSPACE=1, to enable them. function describeMcpTarget(config) { 	if (config.transport === "stdio") { 		const args = config.args === void 0 ? "" : ` ${config.args.join(" ")}`; 		return `stdio: ${config.command}${args}`; 	return `${config.transport}: ${config
+
+=== KIMI_CODE_SWARM_TIMEOUT_MS
+	init_configSectionContributions(); 	SWARM_SECTION = "swarm"; 	SwarmConfigSchema = object$1({ timeoutMs: number$1().int().min(0).optional() }); 	DEFAULT_SWARM_TIMEOUT_MS = 72e5; 	SWARM_TIMEOUT_ENV = "KIMI_CODE_SWARM_TIMEOUT_MS"; 	swarmEnvBindings = envBindings(SwarmConfigSchema, { timeoutMs: { 		env: SWARM_TIMEOUT_ENV, 		parse: parseTimeoutMsEnv$1 	} }); 	stripSwarmEnv = stripEnvBoundFields(swarmEnvBindings); 	registerConfigSection(SWARM_SECTION, SwarmConfigSchema, { 		de
+
+=== KIMI_CODE_SWARM_TIMEOUT_MS
+ct notifyPostCompact notifyTaskNotification get stopHookContinuationUsed set stopHookContinuationUsed hookFailureWarned (SdDpW externalHooks (SdDpW debugEventsService (SdDpW (SdDpW debugEvents (SdDpW KIMI_CODE_SWARM_TIMEOUT_MS (SdDpW ## Swarm Mode You are now in "agent swarm" mode. The user may send tasks that require a large number of parallel subagents. ## Workflow You do not need to use TodoList to record this workflow. 1. First, you may need to do a small amount of ex
+
+=== KIMI_CODE_SUBAGENT_SCOPE_EVICT_TIMEOUT_MS
+ var init_subagentScopeCache = __esmMin((() => { 	init_instantiation(); 	init_errors$12(); 	SUBAGENT_SCOPE_CACHE_SIZE_ENV = "KIMI_CODE_SUBAGENT_SCOPE_CACHE_SIZE"; 	SUBAGENT_SCOPE_EVICT_TIMEOUT_ENV = "KIMI_CODE_SUBAGENT_SCOPE_EVICT_TIMEOUT_MS"; 	DEFAULT_SUBAGENT_SCOPE_EVICT_TIMEOUT_MS = 15e3; 	ISessionSubagentScopeCacheService = createDecorator("sessionSubagentScopeCacheService"); // ../../packages/agent-core-v2/src/session/agentLifecycle/createAwaitingClose.ts async function createAgent
+
+=== KIMI_CODE_SUBAGENT_SCOPE_EVICT_TIMEOUT_MS
+t explicitly asks for them. (SdDpW swarm_mode swarm_mode_exit renderedState (SdDpW shouldAutoExit get isActive get shouldAutoExit (SdDpW sessionSwarmService (SdDpW KIMI_CODE_SUBAGENT_SCOPE_CACHE_SIZE KIMI_CODE_SUBAGENT_SCOPE_EVICT_TIMEOUT_MS sessionSubagentScopeCacheServiceh (SdDpW (SdDpW `/h!l!|! subagent.spawned subagentId subagentName parentToolCallUuid parentAgentId callerAgentId swarmIndex runInBackground thinkingEffort subagent.started `/h!p!P	( subagent.completed resultSummary co
+
+=== KIMI_CODE_SUBAGENT_SCOPE_CACHE_SIZE
+DEFAULT_SUBAGENT_SCOPE_EVICT_TIMEOUT_MS, ISessionSubagentScopeCacheService; var init_subagentScopeCache = __esmMin((() => { 	init_instantiation(); 	init_errors$12(); 	SUBAGENT_SCOPE_CACHE_SIZE_ENV = "KIMI_CODE_SUBAGENT_SCOPE_CACHE_SIZE"; 	SUBAGENT_SCOPE_EVICT_TIMEOUT_ENV = "KIMI_CODE_SUBAGENT_SCOPE_EVICT_TIMEOUT_MS"; 	DEFAULT_SUBAGENT_SCOPE_EVICT_TIMEOUT_MS = 15e3; 	ISessionSubagentScopeCacheService = createDecorator("sessionSubagentScopeCacheService"); // ../../packages/agent-cor
+
+=== KIMI_CODE_SUBAGENT_SCOPE_CACHE_SIZE
+aunch subagents with Agent only if it explicitly asks for them. (SdDpW swarm_mode swarm_mode_exit renderedState (SdDpW shouldAutoExit get isActive get shouldAutoExit (SdDpW sessionSwarmService (SdDpW KIMI_CODE_SUBAGENT_SCOPE_CACHE_SIZE KIMI_CODE_SUBAGENT_SCOPE_EVICT_TIMEOUT_MS sessionSubagentScopeCacheServiceh (SdDpW (SdDpW `/h!l!|! subagent.spawned subagentId subagentName parentToolCallUuid parentAgentId callerAgentId swarmIndex runInBackground thinkingEffort subagent.started `/h
+
+=== KIMI_CODE_SESSION_RATING_PREVIEW
+; 	init_client_configs$1(); 	init_engine(); 	init_survey_turns(); 	init_ledger(); 	init_cooldown_store(); 	init_survey_popup_config_feed(); 	init_survey_popup_config(); 	SESSION_RATING_PREVIEW_ENV = "KIMI_CODE_SESSION_RATING_PREVIEW"; 	CLIENT_CONFIG_CACHE_DIR = (0, node_path.join)("cache", "client-configs"); 	PREVIEW_SURVEY_POPUP_PAYLOAD = { 		...DEFAULT_SURVEY_POPUP_PAYLOAD, 		probability: 1, 		min_time_before_feedback_ms: 0, 		min_user_turns_before_feedback: 0, 		min_time_bet
+
+=== KIMI_CODE_SESSION_RATING_PREVIEW
+warmRunCount swarmModels toolCallFamiliesv (SdDpW survey_popup readyForEvaluation refreshedAt coldRefreshAttemptedAt refreshedRegion (SdDpW /resource_configs fetchedAt cacheKeyFor cacheFileFor (SdDpW KIMI_CODE_SESSION_RATING_PREVIEW client-configs Rbb@Ka mountSession unmountSession preview cooldown settings (SdDpW (SdDpW (SdDpW {"type":" "type" processChunk processLine processBoundaryLine processExtendLine noteCompaction finishExtend scanHeadRegion turnLimit Ra~S_S endsAfter be
+
+=== KIMI_CODE_SESSION_LOCK
+_dist$9(); 	init_scope(); 	init_log$3(); 	init_env$3(); 	init_scopes(); 	init_bootstrap$1(); 	init_sessionLock(); 	init_decorateParam(); 	init_decorate(); 	LOCK_FILE_VERSION = 1; 	SESSION_LOCK_ENV = "KIMI_CODE_SESSION_LOCK"; 	UNREADABLE_HOLDER = { 		version: 0, 		token: "", 		pid: 0, 		hostname: "", 		startedAt: 0, 		clientIdentity: "unknown" 	CLIENT_DISPLAY_NAMES = { 		kimi_code_cli: "Kimi Code CLI", 		kimi_code_desktop: "Kimi Code Desktop", 		kimi_code_vscode: "Kimi
+
+=== KIMI_CODE_SESSION_LOCK
+tirementsa bindWriteGuard writeAllowed diskLength scheduleFlush flushLoga flushState settleRetiredState ownFlusha watchStuckFlush finishOwnedFlusha recoveryOffset recoveryConflicta writeGuards (SdDpW KIMI_CODE_SESSION_LOCK startedAt kimi_code_cli Kimi Code CLI kimi_code_desktop Kimi Code Desktop kimi_code_vscode Kimi Code for VS Code unpublish watchExit unwatchExit reclaim tryPublish readHolder unlinkSilent ensureLockDir lockPatha lockDir clientDisplayName lockDirRead
+
+=== KIMI_CODE_SESSION_IDLE_RECLAIM_MS
+arsed; var SESSION_IDLE_RECLAIM_ENV, DEFAULT_SESSION_IDLE_RECLAIM_MS, SWEEP_INTERVAL_MS, SessionIdleReaper; var init_sessionIdleReaper = __esmMin((() => { 	init_src$10(); 	SESSION_IDLE_RECLAIM_ENV = "KIMI_CODE_SESSION_IDLE_RECLAIM_MS"; 	DEFAULT_SESSION_IDLE_RECLAIM_MS = 18e5; 	SWEEP_INTERVAL_MS = 6e4; 	SessionIdleReaper = class { 		sessions; 		logger; 		idleTimeoutMs; 		sweepIntervalMs; 		timer; 		inFlight; 		closed = false; 		constructor(sessions, logger, idleTimeoutMs, sweepIn
+
+=== KIMI_CODE_SESSION_IDLE_RECLAIM_MS
+ndoa healEndedTurns readColdRoster readColdSnapshota drainLiveWire opsListeners healTimers wireCache (SdDpW KIMI_CODE_MODEL_CATALOG_REFRESH_INTERVAL_MS KIMI_CODE_MODEL_CATALOG_REFRESH_ON_START (SdDpW KIMI_CODE_SESSION_IDLE_RECLAIM_MS sweepSessions idleTimeoutMs sweepIntervalMs (SdDpW (SdDpW 0SdDpW dcodeIO bcrypt (SdDpW (SdDpW authTokenServicee (SdDpW (SdDpW EPRIVATE_FILE_TOO_PERMISSIVE (SdDpW (SdDpW (SdDpW 0SdDpW formatParamUrl abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXY
+
+=== KIMI_CODE_SEARCH_WORKER
+ionContributions(); 	DATABASE_SECTION = "database"; 	PERSISTENCE_MINIDB_READMODEL_ENV = "KIMI_CODE_PERSISTENCE_MINIDB_READMODEL"; 	GLOBAL_SEARCH_ENV = "KIMI_CODE_GLOBAL_SEARCH"; 	SEARCH_WORKER_ENV = "KIMI_CODE_SEARCH_WORKER"; 	SEARCH_SYNC_SESSION_CAP_ENV = "KIMI_CODE_SEARCH_SYNC_SESSION_CAP"; 	SEARCH_SYNC_DEBOUNCE_MS_ENV = "KIMI_CODE_SEARCH_SYNC_DEBOUNCE_MS"; 	DatabaseConfigSchema = object$1({ 		base: boolean().optional(), 		globalSearch: boolean().optional(), 		search
+
+=== KIMI_CODE_SEARCH_WORKER
+_inH video_inH audio_inH thinkingH max_context_tokens dynamically_loaded_toolsH (SdDpW (SdDpW (SdDpW session_index.jsonl (SdDpW database KIMI_CODE_PERSISTENCE_MINIDB_READMODEL KIMI_CODE_GLOBAL_SEARCH KIMI_CODE_SEARCH_WORKER KIMI_CODE_SEARCH_SYNC_SESSION_CAP KIMI_CODE_SEARCH_SYNC_DEBOUNCE_MS globalSearch searchSyncSessionCap searchSyncDebounceMs (SdDpW queryStore (SdDpW byParentc (SdDpW sharedScan sharedScanForRead startScan doProject reconcile Rc"hWY scanAuthoritative 
+
+=== KIMI_CODE_SEARCH_SYNC_SESSION_CAP
+STENCE_MINIDB_READMODEL_ENV = "KIMI_CODE_PERSISTENCE_MINIDB_READMODEL"; 	GLOBAL_SEARCH_ENV = "KIMI_CODE_GLOBAL_SEARCH"; 	SEARCH_WORKER_ENV = "KIMI_CODE_SEARCH_WORKER"; 	SEARCH_SYNC_SESSION_CAP_ENV = "KIMI_CODE_SEARCH_SYNC_SESSION_CAP"; 	SEARCH_SYNC_DEBOUNCE_MS_ENV = "KIMI_CODE_SEARCH_SYNC_DEBOUNCE_MS"; 	DatabaseConfigSchema = object$1({ 		base: boolean().optional(), 		globalSearch: boolean().optional(), 		search: boolean().optional(), 		searchSyncSessionCap: number$1().int().min
+
+=== KIMI_CODE_SEARCH_SYNC_SESSION_CAP
+ thinkingH max_context_tokens dynamically_loaded_toolsH (SdDpW (SdDpW (SdDpW session_index.jsonl (SdDpW database KIMI_CODE_PERSISTENCE_MINIDB_READMODEL KIMI_CODE_GLOBAL_SEARCH KIMI_CODE_SEARCH_WORKER KIMI_CODE_SEARCH_SYNC_SESSION_CAP KIMI_CODE_SEARCH_SYNC_DEBOUNCE_MS globalSearch searchSyncSessionCap searchSyncDebounceMs (SdDpW queryStore (SdDpW byParentc (SdDpW sharedScan sharedScanForRead startScan doProject reconcile Rc"hWY scanAuthoritative writeCounters batchChunks RarWt> s
+
+=== KIMI_CODE_SEARCH_SYNC_DEBOUNCE_MS
+L"; 	GLOBAL_SEARCH_ENV = "KIMI_CODE_GLOBAL_SEARCH"; 	SEARCH_WORKER_ENV = "KIMI_CODE_SEARCH_WORKER"; 	SEARCH_SYNC_SESSION_CAP_ENV = "KIMI_CODE_SEARCH_SYNC_SESSION_CAP"; 	SEARCH_SYNC_DEBOUNCE_MS_ENV = "KIMI_CODE_SEARCH_SYNC_DEBOUNCE_MS"; 	DatabaseConfigSchema = object$1({ 		base: boolean().optional(), 		globalSearch: boolean().optional(), 		search: boolean().optional(), 		searchSyncSessionCap: number$1().int().min(1).optional(), 		searchSyncDebounceMs: number$1().int().min(0).opti
+
+=== KIMI_CODE_SEARCH_SYNC_DEBOUNCE_MS
+mically_loaded_toolsH (SdDpW (SdDpW (SdDpW session_index.jsonl (SdDpW database KIMI_CODE_PERSISTENCE_MINIDB_READMODEL KIMI_CODE_GLOBAL_SEARCH KIMI_CODE_SEARCH_WORKER KIMI_CODE_SEARCH_SYNC_SESSION_CAP KIMI_CODE_SEARCH_SYNC_DEBOUNCE_MS globalSearch searchSyncSessionCap searchSyncDebounceMs (SdDpW queryStore (SdDpW byParentc (SdDpW sharedScan sharedScanForRead startScan doProject reconcile Rc"hWY scanAuthoritative writeCounters batchChunks RarWt> scanSlotc (SdDpW ensureReconcileTim
+
+=== KIMI_CODE_REPEAT_BREAKER
+init_loop(); 	init_agentState$1(); 	init_eventBus(); 	init_turnOps(); 	init_systemReminder(); 	init_toolExecutor(); 	init_toolDedupe(); 	init_decorateParam(); 	init_decorate(); 	REPEAT_BREAKER_ENV = "KIMI_CODE_REPEAT_BREAKER"; 	REMINDER_TEXT_1 = "\n\n" + wrapSystemReminder("The same tool call has been repeated several times in a row. Before making your next call, write one sentence stating what new information you expect it to produce. Then act on that sentence: if it n
+
+=== KIMI_CODE_REPEAT_BREAKER
+tPublished (SdDpW agentCacheProbeService (SdDpW cacheProbe (SdDpW Rb&f6X usageScope usage.record (SdDpW currentTurnId currentTurn .initial`% (SdDpW onDidRecordEmitter onDidRecord (SdDpW (SdDpW (SdDpW KIMI_CODE_REPEAT_BREAKER The same tool call has been repeated several times in a row. Before making your next call, write one sentence stating what new information you expect it to produce. Then act on that sentence: if it names something this result does not already give y
+
+=== KIMI_CODE_REMOTE_CONTROL_RELAY_URL
+ExceededError; var init_remote_control$1 = __esmMin((() => { 	init_src$14(); 	init_wrapper(); 	init_lock(); 	REMOTE_CONTROL_RELAY_ORIGIN = "https://code-rc.kimi.com"; 	REMOTE_CONTROL_RELAY_URL_ENV = "KIMI_CODE_REMOTE_CONTROL_RELAY_URL"; 	MAX_HTTP_HEADER_BYTES = 65536; 	HTTP_FRAGMENT_OVERHEAD_BYTES = 1024; 	HTTP_TUNNEL_CAPABILITIES = "request_chunk,response_chunk,abort"; 	DEFAULT_HTTP_TUNNEL_LIMITS = { 		maxRequestBytes: 109051904, 		maxRetainedBytes: 218103808, 		maxSingleFrameRe
+
+=== KIMI_CODE_REMOTE_CONTROL_RELAY_URL
+_id wire_type guessed needs_base_url reject_reason env_key catalog_id models_imported credential_env (SdDpW refresh_oauth import_catalog import_registry (SdDpW (SdDpW holder logout in progress (SdDpW KIMI_CODE_REMOTE_CONTROL_RELAY_URL request_chunk,response_chunk,abort maxRequestBytes maxRetainedBytes` maxSingleFrameResponseBytes responseChunkBytes proxy-authorization proxy-authenticate accept-encoding keep-alive serveCycle connectRelay watchSocket rejectInitial handleManagementM
+
+=== KIMI_CODE_PERSISTENCE_MINIDB_READMODEL
+ var init_configSection$13 = __esmMin((() => { 	init_zod$1(); 	init_env$3(); 	init_config$7(); 	init_configSectionContributions(); 	DATABASE_SECTION = "database"; 	PERSISTENCE_MINIDB_READMODEL_ENV = "KIMI_CODE_PERSISTENCE_MINIDB_READMODEL"; 	GLOBAL_SEARCH_ENV = "KIMI_CODE_GLOBAL_SEARCH"; 	SEARCH_WORKER_ENV = "KIMI_CODE_SEARCH_WORKER"; 	SEARCH_SYNC_SESSION_CAP_ENV = "KIMI_CODE_SEARCH_SYNC_SESSION_CAP"; 	SEARCH_SYNC_DEBOUNCE_MS_ENV = "KIMI_CODE_SEARCH_SYNC_DEBOUNCE_MS"; 	DatabaseConfig
+
+=== KIMI_CODE_PERSISTENCE_MINIDB_READMODEL
+rawListeners (SdDpW moonshot-ai.kosong.UNKNOWN_CAPABILITY image_inH video_inH audio_inH thinkingH max_context_tokens dynamically_loaded_toolsH (SdDpW (SdDpW (SdDpW session_index.jsonl (SdDpW database KIMI_CODE_PERSISTENCE_MINIDB_READMODEL KIMI_CODE_GLOBAL_SEARCH KIMI_CODE_SEARCH_WORKER KIMI_CODE_SEARCH_SYNC_SESSION_CAP KIMI_CODE_SEARCH_SYNC_DEBOUNCE_MS globalSearch searchSyncSessionCap searchSyncDebounceMs (SdDpW queryStore (SdDpW byParentc (SdDpW sharedScan sharedScanForRead startSc
+
+=== KIMI_CODE_PERMISSION_MODE_REMINDER
+ry; 			this.agentState = agentState; 			this.agentState.contributeState(permissionModeKey); 			this.agentState.contributeState(permissionModeConfiguredKey); 			if (parseBooleanEnv$1(bootstrap.getEnv("KIMI_CODE_PERMISSION_MODE_REMINDER")) !== false) this._register(new PermissionModeInjection(this, reminder, this.agentState)); 		get mode() { 			return this.agentState.get(permissionModeKey); 		setMode(mode) { 			const previousMode = this.mode; 			const changed = mode !== previousMod
+
+=== KIMI_CODE_NO_AUTO_UPDATE
+ut of staged rollouts: the * newest version is always visible to the passive update surfaces, exactly as * if every release were fully rolled out. Read directly from the env (same * truthy values as `KIMI_CODE_NO_AUTO_UPDATE`)   the update preflight runs * before the harness exists, so the core flag registry is not consulted. * `KIMI_CODE_NO_AUTO_UPDATE` still wins: disabling updates beats opting in. function isRolloutBypassedByExperimentalEnv(env = process.env) { 	cons
+
+=== KIMI_CODE_NO_AUTO_UPDATE
+lly rolled out. Read directly from the env (same * truthy values as `KIMI_CODE_NO_AUTO_UPDATE`)   the update preflight runs * before the harness exists, so the core flag registry is not consulted. * `KIMI_CODE_NO_AUTO_UPDATE` still wins: disabling updates beats opting in. function isRolloutBypassedByExperimentalEnv(env = process.env) { 	const value = (env["KIMI_CODE_EXPERIMENTAL_FLAG"] ?? "").trim().toLowerCase(); 	return [ 		"1", 		"true", 		"yes", 		"on" 	].includes(v
+
+=== KIMI_CODE_NATIVE_ASSET_SMOKE
+earchWorker(); 	process.stdout.write(`Native asset smoke passed: ${manifest.target}; MiniDb worker build passed; search worker ready\n`); function runNativeAssetSmokeIfRequested() { 	if (process.env["KIMI_CODE_NATIVE_ASSET_SMOKE"] !== "1") return false; 	runSmoke().then(() => process.exit(0), (error) => { 		const message = error instanceof Error ? error.message : String(error); 		process.stderr.write(`Native asset smoke failed: ${message}\n`); 		process.exit(1); 	return tru
+
+=== KIMI_CODE_MODEL_CATALOG_REFRESH_ON_START
+var init_modelCatalogRefreshScheduler = __esmMin((() => { 	init_src$10(); 	DEFAULT_REFRESH_INTERVAL_MS = 216e5; 	INTERVAL_ENV = "KIMI_CODE_MODEL_CATALOG_REFRESH_INTERVAL_MS"; 	REFRESH_ON_START_ENV = "KIMI_CODE_MODEL_CATALOG_REFRESH_ON_START"; 	ModelCatalogRefreshScheduler = class { 		discovery; 		config; 		logger; 		env; 		timer; 		started = false; 		disposed = false; 		constructor(discovery, config, logger, env = process.env) { 			this.discovery = discovery; 			this.config = config; 	
+
+=== KIMI_CODE_MODEL_CATALOG_REFRESH_ON_START
+liveTurnOverlay livePromptBackfill rebuildAfterUndoa healEndedTurns readColdRoster readColdSnapshota drainLiveWire opsListeners healTimers wireCache (SdDpW KIMI_CODE_MODEL_CATALOG_REFRESH_INTERVAL_MS KIMI_CODE_MODEL_CATALOG_REFRESH_ON_START (SdDpW KIMI_CODE_SESSION_IDLE_RECLAIM_MS sweepSessions idleTimeoutMs sweepIntervalMs (SdDpW (SdDpW 0SdDpW dcodeIO bcrypt (SdDpW (SdDpW authTokenServicee (SdDpW (SdDpW EPRIVATE_FILE_TOO_PERMISSIVE (SdDpW (SdDpW (SdDpW 0SdDpW formatParamUrl abcdefghij
+
+=== KIMI_CODE_MODEL_CATALOG_REFRESH_INTERVAL_MS
+_MS, INTERVAL_ENV, REFRESH_ON_START_ENV, ModelCatalogRefreshScheduler; var init_modelCatalogRefreshScheduler = __esmMin((() => { 	init_src$10(); 	DEFAULT_REFRESH_INTERVAL_MS = 216e5; 	INTERVAL_ENV = "KIMI_CODE_MODEL_CATALOG_REFRESH_INTERVAL_MS"; 	REFRESH_ON_START_ENV = "KIMI_CODE_MODEL_CATALOG_REFRESH_ON_START"; 	ModelCatalogRefreshScheduler = class { 		discovery; 		config; 		logger; 		env; 		timer; 		started = false; 		disposed = false; 		constructor(discovery, config, logger, env = proc
+
+=== KIMI_CODE_MODEL_CATALOG_REFRESH_INTERVAL_MS
+getOpsSince handleLiveOps scheduleTurnHeala liveTurnOverlay livePromptBackfill rebuildAfterUndoa healEndedTurns readColdRoster readColdSnapshota drainLiveWire opsListeners healTimers wireCache (SdDpW KIMI_CODE_MODEL_CATALOG_REFRESH_INTERVAL_MS KIMI_CODE_MODEL_CATALOG_REFRESH_ON_START (SdDpW KIMI_CODE_SESSION_IDLE_RECLAIM_MS sweepSessions idleTimeoutMs sweepIntervalMs (SdDpW (SdDpW 0SdDpW dcodeIO bcrypt (SdDpW (SdDpW authTokenServicee (SdDpW (SdDpW EPRIVATE_FILE_TOO_PERMISSIVE (SdDpW (SdDp
+
+=== KIMI_CODE_LLM_HEADERS_TIMEOUT_MS
+ERS_TIMEOUT_MS, SOCKS_SCHEMES, LOOPBACK_NO_PROXY, warnedSocksProxy, warnedInvalidProxy, cached$3; var init_timeout = __esmMin((() => { 	import_undici$1 = require_undici(); 	LLM_HEADERS_TIMEOUT_ENV = "KIMI_CODE_LLM_HEADERS_TIMEOUT_MS"; 	MAX_HEADERS_TIMEOUT_MS = 2 ** 31 - 1; 	SOCKS_SCHEMES = /* @__PURE__ */ new Set([ 		"socks", 		"socks4", 		"socks4a", 		"socks5", 		"socks5h" 	LOOPBACK_NO_PROXY = [ 		"localhost", 		"127.0.0.1", 		"::1", 		"[::1]" 	warnedSocksProxy = false; 	warne
+
+=== KIMI_CODE_LLM_HEADERS_TIMEOUT_MS
+onnection|connect|disconnect|fetch failed (SdDpW (SdDpW .isUser .merge .patterns .thinking (SdDpW usesEndpointFetch .sendStream .decoder` .replay (SdDpW vertexaiGo  (SdDpW (SdDpW (SdDpW (SdDpW (SdDpW KIMI_CODE_LLM_HEADERS_TIMEOUT_MS (SdDpW (SdDpW (SdDpW (SdDpW supportedProtocols resolveAdapterIdentity resolveProviderBaseId resolveCapability detectedReasoningKeys (SdDpW KIMI_CODE_IDENTITY_NAME KIMI_CODE_IDENTITY_SLUG (SdDpW frozen (SdDpW __kimi_env_model__ (SdDpW (SdDpW (SdDpW g
+
+=== KIMI_CODE_INFINITE_RETRY
+equestId(error) { 	const requestId = (errorDiagnostics(error) ?? errorDiagnostics(unwrapErrorCause(error)))?.["requestId"]; 	return typeof requestId === "string" ? requestId : void 0; var noopOnPart, KIMI_CODE_INFINITE_RETRY_ENV, CACHE_BREAK_MIN_DROP_TOKENS, CACHE_BREAK_DROP_RATIO, llmRequesterLastConfigLogSignatureKey, llmRequesterTurnConfigsKey, llmRequesterLastMeasuredRequestKey, llmRequesterMediaRecoveryKey, llmRequesterEmittedThinkingEffortWarningsKey, AgentLoopReq
+
+=== KIMI_CODE_INFINITE_RETRY
+rojectionPolicy(); 	init_toolSelectPolicy(); 	init_abort$1(); 	init_env$3(); 	init_errors$12(); 	init_retry$1(); 	init_bootstrap$1(); 	init_decorateParam(); 	init_decorate(); 	noopOnPart = () => {}; 	KIMI_CODE_INFINITE_RETRY_ENV = "KIMI_CODE_INFINITE_RETRY"; 	CACHE_BREAK_MIN_DROP_TOKENS = 2e3; 	CACHE_BREAK_DROP_RATIO = .95; 	llmRequesterLastConfigLogSignatureKey = defineState("llmRequester.lastConfigLogSignature", () => void 0); 	llmRequesterTurnConfigsKey = defineState
+
+=== KIMI_CODE_IDENTITY_SLUG
+ns(); 	IDENTITY_SECTION = "identity"; 	IdentityConfigSchema = object$1({ 		name: string().optional(), 		slug: string().optional() 	IDENTITY_NAME_ENV = "KIMI_CODE_IDENTITY_NAME"; 	IDENTITY_SLUG_ENV = "KIMI_CODE_IDENTITY_SLUG"; 	identityEnvBindings = envBindings(IdentityConfigSchema, { 		name: { 			env: IDENTITY_NAME_ENV, 			parse: parseIdentityEnv 		slug: { 			env: IDENTITY_SLUG_ENV, 			parse: parseIdentityEnv 	stripIdentityEnv = stripEnvBoundFields(identityEnvBindings)
+
+=== KIMI_CODE_IDENTITY_SLUG
+DpW KIMI_CODE_LLM_HEADERS_TIMEOUT_MS (SdDpW (SdDpW (SdDpW (SdDpW supportedProtocols resolveAdapterIdentity resolveProviderBaseId resolveCapability detectedReasoningKeys (SdDpW KIMI_CODE_IDENTITY_NAME KIMI_CODE_IDENTITY_SLUG (SdDpW frozen (SdDpW __kimi_env_model__ (SdDpW (SdDpW (SdDpW getDefaultModel applyDefaultModel 0Sddqq .ready _onDidChangeModels onDidChangeModels _onDidChangeDefaultModel onDidChangeDefaultModel (SdDpW (SdDpW (SdDpW display_name max_context_sizeC su
+
+=== KIMI_CODE_IDENTITY_NAME
+	init_config$7(); 	init_configSectionContributions(); 	IDENTITY_SECTION = "identity"; 	IdentityConfigSchema = object$1({ 		name: string().optional(), 		slug: string().optional() 	IDENTITY_NAME_ENV = "KIMI_CODE_IDENTITY_NAME"; 	IDENTITY_SLUG_ENV = "KIMI_CODE_IDENTITY_SLUG"; 	identityEnvBindings = envBindings(IdentityConfigSchema, { 		name: { 			env: IDENTITY_NAME_ENV, 			parse: parseIdentityEnv 		slug: { 			env: IDENTITY_SLUG_ENV, 			parse: parseIdentityEnv 	stripIdenti
+
+=== KIMI_CODE_IDENTITY_NAME
+(SdDpW (SdDpW (SdDpW (SdDpW KIMI_CODE_LLM_HEADERS_TIMEOUT_MS (SdDpW (SdDpW (SdDpW (SdDpW supportedProtocols resolveAdapterIdentity resolveProviderBaseId resolveCapability detectedReasoningKeys (SdDpW KIMI_CODE_IDENTITY_NAME KIMI_CODE_IDENTITY_SLUG (SdDpW frozen (SdDpW __kimi_env_model__ (SdDpW (SdDpW (SdDpW getDefaultModel applyDefaultModel 0Sddqq .ready _onDidChangeModels onDidChangeModels _onDidChangeDefaultModel onDidChangeDefaultModel (SdDpW (SdDpW (SdDpW display_n
+
+=== KIMI_CODE_GLOBAL_SEARCH
+init_env$3(); 	init_config$7(); 	init_configSectionContributions(); 	DATABASE_SECTION = "database"; 	PERSISTENCE_MINIDB_READMODEL_ENV = "KIMI_CODE_PERSISTENCE_MINIDB_READMODEL"; 	GLOBAL_SEARCH_ENV = "KIMI_CODE_GLOBAL_SEARCH"; 	SEARCH_WORKER_ENV = "KIMI_CODE_SEARCH_WORKER"; 	SEARCH_SYNC_SESSION_CAP_ENV = "KIMI_CODE_SEARCH_SYNC_SESSION_CAP"; 	SEARCH_SYNC_DEBOUNCE_MS_ENV = "KIMI_CODE_SEARCH_SYNC_DEBOUNCE_MS"; 	DatabaseConfigSchema = object$1({ 		base: boolean().optional()
+
+=== KIMI_CODE_GLOBAL_SEARCH
+init_decorateParam(); 	init_decorate(); 	INDEX_DIR_NAME = "search-index"; 	SESSION_PAGE_SIZE = 500; 	GLOBAL_SEARCH_DISABLED_DETAIL = "global search is disabled; set [database] global_search = true or KIMI_CODE_GLOBAL_SEARCH=1 to enable it"; 	MAX_QUERY_TERMS = 32; 	MAX_LITERAL_QUERY_CHARS = 1024; 	MAX_POSTINGS_VISITS = 25e4; 	QUERY_DEADLINE_MS = 500; 	QUERY_TEXT_BUDGET_CHARS = 16e6; 	MAX_TEXT_HITS = 1e5; 	LITERAL_CANDIDATE_CAP = 1e4; 	pendingDisposals = /* @__PURE__ */ 
+
+=== KIMI_CODE_EXPERIMENTAL_WAIT_FOR
+gent/tools/task/task-wait/flag.ts var WAIT_FOR_FLAG_ID, WAIT_FOR_FLAG_ENV, waitForFlag; var init_flag$3 = __esmMin((() => { 	init_flagRegistry(); 	WAIT_FOR_FLAG_ID = "wait_for"; 	WAIT_FOR_FLAG_ENV = "KIMI_CODE_EXPERIMENTAL_WAIT_FOR"; 	waitForFlag = { 		id: WAIT_FOR_FLAG_ID, 		title: "WaitFor tool", 		description: "Give the model the WaitFor tool so it can wait for background tasks inside the current turn instead of ending the turn and being re-invoked.", 		env: WAIT_FOR_FLAG_E
+
+=== KIMI_CODE_EXPERIMENTAL_WAIT_FOR
+reservedContextSize compactionTriggerRatio compactionMaxAttempts deprecatedEnv deprecations max_retries_per_step replacement max_attempts_per_step max_steps_per_run max_steps_per_turn (SdDpW wait_for KIMI_CODE_EXPERIMENTAL_WAIT_FOR WaitFor tool Give the model the WaitFor tool so it can wait for background tasks inside the current turn instead of ending the turn and being re-invoked. (SdDpW (SdDpW sessionUsageService (SdDpW goalDeadlineScheduler (SdDpW The user cancelled the cu
+
+=== KIMI_CODE_EXPERIMENTAL_TOWER
+ilure) { 	switch (failure.reason) { 		case "not-main-agent": return "tower mode is only supported by the main agent"; 		case "experiment-off": return "the tower experiment is disabled; enable it with KIMI_CODE_EXPERIMENTAL_TOWER=1 or `[experimental] tower = true` in config.toml"; 		case "feature-not-assembled": return "the tower feature is not assembled in this process; a restart is required"; 		case "owned-by-live-session": return `another live session owns the workspace t
+
+=== KIMI_CODE_EXPERIMENTAL_TOWER
+../packages/agent-core-v2/src/features/tower/flag.ts var TOWER_FLAG_ENV, towerFlag; var init_flag$1 = __esmMin((() => { 	init_flagRegistry(); 	init_tower$1(); 	init_towerFeature(); 	TOWER_FLAG_ENV = "KIMI_CODE_EXPERIMENTAL_TOWER"; 	towerFlag = { 		id: TOWER_FLAG_ID, 		title: "Tower mode", 		description: "Enable tower mode: coordinate multiple agents on a shared objective, toggled with the /tower command.", 		env: TOWER_FLAG_ENV, 		default: false, 		surface: "both", 		isExpo
+
+=== KIMI_CODE_EXPERIMENTAL_TOOL_SELECT
+oolSelect/flag.ts var TOOL_SELECT_FLAG_ID, TOOL_SELECT_FLAG_ENV, toolSelectFlag; var init_flag = __esmMin((() => { 	init_flagRegistry(); 	TOOL_SELECT_FLAG_ID = "tool-select"; 	TOOL_SELECT_FLAG_ENV = "KIMI_CODE_EXPERIMENTAL_TOOL_SELECT"; 	toolSelectFlag = { 		id: TOOL_SELECT_FLAG_ID, 		title: "Tool select (progressive tool disclosure)", 		description: "Keep MCP tool schemas out of the immutable top-level tools[]; the model loads them on demand via the select_tools tool. Only takes
+
+=== KIMI_CODE_EXPERIMENTAL_TOOL_SELECT
+ probeAndRemind markKnown markDeleted targetDirs targetDirsFromAccesses probeDira nearestExistingDir get known get agentCwd remindQueue readRecently telemetryFired agentsMdReminder (SdDpW tool-select KIMI_CODE_EXPERIMENTAL_TOOL_SELECT Tool select (progressive tool disclosure) Keep MCP tool schemas out of the immutable top-level tools[]; the model loads them on demand via the select_tools tool. Only takes effect on models whose capability catalog declares dynamically loaded tools.
+
+=== KIMI_CODE_EXPERIMENTAL_SUBAGENT_FORK
+.ts var SUBAGENT_FORK_FLAG_ID, SUBAGENT_FORK_FLAG_ENV, subagentForkFlag; var init_flag$2 = __esmMin((() => { 	init_flagRegistry(); 	SUBAGENT_FORK_FLAG_ID = "subagent_fork"; 	SUBAGENT_FORK_FLAG_ENV = "KIMI_CODE_EXPERIMENTAL_SUBAGENT_FORK"; 	subagentForkFlag = { 		id: SUBAGENT_FORK_FLAG_ID, 		title: "Fork context for subagents", 		description: "Let the Agent and AgentSwarm tools start a subagent with a snapshot of the calling agent's conversation history via the fork parameter.", 		e
+
+=== KIMI_CODE_EXPERIMENTAL_SUBAGENT_FORK
+nt's own agent type. Cannot override the model when forking the current context. A fork inherits this agent's model. fork is disabled: the subagent_fork experimental flag is off. (SdDpW subagent_fork KIMI_CODE_EXPERIMENTAL_SUBAGENT_FORK Fork context for subagents Let the Agent and AgentSwarm tools start a subagent with a snapshot of the calling agent's conversation history via the fork parameter. (SdDpW secondaryModel KIMI_SUBAGENT_TIMEOUT_MS [secondary_model] 'force' is no longer 
+
+=== KIMI_CODE_EXPERIMENTAL_NOTIFY_USER
+/notify/flag.ts var NOTIFY_USER_FLAG_ID, NOTIFY_USER_FLAG_ENV, notifyUserFlag; var init_flag$4 = __esmMin((() => { 	init_flagRegistry(); 	NOTIFY_USER_FLAG_ID = "notify_user"; 	NOTIFY_USER_FLAG_ENV = "KIMI_CODE_EXPERIMENTAL_NOTIFY_USER"; 	notifyUserFlag = { 		id: NOTIFY_USER_FLAG_ID, 		title: "NotifyUser tool", 		description: "Show live progress updates from the main agent and subagents: the Updates panel in the TUI and progress rows in desktop and web.", 		env: NOTIFY_USER_FLAG_E
+
+=== KIMI_CODE_EXPERIMENTAL_NOTIFY_USER
+skStop edit file edit file outside of working directory write file run command in plan mode run background command (SdDpW (SdDpW (SdDpW (SdDpW (SdDpW wire.jsonl (SdDpW flagRegistry (SdDpW notify_user KIMI_CODE_EXPERIMENTAL_NOTIFY_USER NotifyUser tool Show live progress updates from the main agent and subagents: the Updates panel in the TUI and progress rows in desktop and web. surface (SdDpW update_panel (SdDpW sessionNotify journal (SdDpW (SdDpW agent.switched (SdDpW available c
+
+=== KIMI_CODE_EDITOR
+settled = true; 			reject(err); 		child.once("spawn", () => { 			if (settled) return; 			settled = true; 			child.unref(); 			resolve(); function resolveEditorCommand$1(env) { 	for (const key of [ 		"KIMI_CODE_EDITOR", 		"VISUAL", 		"EDITOR" 		const value = env[key]; 		if (typeof value === "string" && value.trim().length > 0) return value.trim(); function supportsLineTarget(command) { 	const first = command.trim().split(/\s+/)[0] ?? ""; 	return /(?:^|\/)(code|cu
+
+=== KIMI_CODE_DISABLE_HOST_CHECK
+LLOWED_HOSTS"]; 	if (raw === void 0) return []; 	return raw.split(",").map((entry) => entry.trim()).filter((entry) => entry.length > 0); function isHostCheckDisabled(env = process.env) { 	return env["KIMI_CODE_DISABLE_HOST_CHECK"] === "1"; function stripPort(host) { 	if (host.startsWith("[")) { 		const end = host.indexOf("]"); 		return (end === -1 ? host : host.slice(0, end + 1)).toLowerCase(); 	const firstColon = host.indexOf(":"); 	if (firstColon === -1) return host.toLow
+
+=== KIMI_CODE_DEV_SERVER
+await shutdownTelemetry({ timeoutMs: CLI_SHUTDOWN_TIMEOUT_MS }).catch(() => {}); 		throw error; 	return new Promise(() => {}); * Resolve the web assets directory passed to kap-server. In dev mode * (`KIMI_CODE_DEV_SERVER=1`, set by the repo's `dev:server` / `dev:kap-server*` * scripts) a missing `dist-web` build is tolerated: the server starts API-only * and the web UI is expected to come from a Vite dev server (the web UI source lives in the code-app repo). * Outsi
+
+=== KIMI_CODE_DEV_SERVER
+ fast when the assets are missing. function serverWebAssetsDir(env = process.env, nativeWebAssetsDir = getNativeWebAssetsDir()) { 	const dir = resolveServerWebAssetsDir(nativeWebAssetsDir); 	if (env["KIMI_CODE_DEV_SERVER"] === "1" && !(0, node_fs.existsSync)((0, node_path.join)(dir, "index.html"))) return; 	return dir; function resolveServerWebAssetsDir(nativeWebAssetsDir = getNativeWebAssetsDir()) { 	return nativeWebAssetsDir ?? (0, node_path.join)(getHostPackageRo
+
+=== KIMI_CODE_DEBUG
+mptTimer() { 			if (this.stepRetryAttemptTimer !== void 0) { 				clearTimeout(this.stepRetryAttemptTimer); 				this.stepRetryAttemptTimer = void 0; 		maybeShowDebugTiming(event) { 			if (process.env["KIMI_CODE_DEBUG"] !== "1") return; 			const text = formatStepDebugTiming(event); 			if (text === void 0) return; 			this.host.appendTranscriptEntry({ 				id: nextTranscriptId(), 				kind: "status", 				turnId: String(event.turnId), 				renderMode: "plain", 				cont
+
+=== KIMI_CODE_DANGEROUS_COMMAND_GUARD
+, 		reason: string().optional() 	PermissionConfigSchema$1 = object$1({ 		rules: array(PermissionRuleSchema$1).optional(), 		dangerousCommandGuard: boolean().optional() 	DANGEROUS_COMMAND_GUARD_ENV = "KIMI_CODE_DANGEROUS_COMMAND_GUARD"; 	permissionEnvBindings = envBindings(PermissionConfigSchema$1, { dangerousCommandGuard: { 		env: DANGEROUS_COMMAND_GUARD_ENV, 		parse: parseDangerousCommandGuardEnv 	} }); 	stripPermissionEnv = stripEnvBoundFields(permissionEnvBindings); 	permissi
+
+=== KIMI_CODE_DANGEROUS_COMMAND_GUARD
+ngeMode (SdDpW evaluatea auto-mode-approve (SdDpW auto-mode-ask-user-question-deny (SdDpW (SdDpW permission turn-override session-runtime Invalid permission rule pattern dangerousCommandGuard ReB3"+! KIMI_CODE_DANGEROUS_COMMAND_GUARD (SdDpW poweroff reboot bcdedit diskpart restart-computer stop-computer wipefs --machine /dev/null /dev/zero /dev/full /dev/random /dev/urandom /dev/stdin /dev/stdout /dev/stderr dangerous-command-ask (SdDpW SetTodoList default-tool-approve (SdDpW fa
+
+=== KIMI_CODE_CUSTOM_HEADERS
+ions), 		...createKimiDeviceHeaders({ 			homeDir: options.homeDir, 			version: options.version, 			platform: options.platform function parseKimiCodeCustomHeaders(env = process.env) { 	const raw = env[KIMI_CODE_CUSTOM_HEADERS_ENV]?.trim(); 	if (raw === void 0 || raw.length === 0) return {}; 	const headers = {}; 	for (const line of raw.split("\n")) { 		const colon = line.indexOf(":"); 		if (colon < 0) continue; 		const name = line.slice(0, colon).trim(); 		if (name.length
+
+=== KIMI_CODE_CUSTOM_HEADERS
+ion requiredAsciiHeader(value, fieldName) { 	const cleaned = asciiHeader(value, ""); 	if (cleaned.length === 0) throw new Error(`${fieldName} must be a non-empty ASCII string.`); 	return cleaned; var KIMI_CODE_CUSTOM_HEADERS_ENV, MACOS_SYSTEM_VERSION_PLIST; var init_identity = __esmMin((() => { 	KIMI_CODE_CUSTOM_HEADERS_ENV = "KIMI_CODE_CUSTOM_HEADERS"; 	MACOS_SYSTEM_VERSION_PLIST = "/System/Library/CoreServices/SystemVersion.plist"; // ../../packages/oauth/src/constant
+
+=== KIMI_CODE_CORS_ORIGINS
+r init_hostnames = __esmMin((() => { 	init_envelope(); 	HOST_ERROR_CODE = 40301; // ../../packages/kap-server/src/middleware/origin.ts function parseCorsOrigins(env = process.env) { 	const raw = env["KIMI_CODE_CORS_ORIGINS"]; 	if (raw === void 0) return []; 	return raw.split(",").map((entry) => entry.trim()).filter((entry) => entry.length > 0); function originHost(origin) { 	if (origin === void 0) return; 	try { 		return new URL(origin).host; 	} catch { 		return; func
+
+=== KIMI_CODE_CACHE_DIR
+I_SHUTDOWN_TIMEOUT_MS, PROMPT_CLEANUP_TIMEOUT_MS, HEADLESS_FORCE_EXIT_GRACE_MS, HEADLESS_STDIO_DRAIN_TIMEOUT_MS, NPM_PACKAGE_NAME, KIMI_CODE_HOME_ENV, KIMI_CODE_DATA_DIR_NAME, KIMI_CODE_LOG_DIR_NAME, KIMI_CODE_CACHE_DIR_NAME, KIMI_CODE_UPDATE_DIR_NAME, KIMI_CODE_UPDATE_STATE_FILE_NAME, KIMI_CODE_UPDATE_INSTALL_STATE_FILE_NAME, KIMI_CODE_UPDATE_INSTALL_LOCK_FILE_NAME, KIMI_CODE_UPDATE_ROLLOUT_LOG_FILE_NAME, KIMI_CODE_PLUGIN_UPDATE_NOTICE_STATE_FILE_NAME, KIMI_CODE_N
+
+=== KIMI_CODE_CACHE_DIR
+EADLESS_STDIO_DRAIN_TIMEOUT_MS = 1e4; 	NPM_PACKAGE_NAME = "@moonshot-ai/kimi-code"; 	KIMI_CODE_HOME_ENV = "KIMI_CODE_HOME"; 	KIMI_CODE_DATA_DIR_NAME = ".kimi-code"; 	KIMI_CODE_LOG_DIR_NAME = "logs"; 	KIMI_CODE_CACHE_DIR_NAME = "cache"; 	KIMI_CODE_UPDATE_DIR_NAME = "updates"; 	KIMI_CODE_UPDATE_STATE_FILE_NAME = "latest.json"; 	KIMI_CODE_UPDATE_INSTALL_STATE_FILE_NAME = "install.json"; 	KIMI_CODE_UPDATE_INSTALL_LOCK_FILE_NAME = "install.lock"; 	KIMI_CODE_UPDATE_ROLLO
+
+=== KIMI_CODE_BACKGROUND_PRINT_WAIT_CEILING_S
+_BACKGROUND_KEEP_ALIVE_ON_EXIT"; 	MAX_RUNNING_TASKS_ENV = "KIMI_CODE_BACKGROUND_MAX_RUNNING_TASKS"; 	BASH_TASK_TIMEOUT_S_ENV = "KIMI_CODE_BACKGROUND_BASH_TASK_TIMEOUT_S"; 	PRINT_WAIT_CEILING_S_ENV = "KIMI_CODE_BACKGROUND_PRINT_WAIT_CEILING_S"; 	PRINT_BACKGROUND_MODE_ENV = "KIMI_CODE_BACKGROUND_PRINT_BACKGROUND_MODE"; 	PRINT_MAX_TURNS_ENV = "KIMI_CODE_BACKGROUND_PRINT_MAX_TURNS"; 	taskEnvBindings = envBindings(AgentTaskConfigSchema, { 		keepAliveOnExit: { 			env: KEEP_ALIVE_ON_EXIT_ENV, 
+
+=== KIMI_CODE_BACKGROUND_PRINT_WAIT_CEILING_S
+TimeoutSC killGracePeriodMs printWaitCeilingS printBackgroundMode printMaxTurns KIMI_CODE_BACKGROUND_KEEP_ALIVE_ON_EXIT KIMI_CODE_BACKGROUND_MAX_RUNNING_TASKS KIMI_CODE_BACKGROUND_BASH_TASK_TIMEOUT_S KIMI_CODE_BACKGROUND_PRINT_WAIT_CEILING_S KIMI_CODE_BACKGROUND_PRINT_BACKGROUND_MODE KIMI_CODE_BACKGROUND_PRINT_MAX_TURNS (SdDpW (SdDpW agentToolPolicyService (SdDpW (SdDpW nChars totalChars retentionSpill completionSpill get nChars get totalChars Rbv,yD retainedChars totalCharsValue satura
+
+=== KIMI_CODE_BACKGROUND_PRINT_MAX_TURNS
+ROUND_BASH_TASK_TIMEOUT_S"; 	PRINT_WAIT_CEILING_S_ENV = "KIMI_CODE_BACKGROUND_PRINT_WAIT_CEILING_S"; 	PRINT_BACKGROUND_MODE_ENV = "KIMI_CODE_BACKGROUND_PRINT_BACKGROUND_MODE"; 	PRINT_MAX_TURNS_ENV = "KIMI_CODE_BACKGROUND_PRINT_MAX_TURNS"; 	taskEnvBindings = envBindings(AgentTaskConfigSchema, { 		keepAliveOnExit: { 			env: KEEP_ALIVE_ON_EXIT_ENV, 			parse: parseBooleanEnv$1 		maxRunningTasks: { 			env: MAX_RUNNING_TASKS_ENV, 			parse: parsePositiveInt$3 		bashTaskTimeoutS: { 			env:
+
+=== KIMI_CODE_BACKGROUND_PRINT_MAX_TURNS
+CODE_BACKGROUND_KEEP_ALIVE_ON_EXIT KIMI_CODE_BACKGROUND_MAX_RUNNING_TASKS KIMI_CODE_BACKGROUND_BASH_TASK_TIMEOUT_S KIMI_CODE_BACKGROUND_PRINT_WAIT_CEILING_S KIMI_CODE_BACKGROUND_PRINT_BACKGROUND_MODE KIMI_CODE_BACKGROUND_PRINT_MAX_TURNS (SdDpW (SdDpW agentToolPolicyService (SdDpW (SdDpW nChars totalChars retentionSpill completionSpill get nChars get totalChars Rbv,yD retainedChars totalCharsValue saturated (SdDpW agent-tool (SdDpW (SdDpW id_rsa id_ed25519 id_ecdsa .env.example .env
+
+=== KIMI_CODE_BACKGROUND_PRINT_BACKGROUND_MODE
+ROUND_MAX_RUNNING_TASKS"; 	BASH_TASK_TIMEOUT_S_ENV = "KIMI_CODE_BACKGROUND_BASH_TASK_TIMEOUT_S"; 	PRINT_WAIT_CEILING_S_ENV = "KIMI_CODE_BACKGROUND_PRINT_WAIT_CEILING_S"; 	PRINT_BACKGROUND_MODE_ENV = "KIMI_CODE_BACKGROUND_PRINT_BACKGROUND_MODE"; 	PRINT_MAX_TURNS_ENV = "KIMI_CODE_BACKGROUND_PRINT_MAX_TURNS"; 	taskEnvBindings = envBindings(AgentTaskConfigSchema, { 		keepAliveOnExit: { 			env: KEEP_ALIVE_ON_EXIT_ENV, 			parse: parseBooleanEnv$1 		maxRunningTasks: { 			env: MAX_RUNNING_TASKS_
+
+=== KIMI_CODE_BACKGROUND_PRINT_BACKGROUND_MODE
+ngS printBackgroundMode printMaxTurns KIMI_CODE_BACKGROUND_KEEP_ALIVE_ON_EXIT KIMI_CODE_BACKGROUND_MAX_RUNNING_TASKS KIMI_CODE_BACKGROUND_BASH_TASK_TIMEOUT_S KIMI_CODE_BACKGROUND_PRINT_WAIT_CEILING_S KIMI_CODE_BACKGROUND_PRINT_BACKGROUND_MODE KIMI_CODE_BACKGROUND_PRINT_MAX_TURNS (SdDpW (SdDpW agentToolPolicyService (SdDpW (SdDpW nChars totalChars retentionSpill completionSpill get nChars get totalChars Rbv,yD retainedChars totalCharsValue saturated (SdDpW agent-tool (SdDpW (SdDpW id_rsa 
+
+=== KIMI_CODE_BACKGROUND_MAX_RUNNING_TASKS
+ackgroundMode: PrintBackgroundModeSchema.optional(), 		printMaxTurns: number$1().int().min(1).optional() 	KEEP_ALIVE_ON_EXIT_ENV = "KIMI_CODE_BACKGROUND_KEEP_ALIVE_ON_EXIT"; 	MAX_RUNNING_TASKS_ENV = "KIMI_CODE_BACKGROUND_MAX_RUNNING_TASKS"; 	BASH_TASK_TIMEOUT_S_ENV = "KIMI_CODE_BACKGROUND_BASH_TASK_TIMEOUT_S"; 	PRINT_WAIT_CEILING_S_ENV = "KIMI_CODE_BACKGROUND_PRINT_WAIT_CEILING_S"; 	PRINT_BACKGROUND_MODE_ENV = "KIMI_CODE_BACKGROUND_PRINT_BACKGROUND_MODE"; 	PRINT_MAX_TURNS_ENV = "KIMI
+
+=== KIMI_CODE_BACKGROUND_MAX_RUNNING_TASKS
+ background maxRunningTasks keepAliveOnExit bashAutoBackgroundOnTimeout bashTaskTimeoutSC killGracePeriodMs printWaitCeilingS printBackgroundMode printMaxTurns KIMI_CODE_BACKGROUND_KEEP_ALIVE_ON_EXIT KIMI_CODE_BACKGROUND_MAX_RUNNING_TASKS KIMI_CODE_BACKGROUND_BASH_TASK_TIMEOUT_S KIMI_CODE_BACKGROUND_PRINT_WAIT_CEILING_S KIMI_CODE_BACKGROUND_PRINT_BACKGROUND_MODE KIMI_CODE_BACKGROUND_PRINT_MAX_TURNS (SdDpW (SdDpW agentToolPolicyService (SdDpW (SdDpW nChars totalChars retentionSpill co
+
+=== KIMI_CODE_BACKGROUND_KEEP_ALIVE_ON_EXIT
+), 		printWaitCeilingS: number$1().int().min(1).optional(), 		printBackgroundMode: PrintBackgroundModeSchema.optional(), 		printMaxTurns: number$1().int().min(1).optional() 	KEEP_ALIVE_ON_EXIT_ENV = "KIMI_CODE_BACKGROUND_KEEP_ALIVE_ON_EXIT"; 	MAX_RUNNING_TASKS_ENV = "KIMI_CODE_BACKGROUND_MAX_RUNNING_TASKS"; 	BASH_TASK_TIMEOUT_S_ENV = "KIMI_CODE_BACKGROUND_BASH_TASK_TIMEOUT_S"; 	PRINT_WAIT_CEILING_S_ENV = "KIMI_CODE_BACKGROUND_PRINT_WAIT_CEILING_S"; 	PRINT_BACKGROUND_MODE_ENV = "KIMI_C
+
+=== KIMI_CODE_BACKGROUND_KEEP_ALIVE_ON_EXIT
+putTails (SdDpW agentTaskServicee (SdDpW background maxRunningTasks keepAliveOnExit bashAutoBackgroundOnTimeout bashTaskTimeoutSC killGracePeriodMs printWaitCeilingS printBackgroundMode printMaxTurns KIMI_CODE_BACKGROUND_KEEP_ALIVE_ON_EXIT KIMI_CODE_BACKGROUND_MAX_RUNNING_TASKS KIMI_CODE_BACKGROUND_BASH_TASK_TIMEOUT_S KIMI_CODE_BACKGROUND_PRINT_WAIT_CEILING_S KIMI_CODE_BACKGROUND_PRINT_BACKGROUND_MODE KIMI_CODE_BACKGROUND_PRINT_MAX_TURNS (SdDpW (SdDpW agentToolPolicyService (SdDpW (Sd
+
+=== KIMI_CODE_BACKGROUND_BASH_TASK_TIMEOUT_S
+ number$1().int().min(1).optional() 	KEEP_ALIVE_ON_EXIT_ENV = "KIMI_CODE_BACKGROUND_KEEP_ALIVE_ON_EXIT"; 	MAX_RUNNING_TASKS_ENV = "KIMI_CODE_BACKGROUND_MAX_RUNNING_TASKS"; 	BASH_TASK_TIMEOUT_S_ENV = "KIMI_CODE_BACKGROUND_BASH_TASK_TIMEOUT_S"; 	PRINT_WAIT_CEILING_S_ENV = "KIMI_CODE_BACKGROUND_PRINT_WAIT_CEILING_S"; 	PRINT_BACKGROUND_MODE_ENV = "KIMI_CODE_BACKGROUND_PRINT_BACKGROUND_MODE"; 	PRINT_MAX_TURNS_ENV = "KIMI_CODE_BACKGROUND_PRINT_MAX_TURNS"; 	taskEnvBindings = envBindings(Agent
+
+=== KIMI_CODE_BACKGROUND_BASH_TASK_TIMEOUT_S
+Exit bashAutoBackgroundOnTimeout bashTaskTimeoutSC killGracePeriodMs printWaitCeilingS printBackgroundMode printMaxTurns KIMI_CODE_BACKGROUND_KEEP_ALIVE_ON_EXIT KIMI_CODE_BACKGROUND_MAX_RUNNING_TASKS KIMI_CODE_BACKGROUND_BASH_TASK_TIMEOUT_S KIMI_CODE_BACKGROUND_PRINT_WAIT_CEILING_S KIMI_CODE_BACKGROUND_PRINT_BACKGROUND_MODE KIMI_CODE_BACKGROUND_PRINT_MAX_TURNS (SdDpW (SdDpW agentToolPolicyService (SdDpW (SdDpW nChars totalChars retentionSpill completionSpill get nChars get totalChars R
+
+=== KIMI_CODE_ALLOWED_HOSTS
+rn "public"; 	return "public"; var init_bindClassify = __esmMin((() => {})); // ../../packages/kap-server/src/middleware/hostnames.ts function parseAllowedHosts(env = process.env) { 	const raw = env["KIMI_CODE_ALLOWED_HOSTS"]; 	if (raw === void 0) return []; 	return raw.split(",").map((entry) => entry.trim()).filter((entry) => entry.length > 0); function isHostCheckDisabled(env = process.env) { 	return env["KIMI_CODE_DISABLE_HOST_CHECK"] === "1"; function stripPort(hos
+
+=== KIMI_CODE_ALLOWED_HOSTS
+ength === 0 ? void 0 : stripPort(host); 	const hostLabel = normalizedHost ?? "<missing>"; 	const hostArg = normalizedHost ?? "<host>"; 	return `Invalid Host header: ${hostLabel}; allow this host with KIMI_CODE_ALLOWED_HOSTS=${hostArg} or 'kimi web --allowed-host ${hostArg}'.`; function isAllowedHost(host, opts) { 	if (opts.disable === true) return true; 	if (host === void 0 || host.length === 0) return false; 	const h = stripPort(host); 	if (h === "localhost" || h === 
+
+=== KIMI_CODE_AGENT_SWARM_MAX_CONCURRENCY
+ERVAL_MS$1 = 18e4; 	RATE_LIMIT_SUSPENDED_REASON = "Provider rate limit; subagent requeued for retry."; 	MEMBER_STOPPED_MESSAGE = "The user stopped this subagent."; 	AGENT_SWARM_MAX_CONCURRENCY_ENV = "KIMI_CODE_AGENT_SWARM_MAX_CONCURRENCY"; 	AgentRunBatch = class { 		launcher; 		options; 		states; 		pending; 		results; 		active = /* @__PURE__ */ new Set(); 		controller = new AbortController(); 		batchSignal; 		batchAbortListener; 		pendingStopUnlinks = []; 		maxConcurrency; 		normalL
+
+=== KIMI_CODE_AGENT_SWARM_MAX_CONCURRENCY
+t subagent.started `/h!p!P	( subagent.completed resultSummary contextTokens subagent.failed subagent.cancelled (SdDpW Provider rate limit; subagent requeued for retry. The user stopped this subagent. KIMI_CODE_AGENT_SWARM_MAX_CONCURRENCY scheduleNormalLaunch isAtConcurrencyLimit scheduleRateLimitLaunch startAttempt runAttempt failedAttemptOutcome markAttemptReadya handleAttemptOutcome handleAttemptError watchPendingStopa stopPending releaseAttempt requeueRateLimited enterRateLimitMo
+
+=== KIMI_CLI_NO_AUTO_UPDATE
+ess: { 			version: active.version, 			installedAt: notifiedAt, 			notifiedAt 	await writeUpdateInstallState(nextState).catch(() => {}); 	return nextState; * `KIMI_CODE_NO_AUTO_UPDATE` (or the legacy `KIMI_CLI_NO_AUTO_UPDATE` alias) * fully disables automatic update behavior   no check, no background install, * no prompt, and no staged-swap at startup (see `native-swap.ts`). Migrated * from kimi-cli, where the variable gated all auto-update behavior. Accepts * the usual
+
+=== KIMI_CLI_NO_AUTO_UPDATE
+yEnv(env = process.env) { 	const truthy = (value) => [ 		"1", 		"true", 		"yes", 		"on" 	].includes((value ?? "").trim().toLowerCase()); 	return truthy(env["KIMI_CODE_NO_AUTO_UPDATE"]) || truthy(env["KIMI_CLI_NO_AUTO_UPDATE"]); * The persisted `[upgrade].auto_install` preference (defaults to true when * the config cannot be read). Gates the passive background install   and the * startup swap of automatically staged payloads (see `native-swap.ts`). async function should
+
+=== KIMI_BASE_URL
+okens 		decodeError: withKimiErrors(base) // ../../packages/agent-core-v2/src/human/llm-requester/endpoints.ts var openAIEndpoint, anthropicEndpoint, geminiEndpoint, vertexEndpoint, KIMI_API_KEY_ENV, KIMI_BASE_URL_ENV, kimiEndpoint$1; var init_endpoints = __esmMin((() => { 	init_protocol$5(); 	openAIEndpoint = { 		apiKeyEnv: "OPENAI_API_KEY", 		baseUrlEnv: "OPENAI_BASE_URL" 	anthropicEndpoint = { 		apiKeyEnv: "ANTHROPIC_API_KEY", 		baseUrlEnv: "ANTHROPIC_BASE
+
+=== KIMI_BASE_URL
+ 		apiKeyEnv: "GOOGLE_API_KEY", 		baseUrlEnv: "GOOGLE_GEMINI_BASE_URL" 	vertexEndpoint = { 		apiKeyEnv: "VERTEXAI_API_KEY", 		baseUrlEnv: "GOOGLE_VERTEX_BASE_URL" 	KIMI_API_KEY_ENV = "KIMI_API_KEY"; 	KIMI_BASE_URL_ENV = "KIMI_BASE_URL"; 	kimiEndpoint$1 = { 		apiKeyEnv: KIMI_API_KEY_ENV, 		baseUrlEnv: KIMI_BASE_URL_ENV, 		defaultBaseUrl: KIMI_DEFAULT_BASE_URL // ../../node_modules/.pnpm/@noble+hashes@2.4.0/node_modules/@noble/hashes/_u64.js function setU64From
