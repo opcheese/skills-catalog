@@ -8,6 +8,16 @@ audience: developers
 
 Notable changes to the catalog: what devs install, and what the docs tell them.
 
+## 2026-11-20: ui-measure 0.1.0, model-free UI measurement
+
+A new plugin. `ui-measure` measures a rendered page in a real browser, with no model: `geometry` finds
+clipped, zero-size and off-canvas elements, text flush to an edge and stray scrollbars; `spec` compares
+the page against a Figma node (boxes, gaps, padding, radius, borders, colours, fonts, effects); `baseline`
+separates new defects from known ones. Reads pages through a design harness, Storybook or a plain URL, and
+token maps as rows or W3C design tokens. Usable as a library through a pnpm git dependency. Spec
+`docs/superpowers/specs/2026-11-20-ui-measure-design.md`; manual checks
+`docs/verification/2026-11-20-ui-measure.md`.
+
 ## 2026-11-20: ui-hill-climb 0.1.3, missing elements always count
 
 Design mode told the judge to ignore live-data text such as version numbers. In a replay the build lacked
