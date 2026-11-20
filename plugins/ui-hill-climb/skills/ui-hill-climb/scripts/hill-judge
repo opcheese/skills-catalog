@@ -64,8 +64,8 @@ tell them apart:
 Then list every deviation: each names one element, how the build differs from the design, a severity, the
 category, and its region in the built screen's pixels. A deviation is major when a user would notice it at a
 glance or it changes what stands out; otherwise minor. When text that obviously comes from live data (names,
-dates, counts, version numbers) reads differently, that is not a deviation; but an element that is missing or
-added is always a deviation, whatever text it holds. Judge only what you can see. Do not praise.
+dates, counts, version numbers) reads differently, that is not a deviation; but an element that is
+missing or added is always a deviation, whatever text it holds. Judge only what you can see. Do not praise.
 
 Answer with one JSON object and nothing else:
 {{"scores": {{"hierarchy": n, "typography": n, "colour": n, "spacing": n, "consistency": n, "originality": n}},
