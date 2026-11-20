@@ -53,6 +53,25 @@ export interface DesignNode {
   effects?: string[]
 }
 
+/** The computed-style strings the spec comparison reads, verbatim from
+ *  `getComputedStyle`. Parsing is the comparison's job, not the walk's. */
+export interface DomStyle {
+  color: string
+  backgroundColor: string
+  borderTopWidth: string
+  borderTopLeftRadius: string
+  borderTopRightRadius: string
+  borderBottomRightRadius: string
+  borderBottomLeftRadius: string
+  fontFamily: string
+  fontSize: string
+  fontWeight: string
+  lineHeight: string
+  boxShadow: string
+  filter: string
+  backdropFilter: string
+}
+
 export interface DomElement {
   selector: string
   tag: string
@@ -61,6 +80,8 @@ export interface DomElement {
    *  contains a label is not itself a text leaf. */
   text?: string
   box?: Box
+  /** Computed style, for the spec comparison. */
+  style?: DomStyle
   /** The box the element's CONTENT actually covers — the glyph run of a text
    *  leaf, or the drawn extent of a vector — in the same viewport coordinates
    *  as `box`.

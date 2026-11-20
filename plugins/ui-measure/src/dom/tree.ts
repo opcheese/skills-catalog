@@ -1,4 +1,4 @@
-import type { DomElement, DomTree } from "../correspondence/types"
+import type { DomElement, DomStyle, DomTree } from "../correspondence/types"
 import type { OpenPage } from "./open"
 
 /** Walk the live DOM under the page's root element.
@@ -21,6 +21,7 @@ export async function domTree(p: OpenPage): Promise<DomTree> {
       testid?: string
       text?: string
       ink?: { x: number; y: number; width: number; height: number }
+      style: DomStyle
       box: { x: number; y: number; width: number; height: number }
     }[] = []
     const stack: { el: Element; selector: string }[] = [{ el: first, selector: rootSelector }]
@@ -80,6 +81,22 @@ export async function domTree(p: OpenPage): Promise<DomTree> {
           ...(own ? { text: own } : {}),
           ...(ink ? { ink } : {}),
           box: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
+          style: {
+            color: style.color,
+            backgroundColor: style.backgroundColor,
+            borderTopWidth: style.borderTopWidth,
+            borderTopLeftRadius: style.borderTopLeftRadius,
+            borderTopRightRadius: style.borderTopRightRadius,
+            borderBottomRightRadius: style.borderBottomRightRadius,
+            borderBottomLeftRadius: style.borderBottomLeftRadius,
+            fontFamily: style.fontFamily,
+            fontSize: style.fontSize,
+            fontWeight: style.fontWeight,
+            lineHeight: style.lineHeight,
+            boxShadow: style.boxShadow,
+            filter: style.filter,
+            backdropFilter: style.backdropFilter,
+          },
         })
       }
       // Pushed in reverse so the stack pops them left to right: the emitted
