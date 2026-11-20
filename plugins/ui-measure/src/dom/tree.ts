@@ -1,5 +1,5 @@
-import type { DomElement, DomStyle, DomTree } from "../correspondence/types"
-import type { OpenPage } from "./open"
+import type { DomElement, DomStyle, DomTree } from "../correspondence/types.js"
+import type { OpenPage } from "./open.js"
 
 /** Walk the live DOM under the page's root element.
  *

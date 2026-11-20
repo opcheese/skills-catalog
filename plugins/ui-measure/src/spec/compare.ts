@@ -18,7 +18,7 @@
 //
 // ABSENCE. A property the design does not have is still a property the page can have: a radius,
 // border, background or shadow with no counterpart in Figma fails with expected "none".
-import { normalise } from "../correspondence/verify"
+import { normalise } from "../correspondence/verify.js"
 import type {
   Box,
   DesignNode,
@@ -27,9 +27,9 @@ import type {
   DomTree,
   PairVerdict,
   Verification,
-} from "../correspondence/types"
-import type { Finding, Report } from "../report/types"
-import { tokenFor, type Token, type TokenProperty } from "../tokens"
+} from "../correspondence/types.js"
+import type { Finding, Report } from "../report/types.js"
+import { tokenFor, type Token, type TokenProperty } from "../tokens/index.js"
 
 /** Figma stroke vs CSS border: the smallest difference worth reporting, in design px. */
 export const TOLERANCE_FLOOR_PX = 2

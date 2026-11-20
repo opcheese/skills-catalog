@@ -1,4 +1,4 @@
-import type { Box, DesignNode, DesignTree } from "../correspondence/types"
+import type { Box, DesignNode, DesignTree } from "../correspondence/types.js"
 
 interface RawColor {
   r: number

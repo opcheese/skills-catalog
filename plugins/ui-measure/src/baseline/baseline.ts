@@ -6,8 +6,8 @@
 // that is always red is a gate nobody reads.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import path from "node:path"
-import { BaselineExistsError, PartialRunError } from "../errors"
-import type { Finding, Report } from "../report/types"
+import { BaselineExistsError, PartialRunError } from "../errors.js"
+import type { Finding, Report } from "../report/types.js"
 
 /** Growth beyond this at a known key is a regression, not the same defect.
  *  Equals the geometric tolerance floor (2px): below it, two measurements of

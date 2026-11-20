@@ -5,14 +5,23 @@
   "type": "module",
   "license": "MIT",
   "exports": {
-    "./version": "./src/version.ts"
+    ".": {
+      "types": "./dist/lib/src/index.d.ts",
+      "default": "./dist/lib/src/index.js"
+    },
+    "./version": {
+      "types": "./dist/lib/src/version.d.ts",
+      "default": "./dist/lib/src/version.js"
+    }
   },
   "bin": {
     "ui-measure": "./dist/ui-measure.mjs"
   },
   "scripts": {
     "test": "vitest run",
-    "build": "esbuild src/cli.ts --bundle --outfile=dist/ui-measure.mjs --platform=node --format=esm --external:playwright"
+    "build:cli": "esbuild src/cli.ts --bundle --outfile=dist/ui-measure.mjs --platform=node --format=esm --external:playwright",
+    "build:lib": "tsc -p tsconfig.lib.json",
+    "build": "pnpm run build:cli && pnpm run build:lib"
   },
   "engines": {
     "node": ">=24"

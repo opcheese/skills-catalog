@@ -1,0 +1,26 @@
+{
+  "targets": {
+    "geo-bad": {
+      "adapter": { "kind": "url", "url": "{{origin}}/geo-clipped-bad.html", "root": "#root" },
+      "viewport": [800, 600]
+    },
+    "geo-good": {
+      "adapter": { "kind": "url", "url": "{{origin}}/geo-clipped-good.html", "root": "#root" },
+      "viewport": [800, 600]
+    },
+    "card-padding": {
+      "adapter": { "kind": "url", "url": "{{origin}}/card-padding.html", "root": "#card" },
+      "viewport": [800, 600],
+      "designRootFontPx": 16,
+      "node": "{{fixtures}}/figma/card.json"
+    },
+    "missing-root": {
+      "adapter": { "kind": "url", "url": "{{origin}}/card-clean.html", "root": "#missing" },
+      "viewport": [800, 600],
+      "designRootFontPx": 16,
+      "node": "{{fixtures}}/figma/card.json"
+    }
+  },
+  "geometry": { "insetPx": 4, "nonScrolling": [] },
+  "baselineDir": "{{baselineDir}}"
+}

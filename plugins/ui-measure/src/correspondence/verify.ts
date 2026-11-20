@@ -32,7 +32,7 @@ import type {
   Proposal,
   RejectionRule,
   Verification,
-} from "./types"
+} from "./types.js"
 
 /** How far a normalised design box's SIZE may differ from its element's and
  *  still be a plausible correspondence.

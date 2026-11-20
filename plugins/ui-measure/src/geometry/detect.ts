@@ -1,5 +1,5 @@
-import type { OpenPage } from "../dom/open"
-import type { Finding } from "../report/types"
+import type { OpenPage } from "../dom/open.js"
+import type { Finding } from "../report/types.js"
 
 export interface GeometryConfig {
   /** A text box nearer than this to its container's padding edge is flush. CSS px, not scaled. */

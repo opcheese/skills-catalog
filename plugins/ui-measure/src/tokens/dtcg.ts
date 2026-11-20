@@ -1,7 +1,7 @@
 // W3C Design Tokens (DTCG) loader: groups are nested objects, a token is an
 // object with `$value`, and `$type` may be inherited from a parent group.
 
-import type { Token, TokenProperty } from "./types";
+import type { Token, TokenProperty } from "./types.js";
 
 type Json = Record<string, unknown>;
 

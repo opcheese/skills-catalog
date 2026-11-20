@@ -1,0 +1,17 @@
+export { VERSION } from "./version.js";
+export { loadConfig, type Config, type Target } from "./config.js";
+export { adapterTarget, type Adapter, type PageSpec } from "./dom/adapters.js";
+export { openPage, type OpenPage, type NotComparable } from "./dom/open.js";
+export { domTree } from "./dom/tree.js";
+export { flatten, readNode, type RawNode } from "./figma/read.js";
+export { fetchNode } from "./figma/fetch.js";
+export { propose, ProposalError, type Proposer } from "./correspondence/propose.js";
+export { normalise, readingOrder, comparableBox, verifyMapping, SIZE_TOLERANCE_PX } from "./correspondence/verify.js";
+export type * from "./correspondence/types.js";
+export { compareSpec, TOLERANCE_FLOOR_PX } from "./spec/compare.js";
+export { detectGeometry, type GeometryConfig } from "./geometry/detect.js";
+export { loadTokens, tokenFor, type Token, type TokenProperty } from "./tokens/index.js";
+export { baselineKey, baselinePath, classify, readBaseline, recordBaseline, serialiseBaseline, } from "./baseline/baseline.js";
+export type { Finding, Report, Status } from "./report/types.js";
+export { reportSummary, writeReport } from "./report/write.js";
+export { BaselineExistsError, PartialRunError, SetupError } from "./errors.js";

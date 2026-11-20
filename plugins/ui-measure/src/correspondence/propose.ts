@@ -4,7 +4,7 @@
 
 import { spawn } from "node:child_process"
 import { readFile } from "node:fs/promises"
-import type { DesignTree, DomTree, Proposal } from "./types"
+import type { DesignTree, DomTree, Proposal } from "./types.js"
 
 export type Proposer =
   | { kind: "recorded"; file: string }

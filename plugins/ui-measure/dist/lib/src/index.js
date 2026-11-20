@@ -1,0 +1,15 @@
+export { VERSION } from "./version.js";
+export { loadConfig } from "./config.js";
+export { adapterTarget } from "./dom/adapters.js";
+export { openPage } from "./dom/open.js";
+export { domTree } from "./dom/tree.js";
+export { flatten, readNode } from "./figma/read.js";
+export { fetchNode } from "./figma/fetch.js";
+export { propose, ProposalError } from "./correspondence/propose.js";
+export { normalise, readingOrder, comparableBox, verifyMapping, SIZE_TOLERANCE_PX } from "./correspondence/verify.js";
+export { compareSpec, TOLERANCE_FLOOR_PX } from "./spec/compare.js";
+export { detectGeometry } from "./geometry/detect.js";
+export { loadTokens, tokenFor } from "./tokens/index.js";
+export { baselineKey, baselinePath, classify, readBaseline, recordBaseline, serialiseBaseline, } from "./baseline/baseline.js";
+export { reportSummary, writeReport } from "./report/write.js";
+export { BaselineExistsError, PartialRunError, SetupError } from "./errors.js";

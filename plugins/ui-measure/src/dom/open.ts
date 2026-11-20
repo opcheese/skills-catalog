@@ -1,10 +1,12 @@
+import { execFile } from "node:child_process"
 import { createRequire } from "node:module"
 import { join } from "node:path"
 import { pathToFileURL } from "node:url"
+import { promisify } from "node:util"
 import type { Browser, BrowserContext, Page } from "playwright"
-import { SetupError } from "../errors"
-import type { Report } from "../report/types"
-import { adapterTarget, type PageSpec } from "./adapters"
+import { SetupError } from "../errors.js"
+import type { Report } from "../report/types.js"
+import { adapterTarget, type PageSpec } from "./adapters.js"
 
 export interface OpenPage {
   page: Page
@@ -21,8 +23,10 @@ export interface NotComparable {
 
 type Playwright = typeof import("playwright")
 
-/** Playwright is a peer dependency and is never bundled: resolve it from wherever the CLI was
- *  loaded, then from the consuming project's working directory. */
+const execFileAsync = promisify(execFile)
+
+/** Playwright is a peer dependency and is never bundled: resolve it from the package,
+ *  then the consuming project's working directory, then the global node_modules. */
 async function loadPlaywright(): Promise<Playwright> {
   try {
     return await import("playwright")
@@ -31,7 +35,14 @@ async function loadPlaywright(): Promise<Playwright> {
       const resolved = createRequire(join(process.cwd(), "noop.js")).resolve("playwright")
       return (await import(pathToFileURL(resolved).href)) as Playwright
     } catch {
-      throw new SetupError("Playwright is not installed. Run: pnpm add -D playwright && pnpm exec playwright install chromium")
+      try {
+        const { stdout } = await execFileAsync("pnpm", ["root", "-g"], { encoding: "utf8" })
+        if (!stdout.trim()) throw new Error("no global node_modules")
+        const resolved = createRequire(join(stdout.trim(), "noop.js")).resolve("playwright")
+        return (await import(pathToFileURL(resolved).href)) as Playwright
+      } catch {
+        throw new SetupError("Playwright is not installed; install playwright with: pnpm add -D playwright && pnpm exec playwright install chromium")
+      }
     }
   }
 }

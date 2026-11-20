@@ -7,7 +7,7 @@
 // (and no longer vanishes without a word): it is reported by name and the
 // other rows are kept.
 
-import type { Token, TokenProperty } from "./types";
+import type { Token, TokenProperty } from "./types.js";
 
 /**
  * The properties a row may declare. Enumerated rather than derived from the

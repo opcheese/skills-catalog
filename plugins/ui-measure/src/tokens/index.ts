@@ -1,9 +1,9 @@
 import { readFileSync } from "node:fs";
-import { parseDtcg } from "./dtcg";
-import { parseRows } from "./rows";
-import type { Token, TokenProperty } from "./types";
+import { parseDtcg } from "./dtcg.js";
+import { parseRows } from "./rows.js";
+import type { Token, TokenProperty } from "./types.js";
 
-export type { Token, TokenProperty } from "./types";
+export type { Token, TokenProperty } from "./types.js";
 
 export function loadTokens(path: string, format: "rows" | "dtcg"): { tokens: Token[]; errors: string[] } {
   let text: string;
