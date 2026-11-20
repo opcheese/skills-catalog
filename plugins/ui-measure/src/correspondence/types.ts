@@ -33,6 +33,10 @@ export interface DesignNode {
    *  plausibility rule correctly refuses to treat as the same box and
    *  incorrectly refuses to treat as the same THING. */
   hugsWidth?: boolean
+  /** Id of the node's parent in the design, absent on the root. The trees here
+   *  are flat, so this is the only way a rule can ask "are these siblings".
+   *  Set at flatten time. */
+  parentId?: string
 }
 
 export interface DomElement {
@@ -93,7 +97,10 @@ export type RejectionRule =
 export interface PairVerdict {
   nodeId: string
   selector: string
-  outcome: "accepted" | "not_comparable"
+  /** `size_differs`: the only rule that failed is `size_plausible`, and the
+   *  pair is kept anyway because other evidence says it is the same thing
+   *  (see verify.ts). It is not in `Verification.accepted`. */
+  outcome: "accepted" | "not_comparable" | "size_differs"
   /** The rule that rejected it. Absent on an accepted pair. */
   rule?: RejectionRule
   note?: string
@@ -103,6 +110,9 @@ export interface Verification {
   pairs: PairVerdict[]
   /** The subset downstream arithmetic may run on. */
   accepted: PairVerdict[]
+  /** Pairs that are the same thing but differ in size, so spacing can still
+   *  be measured. Disjoint from `accepted`. */
+  sizeDiffers: PairVerdict[]
   /** True when the proposal as a whole is unusable. */
   rejected: boolean
   note?: string

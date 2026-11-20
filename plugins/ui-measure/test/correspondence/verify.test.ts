@@ -700,22 +700,36 @@ describe("mutating a known-good mapping", () => {
     for (const v of r.pairs) {
       expect(v.outcome).toBe("not_comparable")
       expect(v.rule).toBe("measurable")
-      expect(v.note).toContain("could not be normalised")
+      expect(v.note).toBeTruthy()
     }
   }
 
   it("rejects rather than accepts when the scale is zero", () => {
-    expectNothingMeasurable(
-      verifyMapping(GOOD_MAPPING, designTree, domTree, { scale: 0 }),
-    )
+    const r = verifyMapping(GOOD_MAPPING, designTree, domTree, { scale: 0 })
+    expectNothingMeasurable(r)
+    for (const v of r.pairs) {
+      expect(v.note).toBe("scale must be finite and greater than zero")
+    }
   })
 
   it("rejects rather than accepts when the scale is NaN", () => {
-    expectNothingMeasurable(
-      verifyMapping(GOOD_MAPPING, designTree, domTree, {
-        scale: Number.NaN,
-      }),
-    )
+    const r = verifyMapping(GOOD_MAPPING, designTree, domTree, {
+      scale: Number.NaN,
+    })
+    expectNothingMeasurable(r)
+    for (const v of r.pairs) {
+      expect(v.note).toBe("scale must be finite and greater than zero")
+    }
+  })
+
+  it("rejects a negative or infinite scale with the scale note", () => {
+    for (const scale of [-1, Number.POSITIVE_INFINITY]) {
+      const r = verifyMapping(GOOD_MAPPING, designTree, domTree, { scale })
+      expectNothingMeasurable(r)
+      for (const v of r.pairs) {
+        expect(v.note).toBe("scale must be finite and greater than zero")
+      }
+    }
   })
 
   it("rejects rather than accepts when a root box carries NaN", () => {
@@ -724,9 +738,9 @@ describe("mutating a known-good mapping", () => {
       root: { ...designTree.root, box: poisonedRoot },
       nodes: designTree.nodes,
     }
-    expectNothingMeasurable(
-      verifyMapping(GOOD_MAPPING, degenerate, domTree, ONE),
-    )
+    const r = verifyMapping(GOOD_MAPPING, degenerate, domTree, ONE)
+    expectNothingMeasurable(r)
+    for (const v of r.pairs) expect(v.note).toContain("degenerate root box")
   })
 })
 
@@ -962,7 +976,7 @@ describe("a design node sized to its content", () => {
           {
             id: "1:2",
             type: "TEXT",
-            text: "x",
+            text: "y",
             hugsWidth: true,
             box: { x: 17, y: 17, width: 127, height: 28 },
           },
@@ -982,6 +996,9 @@ describe("a design node sized to its content", () => {
       },
       ONE,
     )
+    // The texts differ on purpose: equal texts would keep this pair as
+    // size_differs, and this test is about the size rule itself.
+    expect(v.pairs[0].rule).toBe("size_plausible")
     expect(v.pairs[0].outcome).toBe("not_comparable")
   })
 

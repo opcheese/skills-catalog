@@ -380,10 +380,11 @@ export function verifyMapping(
     // arriving through arithmetic rather than through a bad proposal.
     // A zero scale is finite but collapses every design box to a point, and a
     // negative one mirrors them; neither is a measurement.
-    if (
-      !(opts.scale > 0) ||
-      !Object.values(normalised).every(Number.isFinite)
-    ) {
+    if (!Number.isFinite(opts.scale) || opts.scale <= 0) {
+      reject(v, "measurable", "scale must be finite and greater than zero")
+      continue
+    }
+    if (!Object.values(normalised).every(Number.isFinite)) {
       reject(
         v,
         "measurable",
@@ -502,12 +503,69 @@ export function verifyMapping(
     }
   }
 
+  // Rule 6: keep a size-only failure when something else says it is the same
+  // thing, so its spacing can still be measured.
+  //
+  // The rules above are unchanged. This runs last, over pairs whose ONLY
+  // failed rule is `size_plausible` (a pair that failed any other rule never
+  // carries that rule, because the first rejection wins). A padding or gap
+  // defect resizes its container, and rule 4 then discards exactly the pair
+  // whose spacing is wrong. Two kinds of evidence of identity are accepted:
+  //
+  //  - the texts are equal once whitespace is collapsed (a text run that
+  //    wraps differently is still the same text); or
+  //  - the element is the nearest common DOM ancestor of at least two
+  //    accepted pairs whose design nodes all have this design node as their
+  //    parent: its children landed, so it is the container they sit in.
+  //
+  // Anything else stays `not_comparable`. Cost if wrong: a mis-paired
+  // container yields wrong spacing numbers; both conditions limit that to
+  // containers whose contents already paired.
+  const collapse = (t: string | undefined) =>
+    (t ?? "").replace(/\s+/g, " ").trim()
+  const segments = (selector: string) => selector.split(" > ")
+  const commonAncestor = (selectors: string[]): string[] => {
+    let common = segments(selectors[0])
+    for (const sel of selectors.slice(1)) {
+      const parts = segments(sel)
+      let n = 0
+      while (n < common.length && n < parts.length && common[n] === parts[n]) {
+        n += 1
+      }
+      common = common.slice(0, n)
+    }
+    return common
+  }
+  const sameText = (v: PairVerdict): boolean => {
+    const wanted = collapse(nodesById.get(v.nodeId)?.text)
+    return wanted !== "" && wanted === collapse(elementsBySelector.get(v.selector)?.text)
+  }
+  const isContainerOfSiblings = (v: PairVerdict): boolean => {
+    const kids = verdicts.filter(
+      (o) =>
+        o.outcome === "accepted" &&
+        nodesById.get(o.nodeId)?.parentId === v.nodeId,
+    )
+    if (kids.length < 2) return false
+    return (
+      commonAncestor(kids.map((k) => k.selector)).join(" > ") === v.selector
+    )
+  }
+  for (const v of verdicts) {
+    if (v.outcome !== "not_comparable" || v.rule !== "size_plausible") continue
+    if (sameText(v) || isContainerOfSiblings(v)) v.outcome = "size_differs"
+  }
+
   const accepted = verdicts.filter((v) => v.outcome === "accepted")
-  const failed = verdicts.length - accepted.length
+  const sizeDiffers = verdicts.filter((v) => v.outcome === "size_differs")
+  // A kept pair is not a failure: only unusable pairs count toward rejecting
+  // the proposal.
+  const failed = verdicts.length - accepted.length - sizeDiffers.length
   const rejected = verdicts.length === 0 || failed * 2 > verdicts.length
   return {
     pairs: verdicts,
     accepted,
+    sizeDiffers,
     rejected,
     note: rejected
       ? `${failed} of ${verdicts.length} pairs failed verification — the ` +
