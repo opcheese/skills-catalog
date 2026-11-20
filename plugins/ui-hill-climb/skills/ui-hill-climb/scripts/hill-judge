@@ -1,0 +1,164 @@
+#!/usr/bin/env python3
+"""Score one screen with an outside judge (Kimi k3.1-pro via kimi-delegation).
+
+  hill-judge --screen PNG --label NAME --out DIR
+             [--reference PNG]... [--constraints FILE] [--runs N]
+
+Writes DIR/NAME.run<i>.json per run: scores per category, findings with
+regions, the requested model and the delegate's provenance line.
+
+Exit codes: 0 ok, 2 bad input (no call spent), 3 the judge's answer was
+unusable twice, 75 quota exhausted (from kimi-delegate), other: delegate error.
+Env: HILL_JUDGE_MODEL (default kimi-code/k3.1-pro), HILL_KIMI_DELEGATE (path).
+"""
+import argparse, glob, hashlib, json, os, re, shutil, subprocess, sys
+
+CATEGORIES = ["hierarchy", "typography", "colour", "spacing", "consistency", "originality"]
+DEFAULT_MODEL = "kimi-code/k3.1-pro"
+
+PROMPT = """You are judging the visual design of one app screen. You are a separate reviewer: you did not
+build it, and nothing rides on liking it.
+
+Files in the current directory (open each image with your image tool):
+- {screen}: the screen to judge.
+{refs}{constraints}
+Score each category from 0 to 10, where the reference screens set what good looks like for this product:
+- hierarchy: is it obvious what matters most and what to do next;
+- typography: type scale, weights, line length, legibility;
+- colour: palette discipline, contrast, colour carrying meaning;
+- spacing: alignment, padding, rhythm, nothing cramped or floating;
+- consistency: same things look and behave the same, matches the references' visual language;
+- originality: avoids generic default looks — stock gradients, purple-on-white, pill buttons everywhere,
+  glassmorphism, emoji as icons, centred-everything hero layouts, uniform rounded cards — unless the
+  references use them.
+
+Then list concrete findings: each names one element, what is wrong with it, a severity (major or minor),
+the category, and its region in screen-image pixels. Judge only what you can see. Do not praise.
+
+Answer with one JSON object and nothing else:
+{{"scores": {{"hierarchy": n, "typography": n, "colour": n, "spacing": n, "consistency": n, "originality": n}},
+ "findings": [{{"category": "...", "element": "...", "problem": "...", "severity": "major|minor",
+   "region": {{"x": n, "y": n, "w": n, "h": n}}}}]}}
+"""
+
+
+def die(code, msg):
+    print(f"hill-judge: {msg}", file=sys.stderr)
+    sys.exit(code)
+
+
+def image_kind(path):
+    with open(path, "rb") as f:
+        head = f.read(24)
+    if head.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "png"
+    if head.startswith(b"\xff\xd8\xff"):
+        return "jpeg"
+    return None
+
+
+def find_delegate():
+    explicit = os.environ.get("HILL_KIMI_DELEGATE")
+    if explicit:
+        return explicit
+    roots = [os.environ.get("KIMI_DELEGATION_ROOT")] if os.environ.get("KIMI_DELEGATION_ROOT") else []
+    roots += sorted(glob.glob(os.path.expanduser("~/.claude/plugins/cache/*/kimi-delegation/*")),
+                    key=lambda p: [int(x) if x.isdigit() else 0 for x in re.split(r"[.]", os.path.basename(p))])[::-1]
+    for root in roots:
+        skill = os.path.join(root, "skills", "delegating-to-kimi")
+        script = os.path.join(skill, "scripts", "kimi-delegate")
+        agent = os.path.join(skill, "agents", "delegate-readonly.md")
+        if os.path.isfile(script):
+            if "ReadMediaFile" not in open(agent).read():
+                die(2, f"{root}: kimi-delegation's read-only agent can't view images; update to >= 1.3.2")
+            return script
+    die(2, "kimi-delegation is not installed (or set HILL_KIMI_DELEGATE)")
+
+
+def parse_answer(text):
+    """The first JSON object in the answer that has scores for every category."""
+    dec = json.JSONDecoder()
+    for m in re.finditer(r"\{", text):
+        try:
+            obj, _ = dec.raw_decode(text[m.start():])
+        except ValueError:
+            continue
+        if not isinstance(obj, dict) or not isinstance(obj.get("scores"), dict):
+            continue
+        scores = obj["scores"]
+        if not all(isinstance(scores.get(c), (int, float)) for c in CATEGORIES):
+            return None, "scores JSON is missing categories: " + ", ".join(c for c in CATEGORIES if c not in scores)
+        findings = [f for f in obj.get("findings", []) if isinstance(f, dict) and f.get("element")]
+        return {"scores": {c: float(scores[c]) for c in CATEGORIES}, "findings": findings}, None
+    return None, "no scores JSON in the answer"
+
+
+def main():
+    ap = argparse.ArgumentParser(add_help=True)
+    ap.add_argument("--screen", required=True)
+    ap.add_argument("--label", required=True)
+    ap.add_argument("--out", required=True)
+    ap.add_argument("--reference", action="append", default=[])
+    ap.add_argument("--constraints")
+    ap.add_argument("--runs", type=int, default=2)
+    a = ap.parse_args()
+
+    for p in [a.screen] + a.reference:
+        if not os.path.isfile(p):
+            die(2, f"no such file: {p}")
+        if not image_kind(p):
+            die(2, f"not a PNG or JPEG: {p} (capture it again)")
+    if a.constraints and not os.path.isfile(a.constraints):
+        die(2, f"no such file: {a.constraints}")
+    if not re.match(r"^[A-Za-z0-9._-]+$", a.label):
+        die(2, "label may use letters, digits, dot, dash and underscore only")
+
+    work = os.path.join(a.out, f"work-{a.label}")
+    os.makedirs(work, exist_ok=True)
+    screen_name = "screen." + image_kind(a.screen).replace("jpeg", "jpg")
+    shutil.copyfile(a.screen, os.path.join(work, screen_name))
+    ref_names = []
+    for i, r in enumerate(a.reference, 1):
+        n = f"reference-{i}." + image_kind(r).replace("jpeg", "jpg")
+        shutil.copyfile(r, os.path.join(work, n))
+        ref_names.append(n)
+    refs = "".join(f"- {n}: a reference screen (the product's own best screens or competitors').\n" for n in ref_names)
+    cons = ""
+    if a.constraints:
+        shutil.copyfile(a.constraints, os.path.join(work, "constraints.md"))
+        cons = "- constraints.md: the product owner's taste rules. A screen that breaks one loses points in that category.\n"
+    if not ref_names:
+        refs = "- (no reference screens: judge against well-made products of the same kind.)\n"
+    prompt = PROMPT.format(screen=screen_name, refs=refs, constraints=cons)
+
+    delegate = find_delegate()
+    model = os.environ.get("HILL_JUDGE_MODEL", DEFAULT_MODEL)
+    env = dict(os.environ, KIMI_DELEGATE_MODEL=model)
+    sha = hashlib.sha256(open(a.screen, "rb").read()).hexdigest()
+
+    for run in range(1, a.runs + 1):
+        result, why, prov = None, "", ""
+        for attempt in (1, 2):
+            p = subprocess.run([delegate, "--via", "kimi", "--final-only", "--cwd", work, "--", prompt],
+                               capture_output=True, text=True, env=env)
+            prov = next((l for l in p.stderr.splitlines() if l.startswith("kimi-delegate:")), "")
+            if p.returncode != 0:
+                sys.stderr.write(p.stderr)
+                sys.exit(p.returncode)
+            result, why = parse_answer(p.stdout)
+            if result:
+                break
+        if not result:
+            die(3, f"{a.label} run {run}: {why} (twice); last answer: {p.stdout.strip()[:200]!r}")
+        out = {"label": a.label, "image": os.path.abspath(a.screen), "sha256": sha,
+               "references": [{"path": os.path.abspath(r), "sha256": hashlib.sha256(open(r, "rb").read()).hexdigest()}
+                              for r in a.reference],
+               "model_requested": model, "provenance": prov, "run": run, **result}
+        path = os.path.join(a.out, f"{a.label}.run{run}.json")
+        with open(path, "w") as f:
+            json.dump(out, f, indent=1, ensure_ascii=False)
+        print(path)
+
+
+if __name__ == "__main__":
+    main()

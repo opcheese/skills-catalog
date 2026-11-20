@@ -8,6 +8,15 @@ audience: developers
 
 Notable changes to the catalog: what devs install, and what the docs tell them.
 
+## 2026-11-20: ui-hill-climb 0.1.0 (v0)
+
+A screenshot, judge, fix loop for app UI. `hill-judge` sends a fresh screenshot, the reference screens and
+the owner's constraints to Kimi `k3.1-pro` through kimi-delegation 1.3.2, and gets per-category scores and
+findings with regions back as JSON. `hill-score` merges the rounds into `scores.md` and `references.json`,
+measures drift against the references, keeps the best round, reverts a worse one, and stops at round 3
+or when gain stalls. The calling agent is the fixer. Design: `docs/superpowers/specs/2026-11-08-ui-hill-climb-design.md`,
+*v0 scope*. Limits: one judge provider, and recall is unmeasured until the recall spike reports.
+
 ## 2026-11-20: kimi-delegation 1.3.2, the read-only agent can view images
 
 The pinned read-only agent had only `Read`, `Grep` and `Glob`. Kimi's `Read` opens text only, and an

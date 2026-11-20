@@ -1,6 +1,6 @@
 ---
-status: draft — not approved, nothing built
-last-verified: 2026-11-08
+status: v0 approved by Kirill 2026-11-20; recall spike running in parallel
+last-verified: 2026-11-20
 owner: Kirill (opcheese)
 ---
 
@@ -117,3 +117,21 @@ before filing an MR. Its reviewer reads the evidence and doesn't re-run it. A na
 human holds the taste veto. Galatea adds its gate floor, MR evidence class,
 per-MR budget and circuit breaker. See galatea
 `docs/research/2026-11-08-agent-ui-and-review-at-scale.md`.
+
+## v0 scope (Kirill, 2026-11-20)
+
+Built while the recall spike runs, so the spike's fix replay uses the real loop. Revised by the image spike
+(`docs/research/2026-11-20-ui-hill-climb-image-spike/`) and the landscape research
+(`docs/research/2026-11-20-ui-skills-landscape/`).
+
+- **Judge:** Kimi `k3.1-pro` only, through kimi-delegation 1.3.2 (its read-only agent views images). The
+  served model is unconfirmed (Kimi doesn't report it); the check is that the requested ID is declared.
+  Claude joins when the Console credits are topped up. One provider in v0, and Limits says so.
+- **Scripts:** `hill-judge` (one screen, its references and constraints → strict JSON per run) and
+  `hill-score` (judge JSONs of a round → `scores.md`, `references.json`, drift, best round, stop decision,
+  stable finding IDs). The loop itself is the skill text; the calling agent is the fixer.
+- **Changed from the draft:** keep the best round, not the last; a round scoring below its predecessor is
+  reverted. Round cap 3. Each screen judged twice per round to show variance. Screenshots must be fresh
+  captures after the last edit. The judge prompt names default looks to avoid and has no superlatives.
+- **Deferred:** Impeccable's deterministic pre-pass (used if `npx impeccable` is present, not required),
+  the hidden target as a tested rule (kept as an instruction only), the Ollama judge, drawn annotations.

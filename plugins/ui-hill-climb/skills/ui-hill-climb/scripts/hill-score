@@ -1,0 +1,160 @@
+#!/usr/bin/env python3
+"""Merge a hill-climb run's judge JSONs and decide the next step.
+
+  hill-score --run DIR [--cap 3] [--gain 0.3]
+
+DIR holds round-1, round-2, ... Each round holds hill-judge output: NAME.run<i>.json
+for screens and ref-NAME.run<i>.json for reference screens, plus changes.json from
+the fixer (from round 2 on). Writes DIR/scores.md and DIR/references.json, and
+prints the decision as JSON: round, best_round, revert_to, stop, reason, open_findings.
+
+Exit codes: 0 ok, 2 bad input (no rounds, or a malformed changes.json).
+"""
+import argparse, glob, hashlib, json, os, re, statistics, sys
+
+CATEGORIES = ["hierarchy", "typography", "colour", "spacing", "consistency", "originality"]
+CHANGE_FIELDS = ["id", "screen", "before", "after", "after_size", "region", "rationale", "categories"]
+
+
+def die(msg):
+    print(f"hill-score: {msg}", file=sys.stderr)
+    sys.exit(2)
+
+
+def finding_id(label, f):
+    el = re.sub(r"\s+", " ", str(f.get("element", "")).strip().lower())
+    return "F-" + hashlib.sha1(f"{label}|{f.get('category', '')}|{el}".encode()).hexdigest()[:8]
+
+
+def load_round(d):
+    screens, refs = {}, {}
+    for p in sorted(glob.glob(os.path.join(d, "*.run*.json"))):
+        j = json.load(open(p))
+        label = os.path.basename(p).rsplit(".run", 1)[0]
+        (refs if label.startswith("ref-") else screens).setdefault(label, []).append(j)
+    changes = []
+    cp = os.path.join(d, "changes.json")
+    if os.path.exists(cp):
+        try:
+            changes = json.load(open(cp))
+        except ValueError as e:
+            die(f"{cp}: not JSON ({e})")
+        if not isinstance(changes, list):
+            die(f"{cp}: must be a list of changes")
+        for c in changes:
+            missing = [k for k in CHANGE_FIELDS if k not in c]
+            if missing:
+                die(f"{cp}: change {c.get('id', '?')} is missing {', '.join(missing)}")
+    return screens, refs, changes
+
+
+def summarise(group):
+    """label -> {cat: mean over runs, mean, spread, models}"""
+    out = {}
+    for label, runs in group.items():
+        per_cat = {c: statistics.mean(r["scores"][c] for r in runs) for c in CATEGORIES}
+        run_means = [statistics.mean(r["scores"][c] for c in CATEGORIES) for r in runs]
+        out[label] = {"cats": per_cat, "mean": statistics.mean(run_means),
+                      "spread": max(run_means) - min(run_means), "runs": len(runs),
+                      "models": sorted({r.get("model_requested", "?") for r in runs}),
+                      "served": sorted({("unconfirmed" if "served=unconfirmed" in r.get("provenance", "") else "see provenance") for r in runs})}
+    return out
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--run", required=True)
+    ap.add_argument("--cap", type=int, default=3)
+    ap.add_argument("--gain", type=float, default=0.3)
+    a = ap.parse_args()
+
+    dirs = sorted(glob.glob(os.path.join(a.run, "round-*")), key=lambda p: int(re.sub(r"\D", "", os.path.basename(p)) or 0))
+    if not dirs:
+        die(f"no round-N directories in {a.run}")
+    rounds = []
+    for d in dirs:
+        screens, refs, changes = load_round(d)
+        if not screens:
+            die(f"{d}: no screen judgements")
+        s, r = summarise(screens), summarise(refs)
+        s_mean = statistics.mean(v["mean"] for v in s.values())
+        r_mean = statistics.mean(v["mean"] for v in r.values()) if r else None
+        rounds.append({"n": int(re.sub(r"\D", "", os.path.basename(d))), "screens": s, "refs": r, "raw": screens,
+                       "changes": changes, "s_mean": s_mean, "r_mean": r_mean,
+                       "rel": s_mean - r_mean if r_mean is not None else s_mean})
+
+    k = len(rounds)
+    cur = rounds[-1]
+    rels = [x["rel"] for x in rounds]
+    best = max(range(k), key=lambda i: (rels[i], -i))
+    revert_to = rounds[best]["n"] if k > 1 and rels[-1] < rels[-2] else None
+
+    stop, reason = False, "continue"
+    if cur["refs"]:
+        ref_cats = {c: statistics.mean(v["cats"][c] for v in cur["refs"].values()) for c in CATEGORIES}
+        if all(v["cats"][c] > ref_cats[c] for v in cur["screens"].values() for c in CATEGORIES):
+            stop, reason = True, "every screen beats the references in every category"
+    if not stop and k >= 3 and rels[-1] - rels[-3] < a.gain:
+        stop, reason = True, f"gain over two rounds {rels[-1] - rels[-3]:+.2f} is under {a.gain}"
+    if not stop and k >= a.cap:
+        stop, reason = True, f"round cap {a.cap} reached"
+
+    addressed = {fid for x in rounds for c in x["changes"] for fid in c.get("addresses", [])}
+    found = {}
+    for label, runs in cur["raw"].items():
+        for r in runs:
+            for f in r.get("findings", []):
+                fid = finding_id(label, f)
+                if fid in addressed:
+                    continue
+                e = found.setdefault(fid, {"id": fid, "screen": label, "category": f.get("category"),
+                                           "element": f.get("element"), "problem": f.get("problem"),
+                                           "severity": f.get("severity", "minor"), "region": f.get("region"), "seen": 0})
+                e["seen"] += 1
+    open_findings = sorted(found.values(), key=lambda e: (e["severity"] != "major", -e["seen"], e["id"]))
+
+    # references.json: written once per run, from the first round that has references.
+    rj = os.path.join(a.run, "references.json")
+    if not os.path.exists(rj):
+        # Prefer the reference list hill-judge stored with each screen; else the ref-* judgements themselves.
+        refs = {}
+        for x in rounds:
+            for runs in x["raw"].values():
+                for r in runs:
+                    for ref in r.get("references", []):
+                        refs[ref["path"]] = ref["sha256"]
+            for p in glob.glob(os.path.join(a.run, f"round-{x['n']}", "ref-*.run1.json")):
+                j = json.load(open(p))
+                refs.setdefault(j.get("image", os.path.basename(p)), j.get("sha256", ""))
+            if refs:
+                break
+        with open(rj, "w") as f:
+            json.dump([{"path": p, "sha256": h} for p, h in sorted(refs.items())], f, indent=1)
+
+    lines = ["# Hill-climb scores", "",
+             "Judge scores 0–10 per category, the mean over each screen's runs. *Spread* is the gap between a screen's "
+             "best and worst run: a change smaller than it is noise. *Relative* is screens minus references.", ""]
+    for x in rounds:
+        lines += [f"## Round {x['n']}", "",
+                  "| screen | " + " | ".join(CATEGORIES) + " | mean | spread | runs | judge (requested) | served |",
+                  "| --- | " + " | ".join("---" for _ in CATEGORIES) + " | --- | --- | --- | --- | --- |"]
+        for group in (x["screens"], x["refs"]):
+            for label, v in group.items():
+                lines.append(f"| {label} | " + " | ".join(f"{v['cats'][c]:.1f}" for c in CATEGORIES) +
+                             f" | {v['mean']:.2f} | {v['spread']:.2f} | {v['runs']} | {', '.join(v['models'])} | {', '.join(v['served'])} |")
+        drift = (x["r_mean"] - rounds[0]["r_mean"]) if x["r_mean"] is not None and rounds[0]["r_mean"] is not None else None
+        lines += ["", f"- screens {x['s_mean']:.2f}" + (f", references {x['r_mean']:.2f}, relative {x['rel']:+.2f}" if x["r_mean"] is not None else ""),
+                  f"- reference drift since round 1: {drift:+.2f}" if drift is not None else "- reference drift: no references",
+                  f"- changes this round: {len(x['changes'])}", ""]
+    lines += ["## Round log", "", f"- best round: {rounds[best]['n']}" + (f"; revert to it (round {cur['n']} scored below round {rounds[-2]['n']})" if revert_to else ""),
+              f"- decision: {'stop' if stop else 'continue'} ({reason})", f"- open findings: {len(open_findings)}", ""]
+    with open(os.path.join(a.run, "scores.md"), "w") as f:
+        f.write("\n".join(lines))
+
+    print(json.dumps({"round": cur["n"], "best_round": rounds[best]["n"], "revert_to": revert_to, "stop": stop,
+                      "reason": reason, "relative": round(cur["rel"], 3), "open_findings": open_findings},
+                     indent=1, ensure_ascii=False))
+
+
+if __name__ == "__main__":
+    main()
