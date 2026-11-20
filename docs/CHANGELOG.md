@@ -8,6 +8,15 @@ audience: developers
 
 Notable changes to the catalog: what devs install, and what the docs tell them.
 
+## 2026-11-20: ui-hill-climb 0.1.1, from its first real run
+
+The first live run (an old build's login screen, two rounds, 4.00 → 5.42) found two ID bugs the hermetic
+tests missed. The judge words the same element differently on each run, so a finding got a new ID each
+time. Findings now share an ID by element words or region. Across rounds only a strong region overlap
+counts, because a fix moves the layout. The skill text adds three rules: the viewport is the real
+device's, constraints come only from the owner's sources, and findings against design decisions go to the
+designer. Six new tests (53 in all).
+
 ## 2026-11-20: ui-hill-climb 0.1.0 (v0)
 
 A screenshot, judge, fix loop for app UI. `hill-judge` sends a fresh screenshot, the reference screens and

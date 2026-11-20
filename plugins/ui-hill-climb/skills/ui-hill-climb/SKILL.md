@@ -15,12 +15,15 @@ UI high.
 
 1. **Run directory:** `.hill/<YYYY-MM-DD>-<slug>/` in the project. Add `.hill/` to `.gitignore` if it isn't.
 2. **Screens:** for each one, a label (`home`, `device-card`), its URL or route, the viewport, and the
-   data state it needs. Write them to `screens.md` in the run directory.
+   data state it needs. Write them to `screens.md` in the run directory. The viewport is the real device's,
+   from the design file or the owner. If nobody has said what it is, ask: a wrong viewport produces
+   findings like "the button is below the fold" that aren't defects.
 3. **References:** 1–3 screens that set the bar: the product's own best screens, its Figma frames, or
    competitors'. Save them under `refs/`. No references means the judge falls back to "well-made products
    of this kind". Say so in the handover, because then drift can't be measured.
-4. **Constraints:** the owner's taste rules in `constraints.md`. Start from the project's `DESIGN.md` or
-   brand guide if there is one. Every judge reads it.
+4. **Constraints:** the owner's taste rules in `constraints.md`, copied from the project's `DESIGN.md`,
+   brand guide or design file. Never write rules of your own: the judge enforces whatever is in that file,
+   so a guessed "brand colour" turns the designer's real choices into findings. With no source, leave it empty.
 5. **Mode:** a person in the session means **human-piloted**. Headless, CI or a scheduled run means
    **agent-piloted**.
 6. **Branch:** work on a branch, and commit each round's code as `hill: round N` so you can return to the best round.
@@ -65,6 +68,8 @@ the round cap (`--cap`). Their veto beats any score.
 
 - Never tell a judge a target score, and never show it the code or your rationale.
 - Don't argue with a finding by rescoring. Fix it, or record in the handover why you left it.
+- A finding that would change a design decision (a colour, a layout, copy that the design file shows) goes to
+  the handover for the designer, not into the code.
 - The default cap is 3 rounds. The run also stops when the gain over two rounds is under 0.3, or when every
   screen beats the references in every category.
 - A score change smaller than a screen's *spread* in `scores.md` is noise.

@@ -21,9 +21,51 @@ def die(msg):
     sys.exit(2)
 
 
-def finding_id(label, f):
-    el = re.sub(r"\s+", " ", str(f.get("element", "")).strip().lower())
-    return "F-" + hashlib.sha1(f"{label}|{f.get('category', '')}|{el}".encode()).hexdigest()[:8]
+def overlap(a, b):
+    """(IoU, intersection over the smaller area) of two {x,y,w,h} regions."""
+    try:
+        ax, ay, aw, ah = (float(a[k]) for k in "xywh")
+        bx, by, bw, bh = (float(b[k]) for k in "xywh")
+    except (KeyError, TypeError, ValueError):
+        return 0.0, 0.0
+    ix = max(0.0, min(ax + aw, bx + bw) - max(ax, bx))
+    iy = max(0.0, min(ay + ah, by + bh) - max(ay, by))
+    inter = ix * iy
+    union = aw * ah + bw * bh - inter
+    small = min(aw * ah, bw * bh)
+    return (inter / union if union > 0 else 0.0), (inter / small if small > 0 else 0.0)
+
+
+def words(s):
+    return {w for w in re.findall(r"\w+", s.lower()) if len(w) > 2}
+
+
+class Registry:
+    """Stable finding IDs. Judges word the same element differently from run to run, so a finding on
+    the same screen and in the same category reuses an earlier ID when:
+    - the element text is identical, or shares at least a third of its words; or
+    - in the same round (same layout): the regions overlap (IoU >= 0.5) or one is mostly inside the other;
+    - in a later round (the fix may have moved things): the regions overlap with IoU >= 0.5 only."""
+
+    def __init__(self):
+        self.known = []
+
+    def id_for(self, label, f, rnd):
+        el = re.sub(r"\s+", " ", str(f.get("element", "")).strip().lower())
+        cat = f.get("category", "")
+        w = words(el)
+        for k in self.known:
+            if k["screen"] != label or k["category"] != cat:
+                continue
+            shared = len(w & k["words"]) / max(1, len(w | k["words"]))
+            iou, contained = overlap(k["region"], f.get("region"))
+            place = (iou >= 0.5 or contained >= 0.7) if k["round"] == rnd else iou >= 0.5
+            if k["element"] == el or shared >= 1 / 3 or place:
+                return k["id"]
+        fid = "F-" + hashlib.sha1(f"{label}|{cat}|{el}".encode()).hexdigest()[:8]
+        self.known.append({"id": fid, "screen": label, "category": cat, "element": el, "words": w,
+                           "region": f.get("region"), "round": rnd})
+        return fid
 
 
 def load_round(d):
@@ -100,11 +142,17 @@ def main():
         stop, reason = True, f"round cap {a.cap} reached"
 
     addressed = {fid for x in rounds for c in x["changes"] for fid in c.get("addresses", [])}
+    reg = Registry()
+    for x in rounds[:-1]:  # earlier rounds first, so IDs stay what the fixer saw
+        for label, runs in x["raw"].items():
+            for r in runs:
+                for f in r.get("findings", []):
+                    reg.id_for(label, f, x["n"])
     found = {}
     for label, runs in cur["raw"].items():
         for r in runs:
             for f in r.get("findings", []):
-                fid = finding_id(label, f)
+                fid = reg.id_for(label, f, cur["n"])
                 if fid in addressed:
                     continue
                 e = found.setdefault(fid, {"id": fid, "screen": label, "category": f.get("category"),

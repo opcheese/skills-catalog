@@ -179,6 +179,50 @@ OUT=$("$SCORE" --run "$RUN3" --cap 5 2>&1)
 check_contains "stops on gain under 0.3 over two rounds" "$OUT" '"stop": true'
 check_contains "names the gain rule" "$OUT" "gain"
 
+echo "hill-score: the same finding worded differently keeps one ID (found in live use)"
+mkf() { # mkf FILE LABEL ELEMENT X Y W H
+  python3 - "$@" <<'PY'
+import json,sys
+p,label,el,x,y,w,h=sys.argv[1:8]
+cats=["hierarchy","typography","colour","spacing","consistency","originality"]
+json.dump({"label":label,"image":label+".png","sha256":"cd"*32,"model_requested":"kimi-code/k3.1-pro","provenance":"",
+  "scores":{c:5 for c in cats},
+  "findings":[{"category":"spacing","element":el,"problem":"too big","severity":"major","region":{"x":int(x),"y":int(y),"w":int(w),"h":int(h)}}]},open(p,"w"))
+PY
+}
+RUN4="$WORK/run4"; mkdir -p "$RUN4/round-1"
+mkf "$RUN4/round-1/login.run1.json" login "Oversized logo header" 427 24 428 427
+mkf "$RUN4/round-1/login.run2.json" login "Oversized circular logo container" 426 24 429 427
+OUT=$("$SCORE" --run "$RUN4" 2>&1)
+check_eq "two wordings, one region: one finding" "$(echo "$OUT" | grep -c '"id": "F-')" "1"
+check_contains "seen by both runs" "$OUT" '"seen": 2'
+FID4=$(echo "$OUT" | python3 -c 'import json,sys; print(json.load(sys.stdin)["open_findings"][0]["id"])')
+mkdir -p "$RUN4/round-2"
+mkf "$RUN4/round-2/login.run1.json" login "Large emblem block" 430 20 420 400
+cat > "$RUN4/round-2/changes.json" <<EOF
+[{"id":"C-1","screen":"login","before":"round-1/login.png","after":"round-2/login.png","after_size":{"w":1280,"h":800},
+  "region":{"x":500,"y":24,"w":280,"h":280},"rationale":"smaller logo","categories":["spacing"],"addresses":["$FID4"]}]
+EOF
+OUT=$("$SCORE" --run "$RUN4" 2>&1)
+check_missing "a reworded finding on an addressed region is not raised again" "$OUT" '"Large emblem block"'
+RUN5="$WORK/run5"; mkdir -p "$RUN5/round-1"
+mkf "$RUN5/round-1/login.run1.json" login "Email and password placeholder text" 338 626 72 97
+mkf "$RUN5/round-1/login.run2.json" login "Email and password placeholders" 324 611 632 126
+check_eq "a region inside another, same category: one finding" "$("$SCORE" --run "$RUN5" 2>&1 | grep -c '"id": "F-')" "1"
+echo "hill-score: across rounds the layout moves, so a small old region inside a new big one is not a match (found in live use)"
+RUN6="$WORK/run6"; mkdir -p "$RUN6/round-1" "$RUN6/round-2"
+mkf "$RUN6/round-1/login.run1.json" login "Purple headline accents" 507 495 464 78
+mkf "$RUN6/round-2/login.run1.json" login "Input outlines" 324 474 632 126
+OUT=$("$SCORE" --run "$RUN6" 2>&1)
+OLD=$("$SCORE" --run "$RUN6" 2>&1 >/dev/null; python3 - "$RUN6" <<'PY'
+import sys,hashlib; print("F-"+hashlib.sha1(b"login|spacing|purple headline accents").hexdigest()[:8])
+PY
+)
+check_missing "the moved input does not inherit the old headline's ID" "$OUT" "\"id\": \"$OLD\""
+mkf "$RUN4/round-2/login.run2.json" login "Footer link" 10 760 100 20
+OUT=$("$SCORE" --run "$RUN4" 2>&1)
+check_contains "a finding elsewhere is still raised" "$OUT" '"Footer link"'
+
 echo
 echo "$PASS passed, $FAIL failed"
 [ "$FAIL" -eq 0 ]
