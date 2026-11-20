@@ -84,6 +84,7 @@ LOG="$(cat "$WORK/log")"
 check_contains "names the design file in the prompt" "$LOG" "design.png"
 check_contains "asks for deviations from the design" "$LOG" "deviation"
 check_missing "does not ask to beat anything" "$LOG" "reference screen"
+check_contains "a missing or added element is always a deviation, even live-data text (found in live use)" "$LOG" "missing or added is always a deviation"
 OUT=$(judge --screen "$WORK/screen.png" --design "$WORK/design.png" --reference "$WORK/ref.png" --label d2 --out "$WORK/rd"); RC=$?
 check_eq "design and reference together are refused" "$RC" "2"
 

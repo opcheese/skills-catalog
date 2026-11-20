@@ -8,6 +8,13 @@ audience: developers
 
 Notable changes to the catalog: what devs install, and what the docs tell them.
 
+## 2026-11-20: ui-hill-climb 0.1.3, missing elements always count
+
+Design mode told the judge to ignore live-data text such as version numbers. In a replay the build lacked
+the design's version label entirely, and the judge said nothing about it in both runs; with the rule
+narrowed, both runs reported it. Differing live-data text is still not a deviation, but a missing or added
+element always is. One new test (68 in all).
+
 ## 2026-11-20: ui-hill-climb 0.1.2, design mode
 
 Judging the login screen against its Figma frame as a "reference" went wrong: the judge scored the build
