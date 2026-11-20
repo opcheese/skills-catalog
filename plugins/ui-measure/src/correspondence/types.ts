@@ -37,6 +37,20 @@ export interface DesignNode {
    *  are flat, so this is the only way a rule can ask "are these siblings".
    *  Set at flatten time. */
   parentId?: string
+  /** Auto-layout, when the node has it. `padding` is [top, right, bottom, left]. */
+  layout?: {
+    mode: "HORIZONTAL" | "VERTICAL"
+    gap: number
+    padding: [number, number, number, number]
+  }
+  radius?: number
+  strokeWeight?: number
+  /** First visible SOLID fill: `#rrggbb`, or `rgba(...)` when translucent. */
+  fill?: string
+  /** A TEXT node's type style. */
+  font?: { family: string; size: number; weight: number; lineHeight?: number }
+  /** Visible effects, one human-readable string each. */
+  effects?: string[]
 }
 
 export interface DomElement {
