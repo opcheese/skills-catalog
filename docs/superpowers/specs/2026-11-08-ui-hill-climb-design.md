@@ -135,3 +135,19 @@ Built while the recall spike runs, so the spike's fix replay uses the real loop.
   captures after the last edit. The judge prompt names default looks to avoid and has no superlatives.
 - **Deferred:** Impeccable's deterministic pre-pass (used if `npx impeccable` is present, not required),
   the hidden target as a tested rule (kept as an instruction only), the Ollama judge, drawn annotations.
+
+## Lessons from the first recall item (2026-11-20)
+
+The first scored item was a miss: one filter image lacked a glow that its siblings had. The diagnostics are
+recorded locally with the spike. What generalises:
+
+- **Not resolution.** At 2x the judge still didn't name it. It saw the halo on the other images and called
+  it blur: without the design's intent it can't tell which variant is right.
+- **Whole-frame design mode needs matching data.** A frame with other data or state turns most findings
+  into data differences. Component-level frames are data-free and got closer.
+- **Some defects are spec facts, not taste.** The fix was one CSS effect that the design component carries.
+  A deterministic pass comparing design-component styles with the build's computed styles would catch that
+  class; a judge can't.
+
+Candidates, adopted only if they help on the remaining items: component-level references, a spec-vs-computed
+style pass, and asking consistency findings to name the differing property and the odd one out.
