@@ -101,9 +101,14 @@ describe("classify", () => {
     expect(out.origin).toBe("introduced")
   })
 
+  it("treats a non-finite stored deltaPx as introduced, never inherited", () => {
+    const [out] = classify([fail()], [fail({ deltaPx: Number.NaN })])
+    expect(out.origin).toBe("introduced")
+  })
+
   it("leaves pass and not_comparable findings without an origin", () => {
-    const pass: Finding = { ...fail(), status: "pass" }
-    const nc: Finding = { ...fail({ kind: "gap" }), status: "not_comparable", reason: "no pair" }
+    const pass: Finding = { ...fail(), status: "pass", origin: "inherited" }
+    const nc: Finding = { ...fail({ kind: "gap" }), status: "not_comparable", origin: "introduced", reason: "no pair" }
     const out = classify([pass, nc], [fail()])
     expect(out[0].origin).toBeUndefined()
     expect(out[1].origin).toBeUndefined()
@@ -184,6 +189,16 @@ describe("recordBaseline and readBaseline", () => {
   it("throws on a file that is not an array of findings", () => {
     writeFileSync(baselinePath(dir, "card"), "{}")
     expect(() => readBaseline(dir, "card")).toThrow(/not a usable baseline/)
+  })
+
+  it.each([null, "3"])("rejects a stored deltaPx of %j", (deltaPx) => {
+    writeFileSync(baselinePath(dir, "card"), JSON.stringify([{ ...fail(), deltaPx }]))
+    expect(() => readBaseline(dir, "card")).toThrow(/card\.json.*entry 0.*deltaPx/)
+  })
+
+  it.each(["expected", "actual"] as const)("rejects a non-string stored %s", (field) => {
+    writeFileSync(baselinePath(dir, "card"), JSON.stringify([{ ...fail(), [field]: 3 }]))
+    expect(() => readBaseline(dir, "card")).toThrow(new RegExp(`card\\.json.*entry 0.*${field}`))
   })
 
   it("throws on two entries with one key", () => {

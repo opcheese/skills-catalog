@@ -36,13 +36,16 @@ export function baselineKey(f: Finding): string {
 }
 
 /** Sets `origin` on every fail finding: inherited when the baseline records
- *  the same defect, introduced otherwise. Other statuses pass through without
- *  an origin -- only fail findings are ever recorded or classified. Input is
- *  not mutated. */
+ *  the same defect, introduced otherwise. Other statuses have any existing
+ *  origin stripped -- only fail findings are ever recorded or classified.
+ *  Input is not mutated. */
 export function classify(findings: Finding[], baseline: Finding[]): Finding[] {
   const known = new Map(baseline.map((b) => [baselineKey(b), b]))
   return findings.map((f) => {
-    if (f.status !== "fail") return f
+    if (f.status !== "fail") {
+      const { origin: _origin, ...rest } = f
+      return rest
+    }
     const was = known.get(baselineKey(f))
     return { ...f, origin: isSameDefect(f, was) ? "inherited" : "introduced" }
   })
@@ -52,7 +55,12 @@ function isSameDefect(now: Finding, was: Finding | undefined): boolean {
   if (!was) return false
   // A delta that is not a finite number was not measured. It cannot be
   // compared to anything, so it blocks -- never falls through to inherited.
-  if (now.deltaPx !== undefined && !Number.isFinite(now.deltaPx)) return false
+  if (
+    (now.deltaPx !== undefined && !Number.isFinite(now.deltaPx)) ||
+    (was.deltaPx !== undefined && !Number.isFinite(was.deltaPx))
+  ) {
+    return false
+  }
   // A divergence that GREW is a new defect at an old location. Calling it
   // inherited would let a regression hide behind an existing one.
   if (now.deltaPx !== undefined && was.deltaPx !== undefined && now.deltaPx - was.deltaPx > GROWTH_TOLERANCE_PX) {
@@ -127,6 +135,12 @@ function validate(parsed: unknown, file: string): Finding[] {
     if (f.status !== "fail") bad(`entry ${i} is not a fail finding`)
     if (typeof f.check !== "string" || typeof f.kind !== "string") bad(`entry ${i} has no check or kind`)
     if (typeof f.target?.selector !== "string") bad(`entry ${i} has no target selector`)
+    if (f.deltaPx !== undefined && (typeof f.deltaPx !== "number" || !Number.isFinite(f.deltaPx))) {
+      bad(`entry ${i} has a deltaPx that is not a finite number`)
+    }
+    for (const field of ["expected", "actual"] as const) {
+      if (f[field] !== undefined && typeof f[field] !== "string") bad(`entry ${i} has a non-string ${field}`)
+    }
     // Two entries at one key mean two answers to "what does this diverge by".
     const key = baselineKey(f as Finding)
     if (seen.has(key)) bad(`duplicate key ${key}`)
