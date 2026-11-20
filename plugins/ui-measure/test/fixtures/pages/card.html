@@ -1,0 +1,19 @@
+<!doctype html>
+<meta charset="utf-8">
+<style>
+  body { margin: 0 }
+  #card { width: 20rem; padding: 1rem; background: #eee }
+  #card h2 { margin: 0; font-size: 2rem; line-height: 2.4rem }
+</style>
+<script>
+  // ?root=5 sets the root font size to 5px; absent keeps the browser default of 16px.
+  var root = new URLSearchParams(location.search).get("root")
+  if (root) document.documentElement.style.fontSize = root + "px"
+</script>
+<div id="card">
+  <h2>Title</h2>
+  <p id="shown" style="margin:0">visible</p>
+  <p id="gone-display" style="display:none">no</p>
+  <p id="gone-visibility" style="visibility:hidden">no</p>
+  <p id="gone-opacity" style="opacity:0">no</p>
+</div>

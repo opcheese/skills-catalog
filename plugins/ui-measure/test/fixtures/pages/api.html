@@ -1,0 +1,11 @@
+<!doctype html>
+<meta charset="utf-8">
+<body style="margin:0">
+<div id="app">
+  <span id="out">loading</span>
+  <button id="go" onclick="document.getElementById('out2').textContent = 'clicked'">go</button>
+  <span id="out2">idle</span>
+</div>
+<script>
+  fetch("/api/x").then((r) => r.json()).then((j) => { document.getElementById("out").textContent = j.label })
+</script>
