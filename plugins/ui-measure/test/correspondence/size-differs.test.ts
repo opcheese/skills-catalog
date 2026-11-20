@@ -188,6 +188,25 @@ describe("a size-only failure kept as size_differs", () => {
     expect(r.pairs.find((v) => v.nodeId === "c")?.outcome).toBe("not_comparable")
   })
 
+  it("does not rescue with exactly two DOM descendants belonging to unrelated design nodes", () => {
+    const [nodes, els] = twoKids()
+    const unrelated = nodes.map((n) =>
+      n.id === "a" || n.id === "b" ? { ...n, parentId: "r" } : n,
+    )
+    const r = verifyMapping(
+      proposalOf([
+        ["c", "root > c"],
+        ["a", "root > c > a"],
+        ["b", "root > c > b"],
+      ]),
+      designOf(unrelated),
+      domOf(els),
+      ONE,
+    )
+    expect(r.pairs.find((v) => v.nodeId === "c")?.outcome).toBe("not_comparable")
+    expect(r.pairs.find((v) => v.nodeId === "c")?.rule).toBe("size_plausible")
+  })
+
   it("keeps a wrong type and wrong size not_comparable with the type rule", () => {
     const design = designOf([
       { id: "r", type: "FRAME", box: bb(0, 0, 200, 100) },

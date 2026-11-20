@@ -85,6 +85,18 @@ describe("detectGeometry", () => {
     expect((await run("geo-hiddenanc-good")).findings).toEqual([])
   })
 
+  it("off-canvas checks a visible image with no text", async () => {
+    const bad = await run("geo-offcanvas-image-bad")
+    expect(bad.findings).toHaveLength(1)
+    expect(bad.findings[0]).toMatchObject({ kind: "off-canvas", status: "fail" })
+    expect(bad.findings[0].target.text).toBeUndefined()
+  })
+
+  it("a vertical scroll container does not exempt horizontal overflow", async () => {
+    const bad = await run("geo-vertical-scroll-horizontal-bad")
+    expect(bad.findings.map((f) => f.kind)).toEqual(["off-canvas"])
+  })
+
   it("right edge: overflow past the viewport width is off-canvas even on a vertically scrollable page", async () => {
     expect((await run("geo-right-bad")).findings.map((f) => f.kind)).toEqual(["off-canvas"])
     expect((await run("geo-right-good")).findings).toEqual([])
