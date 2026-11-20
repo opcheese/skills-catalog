@@ -60,29 +60,49 @@ with fixture JSON and no browser.
 ## Configuration
 
 The project keeps its own `ui-measure.config.json` (ui-measure's format; it names targets, viewports, design
-root font size and, for spec mode, the Figma node). `screens.md` gains one optional field per screen:
-`measure: <target>`, plus `figma: <node-id>` or `node: <file>` when the screen has a design node.
+root font size and, for spec mode, the Figma node). The run directory gains `measure.json`, written before
+round 1 next to the human-readable `screens.md`:
 
-- A screen with `measure:` is **measured**. A screen without it is judge-only, and `scores.md` says so for
-  that screen.
-- A run with no measured screen behaves exactly as 0.1 does. Existing users lose nothing.
+```json
+{"config": "ui-measure.config.json",
+ "screens": {"home": {"target": "home"},
+             "card": {"target": "card", "figma": "12:34"},
+             "list": {"target": "list", "node": "design/list.json", "proposal": "design/list.pairs.json"}}}
+```
+
+Keys of `screens` are the labels used for screenshots and judge files. `target` names a ui-measure target;
+`figma` or `node` (one, optional) gives the design node and turns on spec mode; `proposal` (optional) is a
+saved starting proposal. Paths are relative to the project root.
+
+- A screen listed in `measure.json` is **measured**. A screen not listed is judge-only, and `scores.md` says
+  so for that screen.
+- No `measure.json` means the run behaves exactly as 0.1 does. Existing users lose nothing.
+
+Ruling: a JSON manifest instead of new fields in `screens.md` — the scorer must know which reports to expect
+so that a missing one makes the round not comparable instead of silently disappearing, and `screens.md` is
+free-form prose — cost: one more file to write at setup.
 
 ## hill-measure
 
 ```
-hill-measure --config C --target T --label L --out round-N
-             [--figma NODE_ID | --node FILE] [--proposal FILE]
+hill-measure --run DIR --round N [--label L]
 ```
+
+Measures every screen in `DIR/measure.json`, or only `L`.
 
 - Finds the CLI: `HILL_UI_MEASURE` if set, else the newest
   `~/.claude/plugins/cache/*/ui-measure/*/dist/ui-measure.mjs`. Not found: exit 2 with an install hint.
 - Always runs `geometry`, writing `round-N/L.geometry.json`.
-- With `--figma` or `--node`, also runs `spec`, writing `round-N/L.spec.json`. The pairs come from
-  `--proposal` (a saved proposal) if given, else from `hill-propose`.
-- **Proposal reuse.** The first spec run for a screen saves its accepted pairs to `round-N/L.proposal.json`.
-  Later rounds reuse the latest saved proposal. When the reused proposal drops pairs (the fixer changed the
-  DOM, so `nth-child` selectors moved), hill-measure re-proposes once with `hill-propose` and keeps the
-  report with fewer drops.
+- With `figma` or `node`, also runs `spec`, writing `round-N/L.spec.json`.
+- **Where the pairs come from.** ui-measure's report carries pair counts, not pairs, so the proposal itself
+  is what gets saved. In order: the latest `round-K/L.proposal.json` from an earlier round; else the
+  screen's `proposal` from `measure.json`; else a fresh one from `hill-propose`. A reused proposal is passed
+  as `--proposer recorded --proposal FILE`; a fresh one runs `--proposer command -- hill-propose`, with
+  `HILL_PROPOSAL_OUT=round-N/L.proposal.json` set so `hill-propose` saves the proposal it printed.
+  Saving the raw, unverified proposal is enough: ui-measure verifies every pair again on every run.
+- **Re-propose on drops.** When a reused proposal has more dropped pairs than the round it came from (the
+  fixer changed the DOM, so `nth-child` selectors moved), hill-measure re-proposes once with `hill-propose`
+  and keeps whichever report has fewer drops, with its proposal.
 - Exit 0 when both reports were written, whatever their verdicts (mismatches and not-comparable are data
   for hill-score). Exit 2 bad input or CLI not found; exit 3 when ui-measure itself exits 3 (setup: no
   Playwright, unknown target); exit 75 passes through from kimi-delegation (quota).
@@ -98,7 +118,8 @@ Reads `{design, dom}` JSON on stdin, writes it to a work directory, and calls ki
 (`--via kimi --final-only`, model from `HILL_JUDGE_MODEL`, default `kimi-code/k3.1-pro`, the same delegate
 lookup as `hill-judge`). The prompt asks for pairs of design node id and DOM selector plus the unmapped
 nodes, as one JSON object. It prints the first JSON object that parses as a `Proposal`, or exits 3 after two
-unusable answers. It never invents quantities: ui-measure's verifier checks every pair.
+unusable answers. When `HILL_PROPOSAL_OUT` is set it also writes the printed proposal to that path. It
+never invents quantities: ui-measure's verifier checks every pair.
 
 ## Deciding a round
 
@@ -162,7 +183,7 @@ judge still covers the rest.
 
 ## SKILL.md changes
 
-- *Before round 1*: if the project has (or can add) `ui-measure.config.json`, add `measure:` to each screen;
+- *Before round 1*: if the project has (or can add) `ui-measure.config.json`, write `measure.json`;
   point to the ui-measure skill for the config shape. Install note: ui-measure plugin, plus Playwright in
   the project.
 - *Each round*, step 2 becomes **Measure**: `hill-measure` per measured screen, before judging; the
@@ -182,7 +203,8 @@ package change.
 
 | condition | behaviour |
 | --- | --- |
-| `measure:` declared, ui-measure not installed | hill-measure exits 2; the skill stops before round 1 and says to install it or remove `measure:` |
+| `measure.json` present, ui-measure not installed | hill-measure exits 2; the skill stops before round 1 and says to install it or remove `measure.json` |
+| `measure.json` names a label with no screenshot or a target the config lacks | exit 2 (label) or 3 (target, from ui-measure) before any judging |
 | no Playwright in the project | ui-measure exits 3; hill-measure passes 3 through with its message |
 | a measured screen's report missing from a round | that round is not comparable |
 | Kimi quota spent during a proposal | exit 75, the skill stops and reports, as for the judge |
@@ -195,7 +217,7 @@ package change.
   - equal fails fall back to the judge;
   - a not-comparable round is never best;
   - fewer accepted pairs trips the guard, and so does a new hierarchy major;
-  - a missing report makes the round not comparable;
+  - a missing report for a screen listed in `measure.json` makes the round not comparable;
   - stop "done" needs zero fails and the judge condition;
   - an addressed measured finding still failing stays open;
   - a run with no measured screens reproduces 0.1's decisions on 0.1's existing test fixtures.
@@ -203,7 +225,8 @@ package change.
   exits 0/1/2/3):
   - exit-code mapping;
   - report names;
-  - proposal reuse, and the single re-propose when drops rise (with a stub `hill-propose`).
+  - the proposal order (earlier round, then `measure.json`, then fresh), `HILL_PROPOSAL_OUT` saving, and the
+    single re-propose when drops rise (with a stub `hill-propose`).
 - `hill-propose`, against a stub delegate:
   - JSON extraction;
   - two unusable answers give exit 3.
@@ -212,7 +235,9 @@ package change.
 
 ## Open items
 
-- The rulings above (re-propose on drops, equal weights, the guard's two signals).
+- The rulings above (the manifest, re-propose on drops, equal weights, the guard's two signals).
+- The builder check (Kimi K3.1 Pro) asked two questions; both are settled above (saving the raw proposal, the
+  manifest). Its answer is kept locally.
 - Recall is still unmeasured: this spec makes the loop act on measurements; whether that catches what
   designers catch is the private evaluation's question, with its bar registered before the run.
 - The judge's prompts are unchanged; telling it to skip what measurement covers waits for the read-alone A/B.
