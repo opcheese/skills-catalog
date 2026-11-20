@@ -2,7 +2,11 @@
 """Score one screen with an outside judge (Kimi k3.1-pro via kimi-delegation).
 
   hill-judge --screen PNG --label NAME --out DIR
-             [--reference PNG]... [--constraints FILE] [--runs N]
+             [--reference PNG]... | [--design PNG]  [--constraints FILE] [--runs N]
+
+--reference: screens that set the bar; the judge scores how good this screen is.
+--design:    the approved design frame; the judge scores how faithfully the build
+             matches it and lists deviations. The two can't be combined.
 
 Writes DIR/NAME.run<i>.json per run: scores per category, findings with
 regions, the requested model and the delegate's provenance line.
@@ -34,6 +38,33 @@ Score each category from 0 to 10, where the reference screens set what good look
 
 Then list concrete findings: each names one element, what is wrong with it, a severity (major or minor),
 the category, and its region in screen-image pixels. Judge only what you can see. Do not praise.
+
+Answer with one JSON object and nothing else:
+{{"scores": {{"hierarchy": n, "typography": n, "colour": n, "spacing": n, "consistency": n, "originality": n}},
+ "findings": [{{"category": "...", "element": "...", "problem": "...", "severity": "major|minor",
+   "region": {{"x": n, "y": n, "w": n, "h": n}}}}]}}
+"""
+
+DESIGN_PROMPT = """You are checking one built app screen against its approved design. You are a separate reviewer:
+you did not build it, and nothing rides on it matching.
+
+Files in the current directory (open each image with your image tool):
+- {screen}: the screen as built.
+- {design}: the approved design frame for that screen.
+{constraints}
+Score each category from 0 to 10 for how faithfully the build matches the design, where 10 means a user could not
+tell them apart:
+- hierarchy: the same elements are prominent, in the same order and grouping;
+- typography: same type sizes, weights, line breaks and alignment;
+- colour: same colours, fills (including gradients), borders and contrast;
+- spacing: same positions, sizes, gaps and margins;
+- consistency: same components and icons, in the same states;
+- originality: the design's distinctive details (illustrations, motifs, decorative shapes) are kept.
+
+Then list every deviation: each names one element, how the build differs from the design, a severity, the
+category, and its region in the built screen's pixels. A deviation is major when a user would notice it at a
+glance or it changes what stands out; otherwise minor. Ignore text that obviously comes from live data
+(names, dates, counts, version numbers). Judge only what you can see. Do not praise.
 
 Answer with one JSON object and nothing else:
 {{"scores": {{"hierarchy": n, "typography": n, "colour": n, "spacing": n, "consistency": n, "originality": n}},
@@ -99,11 +130,14 @@ def main():
     ap.add_argument("--label", required=True)
     ap.add_argument("--out", required=True)
     ap.add_argument("--reference", action="append", default=[])
+    ap.add_argument("--design")
     ap.add_argument("--constraints")
     ap.add_argument("--runs", type=int, default=2)
     a = ap.parse_args()
 
-    for p in [a.screen] + a.reference:
+    if a.design and a.reference:
+        die(2, "--design and --reference can't be combined: judge against the design, or against references")
+    for p in [a.screen] + a.reference + ([a.design] if a.design else []):
         if not os.path.isfile(p):
             die(2, f"no such file: {p}")
         if not image_kind(p):
@@ -129,7 +163,12 @@ def main():
         cons = "- constraints.md: the product owner's taste rules. A screen that breaks one loses points in that category.\n"
     if not ref_names:
         refs = "- (no reference screens: judge against well-made products of the same kind.)\n"
-    prompt = PROMPT.format(screen=screen_name, refs=refs, constraints=cons)
+    if a.design:
+        design_name = "design." + image_kind(a.design).replace("jpeg", "jpg")
+        shutil.copyfile(a.design, os.path.join(work, design_name))
+        prompt = DESIGN_PROMPT.format(screen=screen_name, design=design_name, constraints=cons)
+    else:
+        prompt = PROMPT.format(screen=screen_name, refs=refs, constraints=cons)
 
     delegate = find_delegate()
     model = os.environ.get("HILL_JUDGE_MODEL", DEFAULT_MODEL)
@@ -150,9 +189,12 @@ def main():
                 break
         if not result:
             die(3, f"{a.label} run {run}: {why} (twice); last answer: {p.stdout.strip()[:200]!r}")
-        out = {"label": a.label, "image": os.path.abspath(a.screen), "sha256": sha,
+        out = {"label": a.label, "mode": "design" if a.design else "reference",
+               "image": os.path.abspath(a.screen), "sha256": sha,
                "references": [{"path": os.path.abspath(r), "sha256": hashlib.sha256(open(r, "rb").read()).hexdigest()}
                               for r in a.reference],
+               **({"design": {"path": os.path.abspath(a.design),
+                              "sha256": hashlib.sha256(open(a.design, "rb").read()).hexdigest()}} if a.design else {}),
                "model_requested": model, "provenance": prov, "run": run, **result}
         path = os.path.join(a.out, f"{a.label}.run{run}.json")
         with open(path, "w") as f:

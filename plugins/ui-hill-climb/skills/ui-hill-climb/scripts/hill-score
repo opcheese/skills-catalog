@@ -131,8 +131,19 @@ def main():
     best = max(range(k), key=lambda i: (rels[i], -i))
     revert_to = rounds[best]["n"] if k > 1 and rels[-1] < rels[-2] else None
 
+    design = any(r.get("mode") == "design" for x in rounds for runs in x["raw"].values() for r in runs)
+    if design:  # absolute fidelity to the design; a ref-* label is the design judged against itself (noise floor)
+        for x in rounds:
+            x["rel"] = x["s_mean"]
+        rels = [x["rel"] for x in rounds]
+        best = max(range(k), key=lambda i: (rels[i], -i))
+        revert_to = rounds[best]["n"] if k > 1 and rels[-1] < rels[-2] else None
+
     stop, reason = False, "continue"
-    if cur["refs"]:
+    if design:
+        if not any(f.get("severity") == "major" for runs in cur["raw"].values() for r in runs for f in r.get("findings", [])):
+            stop, reason = True, "no major deviations from the design"
+    elif cur["refs"]:
         ref_cats = {c: statistics.mean(v["cats"][c] for v in cur["refs"].values()) for c in CATEGORIES}
         if all(v["cats"][c] > ref_cats[c] for v in cur["screens"].values() for c in CATEGORIES):
             stop, reason = True, "every screen beats the references in every category"
@@ -169,7 +180,7 @@ def main():
         for x in rounds:
             for runs in x["raw"].values():
                 for r in runs:
-                    for ref in r.get("references", []):
+                    for ref in r.get("references", []) + ([r["design"]] if r.get("design") else []):
                         refs[ref["path"]] = ref["sha256"]
             for p in glob.glob(os.path.join(a.run, f"round-{x['n']}", "ref-*.run1.json")):
                 j = json.load(open(p))
@@ -182,6 +193,10 @@ def main():
     lines = ["# Hill-climb scores", "",
              "Judge scores 0–10 per category, the mean over each screen's runs. *Spread* is the gap between a screen's "
              "best and worst run: a change smaller than it is noise. *Relative* is screens minus references.", ""]
+    if design:
+        lines[2] = ("Design mode: scores 0–10 are fidelity to the approved design, the mean over each screen's runs. "
+                    "*Spread* is the gap between a screen's best and worst run: a change smaller than it is noise. "
+                    "A ref-* row is the design judged against itself: the noise floor, the most a perfect build can score.")
     for x in rounds:
         lines += [f"## Round {x['n']}", "",
                   "| screen | " + " | ".join(CATEGORIES) + " | mean | spread | runs | judge (requested) | served |",
@@ -191,9 +206,12 @@ def main():
                 lines.append(f"| {label} | " + " | ".join(f"{v['cats'][c]:.1f}" for c in CATEGORIES) +
                              f" | {v['mean']:.2f} | {v['spread']:.2f} | {v['runs']} | {', '.join(v['models'])} | {', '.join(v['served'])} |")
         drift = (x["r_mean"] - rounds[0]["r_mean"]) if x["r_mean"] is not None and rounds[0]["r_mean"] is not None else None
-        lines += ["", f"- screens {x['s_mean']:.2f}" + (f", references {x['r_mean']:.2f}, relative {x['rel']:+.2f}" if x["r_mean"] is not None else ""),
-                  f"- reference drift since round 1: {drift:+.2f}" if drift is not None else "- reference drift: no references",
-                  f"- changes this round: {len(x['changes'])}", ""]
+        if design:
+            lines += ["", f"- screens {x['s_mean']:.2f}" + (f", noise floor {x['r_mean']:.2f}" if x["r_mean"] is not None else ", noise floor: not measured")]
+        else:
+            lines += ["", f"- screens {x['s_mean']:.2f}" + (f", references {x['r_mean']:.2f}, relative {x['rel']:+.2f}" if x["r_mean"] is not None else ""),
+                      f"- reference drift since round 1: {drift:+.2f}" if drift is not None else "- reference drift: no references"]
+        lines += [f"- changes this round: {len(x['changes'])}", ""]
     lines += ["## Round log", "", f"- best round: {rounds[best]['n']}" + (f"; revert to it (round {cur['n']} scored below round {rounds[-2]['n']})" if revert_to else ""),
               f"- decision: {'stop' if stop else 'continue'} ({reason})", f"- open findings: {len(open_findings)}", ""]
     with open(os.path.join(a.run, "scores.md"), "w") as f:

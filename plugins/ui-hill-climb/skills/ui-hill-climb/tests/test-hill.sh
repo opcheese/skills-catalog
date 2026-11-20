@@ -73,6 +73,20 @@ check_contains "lists default looks to avoid" "$LOG" "default"
 check_missing "uses no superlative criteria" "$LOG" "museum"
 check_contains "copies the inputs next to each other" "$(ls "$WORK/r1"/work-home 2>/dev/null)" "reference-1.png"
 
+echo "hill-judge: design mode (the reference is the approved design, found in live use)"
+reset; echo "$GOOD" > "$WORK/ans"; png "$WORK/design.png"
+OUT=$(judge --screen "$WORK/screen.png" --design "$WORK/design.png" --label d1 --runs 1 --out "$WORK/rd")
+check_eq "exits 0" "$?" "0"
+J="$(cat "$WORK/rd/d1.run1.json")"
+check_contains "records design mode" "$J" '"mode": "design"'
+check_contains "records the design frame's sha256" "$J" "$(sha256sum "$WORK/design.png" | cut -c1-64)"
+LOG="$(cat "$WORK/log")"
+check_contains "names the design file in the prompt" "$LOG" "design.png"
+check_contains "asks for deviations from the design" "$LOG" "deviation"
+check_missing "does not ask to beat anything" "$LOG" "reference screen"
+OUT=$(judge --screen "$WORK/screen.png" --design "$WORK/design.png" --reference "$WORK/ref.png" --label d2 --out "$WORK/rd"); RC=$?
+check_eq "design and reference together are refused" "$RC" "2"
+
 echo "hill-judge: model override"
 reset; echo "$GOOD" > "$WORK/ans"
 HILL_JUDGE_MODEL=kimi-for-coding/k3.1-pro judge --screen "$WORK/screen.png" --label a --out "$WORK/r2" >/dev/null
@@ -222,6 +236,36 @@ check_missing "the moved input does not inherit the old headline's ID" "$OUT" "\
 mkf "$RUN4/round-2/login.run2.json" login "Footer link" 10 760 100 20
 OUT=$("$SCORE" --run "$RUN4" 2>&1)
 check_contains "a finding elsewhere is still raised" "$OUT" '"Footer link"'
+
+echo "hill-score: design mode stops on no major deviations, never on 'beats the references'"
+mkd() { # mkd FILE LABEL SCORE SEVERITY
+  python3 - "$@" <<'PY'
+import json,sys
+p,label,s,sev=sys.argv[1],sys.argv[2],float(sys.argv[3]),sys.argv[4]
+cats=["hierarchy","typography","colour","spacing","consistency","originality"]
+f=[] if sev=="none" else [{"category":"colour","element":"Primary button","problem":"flat fill, design has a gradient","severity":sev,"region":{"x":224,"y":1314,"w":632,"h":52}}]
+json.dump({"label":label,"mode":"design","image":label+".png","sha256":"ef"*32,"design":{"path":"/d/figma.png","sha256":"12"*32},
+  "model_requested":"kimi-code/k3.1-pro","provenance":"","scores":{c:s for c in cats},"findings":f},open(p,"w"))
+PY
+}
+RUN7="$WORK/run7"; mkdir -p "$RUN7/round-1"
+mkd "$RUN7/round-1/login.run1.json" login 8 major
+mkd "$RUN7/round-1/ref-figma.run1.json" ref-figma 5 none
+OUT=$("$SCORE" --run "$RUN7" 2>&1)
+check_contains "a major deviation keeps it going" "$OUT" '"stop": false'
+check_contains "scores.md says design mode" "$(cat "$RUN7/scores.md")" "design"
+check_contains "references.json lists the design frame" "$(cat "$RUN7/references.json")" "/d/figma.png"
+RUN8="$WORK/run8"; mkdir -p "$RUN8/round-1"
+mkd "$RUN8/round-1/login.run1.json" login 8 minor
+OUT=$("$SCORE" --run "$RUN8" 2>&1)
+check_contains "only minor deviations left: stop" "$OUT" '"stop": true'
+check_contains "and says why" "$OUT" "no major deviations"
+RUN9="$WORK/run9"; mkdir -p "$RUN9/round-1"
+mkd "$RUN9/round-1/login.run1.json" login 8 major
+mkd "$RUN9/round-1/ref-figma.run1.json" ref-figma 9.5 major
+OUT=$("$SCORE" --run "$RUN9" 2>&1)
+check_contains "the design judged against itself is the noise floor" "$(cat "$RUN9/scores.md")" "noise floor"
+check_missing "its findings are not open findings" "$OUT" '"screen": "ref-figma"'
 
 echo
 echo "$PASS passed, $FAIL failed"

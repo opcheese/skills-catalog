@@ -8,6 +8,15 @@ audience: developers
 
 Notable changes to the catalog: what devs install, and what the docs tell them.
 
+## 2026-11-20: ui-hill-climb 0.1.2, design mode
+
+Judging the login screen against its Figma frame as a "reference" went wrong: the judge scored the build
+8.00 and the frame 5.25, said "every screen beats the references", and stopped. A frame is the target, not
+a competitor. `hill-judge --design FRAME` now asks for fidelity and a list of deviations, and `hill-score`
+stops when no major deviation is left. The frame judged against itself is the noise floor (live: 10.00, no
+findings; build 9.25, one major deviation, a flat button where the frame has a gradient). Fourteen new tests
+(67 in all).
+
 ## 2026-11-20: ui-hill-climb 0.1.1, from its first real run
 
 The first live run (an old build's login screen, two rounds, 4.00 → 5.42) found two ID bugs the hermetic
