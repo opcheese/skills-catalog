@@ -1,0 +1,21 @@
+{
+  "color": {
+    "$type": "color",
+    "primary": { "$value": "#0A84FF" },
+    "accent": { "$value": "{color.primary}" },
+    "loop-a": { "$value": "{color.loop-b}" },
+    "loop-b": { "$value": "{color.loop-a}" },
+    "ghost": { "$value": "{color.missing}" }
+  },
+  "space": {
+    "md": { "$type": "dimension", "$value": "16px" },
+    "radius": { "md": { "$type": "dimension", "$value": "8px" } },
+    "border": { "thin": { "$type": "dimension", "$value": "1px" } }
+  },
+  "font": {
+    "body": { "$type": "fontFamily", "$value": "Inter" },
+    "bold": { "$type": "fontWeight", "$value": 700 }
+  },
+  "elevation": { "card": { "$type": "shadow", "$value": "0 1px 2px #000" } },
+  "odd": { "duration": { "$type": "duration", "$value": "100ms" } }
+}
