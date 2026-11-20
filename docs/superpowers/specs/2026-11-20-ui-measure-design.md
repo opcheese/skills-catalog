@@ -33,8 +33,17 @@ Out of scope: publishing to the npm registry (owner's decision, later); any clie
 
 ## Where it lives
 
-`skills-catalog/packages/ui-measure/`, a TypeScript package in the public catalog, with a `ui-measure` CLI.
-The ui-hill-climb skill calls the CLI; Galatea depends on it by git URL pinned to a tag.
+`skills-catalog/plugins/ui-measure/`, its own plugin in the public catalog: a TypeScript package with a
+`ui-measure` CLI, plus a short skill that says when to run which check. The source lives in `src/`; a
+bundled `dist/ui-measure.mjs` (esbuild, committed) is what runs, so an installed plugin needs only `node` and
+Playwright. ui-hill-climb calls the bundled CLI through the sibling plugin's path. Galatea depends on the
+package by a pnpm git URL with a `path:` to the plugin folder, pinned to a tag `ui-measure-vX.Y.Z`.
+
+Ruling: own plugin, committed bundle — a top-level `packages/` folder is not shipped when a marketplace plugin
+is installed, so the skill could not reach it — if wrong, the cost is moving one folder.
+Playwright is not bundled: the CLI resolves it from the consuming project, then globally, and exits 3 with
+an install hint when neither has it. Plan task 1 verifies the pnpm `path:` git dependency on a scratch
+project before anything else depends on it.
 
 Approaches weighed:
 
@@ -72,17 +81,37 @@ Each unit has one job and is usable alone.
   - `designharness`: `?c=<component>&state=<state>`, root is the first child of `#harness-root`;
   - `storybook`: `iframe.html?id=<story-id>&viewMode=story`, root is the first child of `#storybook-root`;
   - `url`: any URL plus a root selector, with optional `--steps` and `--mock` modules (the replay kit's
-    contract), viewport and screen size set separately (device media queries read the screen).
+    contract), viewport and screen size set separately (device media queries read the screen). The
+    contract, from the replay kit's `capture.mjs`: a `--mock` module's default export `(context) => Promise`
+    runs on the Playwright `BrowserContext` before any page opens (it installs `context.route()` mocks); a
+    `--steps` module's default export `(page) => Promise` runs after navigation and load, before measuring.
+    The package's version carries no login helper and no project credentials.
 - **correspondence** pairs design nodes with elements and verifies the pairs in code (Galatea's rules:
   type, injectivity, reading order, text, size; never position). The pairs come from a **proposer**:
-  - `code-connect`: a Code Connect map, deterministic, preferred when the project has one;
   - `recorded`: a saved `{pairs, unmapped}` file;
   - `command`: any executable that reads both trees as JSON on stdin and prints a proposal. The package
     ships no model client; ui-hill-climb points this at Kimi, Galatea at its own provider.
+  - Code Connect is left out of the first version (my call): Galatea detects a map but never consumed one
+    (`design-measure.ts` stops with "NOT IMPLEMENTED"), and there is no example payload to build against.
+    The proposer interface takes it later without changes.
 - **spec** compares accepted pairs: box geometry, radius, token-bound properties, and **gaps and padding**
   from auto-layout. Gaps are compared between accepted siblings and padding between a parent and its first
   and last child, so a spacing change that resizes an element is reported as a spacing mismatch instead of
   dropping the pair (the gap Galatea's survey found). Tolerance floor 2px (Figma stroke vs CSS border).
+  Values compared are resolved values only (my call): box geometry, gaps, padding, radius and border width
+  from the node; fill colour, font family, size, weight and line height from fills and text style; effects
+  from `effects`. Token identity is not checked, because computed style does not say which variable produced
+  a value and Figma's variables endpoint is Enterprise-only. When a resolved value matches a token-map row,
+  the finding names that token so the reader sees which one was meant.
+
+  Ruling (how a spacing defect survives the size rule): the verifier's rules stay as they are, but a pair
+  whose **only** failed rule is `size_plausible` is kept as size-differing instead of dropped when either
+  its text matches exactly, or its element is the nearest common ancestor of two or more accepted pairs whose
+  design nodes share its design node as parent. Such a pair yields a `size` finding (status fail, both sizes)
+  and its gaps and padding are measured; any other size-only failure is dropped as before. Why: the spike's
+  misses were mostly padding and gaps that resize their container, which the current rule turns into a
+  "partial run". Cost if wrong: a mis-paired container yields wrong spacing numbers; the identity conditions
+  above keep that to containers whose children already paired.
 - **tokens** loads a token map and translates Figma values to code values. Two formats: W3C design tokens
   (DTCG JSON) and row maps `{figma, value, code, property, note}` with the closed property vocabulary
   `color spacing radius fontSize lineHeight fontWeight fontFamily effect borderWidth`.
@@ -117,8 +146,13 @@ interface Report {
 }
 ```
 
-`scale` handles projects whose root font changes with the screen: comparisons divide by it, never assume
-16px.
+`scale` is CSS px per design px: the live root font size divided by the configured design root font size
+(1 when the project does not scale its root). Ruling: it replaces Galatea's root-box ratio
+(`domRoot.width / designRoot.width`) everywhere, including the verifier's size rule; the root box is used
+only to translate origins, and a root whose size differs from the design root's (after scale) is reported as
+its own `root-size` finding instead of being normalised away. Why: the ratio hides a root that is the wrong
+size, which is a defect class the spike missed. Cost if wrong: findings shift by a constant factor on
+projects with an unusual root; Galatea has one recorded baseline (one component), re-recorded on migration.
 
 ## Rules carried over from Galatea
 
@@ -162,5 +196,7 @@ Exit codes: 0 clean, 1 mismatches, 2 not comparable, 3 usage or setup error. Adv
 ## Open items
 
 - The npm registry, later.
+- The rulings above (packaging, spacing through the size rule, scale) are the builder check's questions
+  settled without the owner; each states its cost if wrong. The builder check's full answer is kept locally.
 - Whether Galatea's move happens before or after ui-hill-climb's restructure: either order works because
   both pin a tag.
