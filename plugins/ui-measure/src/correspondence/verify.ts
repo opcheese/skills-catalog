@@ -458,6 +458,24 @@ export function verifyMapping(
     }
   }
 
+  // Text evidence first: a size-only failure whose text matches exactly (after
+  // collapsing whitespace -- a run that wraps differently is still the same
+  // text) is kept as size_differs HERE, before rule 5, so that it counts as a
+  // good child when rule 5 asks whether its parent's children all landed.
+  // Run after rule 5 it left a parent unrescued by the very child that proved
+  // it (measured on a two-child card whose wider root made the label's size
+  // differ). Rule 6 below keeps the rest of its evidence unchanged.
+  const collapse = (t: string | undefined) =>
+    (t ?? "").replace(/\s+/g, " ").trim()
+  const sameText = (v: PairVerdict): boolean => {
+    const wanted = collapse(nodesById.get(v.nodeId)?.text)
+    return wanted !== "" && wanted === collapse(elementsBySelector.get(v.selector)?.text)
+  }
+  for (const v of verdicts) {
+    if (v.outcome !== "not_comparable" || v.rule !== "size_plausible") continue
+    if (sameText(v)) v.outcome = "size_differs"
+  }
+
   // Rule 5: a container whose children all landed is the same container.
   //
   // Runs AFTER rule 4 and only rescues pairs rule 4 rejected for size. The
@@ -520,8 +538,8 @@ export function verifyMapping(
   // defect resizes its container, and rule 4 then discards exactly the pair
   // whose spacing is wrong. Two kinds of evidence of identity are accepted:
   //
-  //  - the texts are equal once whitespace is collapsed (a text run that
-  //    wraps differently is still the same text); or
+  //  - the texts are equal once whitespace is collapsed (applied before rule
+  //    5, see above); or
   //  - the element is the nearest common DOM ancestor of at least two
   //    accepted pairs whose design nodes all have this design node as their
   //    parent: its children landed, so it is the container they sit in.
@@ -529,8 +547,6 @@ export function verifyMapping(
   // Anything else stays `not_comparable`. Cost if wrong: a mis-paired
   // container yields wrong spacing numbers; both conditions limit that to
   // containers whose contents already paired.
-  const collapse = (t: string | undefined) =>
-    (t ?? "").replace(/\s+/g, " ").trim()
   const segments = (selector: string) => selector.split(" > ")
   const commonAncestor = (selectors: string[]): string[] => {
     let common = segments(selectors[0])
@@ -543,10 +559,6 @@ export function verifyMapping(
       common = common.slice(0, n)
     }
     return common
-  }
-  const sameText = (v: PairVerdict): boolean => {
-    const wanted = collapse(nodesById.get(v.nodeId)?.text)
-    return wanted !== "" && wanted === collapse(elementsBySelector.get(v.selector)?.text)
   }
   const isContainerOfSiblings = (v: PairVerdict): boolean => {
     const kids = verdicts.filter(
@@ -561,7 +573,7 @@ export function verifyMapping(
   }
   for (const v of verdicts) {
     if (v.outcome !== "not_comparable" || v.rule !== "size_plausible") continue
-    if (sameText(v) || isContainerOfSiblings(v)) v.outcome = "size_differs"
+    if (isContainerOfSiblings(v)) v.outcome = "size_differs"
   }
 
   const accepted = verdicts.filter((v) => v.outcome === "accepted")

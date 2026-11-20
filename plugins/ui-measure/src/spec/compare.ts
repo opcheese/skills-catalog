@@ -9,12 +9,15 @@
 // a 2px floor on a font size would let 14px pass for 16px, and nothing in text rendering needs it.
 //
 // SPACING. A gap is the distance along the layout axis between two consecutive design siblings that
-// are both paired. Padding is the distance from the container's edge to its first and last paired
-// child, plus the cross-axis start. The START sides are checked against the node's declared padding;
-// the END side is checked against the distance the DESIGN itself measures, because a fixed-height
-// frame's declared bottom padding is not where its last child ends, and comparing against it would
-// fail a page that matches the design exactly. Spacing is measured from boxes, not read from CSS,
-// so a spacing change that resizes its container is still reported as spacing.
+// are both paired, against the declared gap. Padding is read from the design's OWN geometry, never from
+// the declared padding: along the axis it is the container's edge to the first and last child, across
+// it the container's edge to the children's extent. Declared padding is wrong for centred or
+// end-aligned children and for fixed-size frames, and comparing against it would fail a page that
+// matches the design exactly. Spacing is measured from boxes, not read from CSS, so a spacing change
+// that resizes its container is still reported as spacing.
+//
+// ABSENCE. A property the design does not have is still a property the page can have: a radius,
+// border, background or shadow with no counterpart in Figma fails with expected "none".
 import { normalise } from "../correspondence/verify"
 import type {
   Box,
@@ -30,7 +33,8 @@ import { tokenFor, type Token, type TokenProperty } from "../tokens"
 
 /** Figma stroke vs CSS border: the smallest difference worth reporting, in design px. */
 export const TOLERANCE_FLOOR_PX = 2
-/** Font size and line height: sub-pixel rounding only, in design px. */
+/** Font size and line height: sub-pixel rounding only, in design px. The 2px floor above is for
+ *  geometry (Figma stroke vs CSS border); on a font size it would let 14px pass for 16px. */
 const TEXT_TOLERANCE_PX = 0.5
 const COLOUR_CHANNEL_TOLERANCE = 1
 const COLOUR_ALPHA_TOLERANCE = 0.01
@@ -261,6 +265,17 @@ export function compareSpec(
             actual: dims(got.width, got.height),
             deltaPx: round(worst),
           })
+          // Width and height are the size finding's; the position is still a measurement.
+          const shift = Math.max(Math.abs(want.x - got.x), Math.abs(want.y - got.y))
+          findings.push({
+            check: "spec",
+            kind: "box",
+            status: shift > tol ? "fail" : "pass",
+            target: targetOf(node, el),
+            expected: `${round(want.x, 1)},${round(want.y, 1)}`,
+            actual: `${round(got.x, 1)},${round(got.y, 1)}`,
+            deltaPx: round(shift),
+          })
         } else {
           const worst = Math.max(
             Math.abs(want.x - got.x),
@@ -285,10 +300,11 @@ export function compareSpec(
       continue
     }
 
-    // Radius: clamped to half the shorter side on both sides, as CSS clamps it.
-    if (node.radius !== undefined && el.box) {
+    // Radius: clamped to half the shorter side on both sides, as CSS clamps it. A design with no
+    // radius expects none.
+    if (el.box) {
       const cap = Math.min(el.box.width, el.box.height) / 2
-      const expected = Math.min(node.radius * scale, cap)
+      const expected = Math.min((node.radius ?? 0) * scale, cap)
       const raw = [style.borderTopLeftRadius, style.borderTopRightRadius, style.borderBottomRightRadius, style.borderBottomLeftRadius]
       const corners = raw.map((r) => {
         const first = r.trim().split(/\s+/)[0]
@@ -302,27 +318,58 @@ export function compareSpec(
         const got = corners as number[]
         const worst = Math.max(...got.map((c) => Math.abs(c - expected)))
         const far = got.reduce((a, b) => (Math.abs(b - expected) > Math.abs(a - expected) ? b : a))
+        const has = node.radius !== undefined && node.radius > 0
+        // Nothing to report when neither side has a radius.
+        if (has || worst > 0) {
+          findings.push({
+            check: "spec",
+            kind: "radius",
+            status: worst > tol ? "fail" : "pass",
+            target: targetOf(node, el),
+            expected: has ? named("radius", String(node.radius), px(expected)) : "none",
+            actual: px(far),
+            deltaPx: round(worst),
+          })
+        }
+      }
+    }
+
+    // Border width: Figma's stroke weight against all four computed borders, naming the sides that
+    // differ. A design with no stroke expects none.
+    if (node.type !== "TEXT") {
+      const sides = [
+        ["top", style.borderTopWidth],
+        ["right", style.borderRightWidth],
+        ["bottom", style.borderBottomWidth],
+        ["left", style.borderLeftWidth],
+      ] as const
+      const widths = sides.map(([label, w]) => ({ label, w: length(w) }))
+      const has = node.strokeWeight !== undefined && node.strokeWeight > 0
+      if (widths.some((x) => x.w === undefined)) {
+        skip("border-width", node, el, `border width ${sides.map((x) => x[1]).join(" ")} is not a length`)
+      } else if (has || widths.some((x) => (x.w ?? 0) > 0)) {
+        const want = has ? (node.strokeWeight as number) * scale : 0
+        const off = widths.filter((x) => Math.abs((x.w ?? 0) - want) > (has ? tol : 0))
+        const worst = Math.max(...widths.map((x) => Math.abs((x.w ?? 0) - want)))
+        const shown = (off.length ? off : widths).map((x) => `${x.label} ${px(x.w ?? 0)}`).join(", ")
         findings.push({
           check: "spec",
-          kind: "radius",
-          status: worst > tol ? "fail" : "pass",
+          kind: "border-width",
+          status: off.length ? "fail" : "pass",
           target: targetOf(node, el),
-          expected: named("radius", String(node.radius), px(expected)),
-          actual: px(far),
+          expected: has ? named("borderWidth", String(node.strokeWeight), px(want)) : "none",
+          actual: off.length ? shown : px(widths[0].w ?? 0),
           deltaPx: round(worst),
         })
       }
     }
 
-    // Border width: Figma's stroke weight against the computed border.
-    if (node.strokeWeight !== undefined && node.type !== "TEXT") {
-      const w = length(style.borderTopWidth)
-      if (w === undefined) skip("border-width", node, el, `border width ${style.borderTopWidth} is not a length`)
-      else measure("border-width", node, el, node.strokeWeight * scale, w, tol, { name: "borderWidth", designValue: String(node.strokeWeight) })
-    }
-
-    // Fill colour: a text node's fill is the text colour, anything else paints a background.
-    if (node.fill !== undefined && !GRAPHIC_TYPES.has(node.type)) {
+    // Fill colour: a text node's fill is the text colour, anything else paints a background. A
+    // vector's fill lives in the SVG, not in computed style, so it is never silently skipped. A
+    // non-text node with no fill expects no background.
+    if (GRAPHIC_TYPES.has(node.type)) {
+      if (node.fill !== undefined) skip("colour", node, el, "graphic fill is not compared")
+    } else if (node.fill !== undefined) {
       const want = parseColour(node.fill)
       const got = parseColour(node.type === "TEXT" ? style.color : style.backgroundColor)
       if (!want || !got) {
@@ -335,6 +382,20 @@ export function compareSpec(
           status: intentional || sameColour(want, got) ? "pass" : "fail",
           target: targetOf(node, el),
           expected: named("color", formatColour(want), formatColour(want)),
+          actual: formatColour(got),
+        })
+      }
+    } else if (node.type !== "TEXT") {
+      const got = parseColour(style.backgroundColor)
+      if (!got) {
+        skip("colour", node, el, `colour ${style.backgroundColor} is not parseable`)
+      } else if (got[3] > 0) {
+        findings.push({
+          check: "spec",
+          kind: "colour",
+          status: unthemed.has(formatColour(got)) ? "pass" : "fail",
+          target: targetOf(node, el),
+          expected: "none",
           actual: formatColour(got),
         })
       }
@@ -370,8 +431,21 @@ export function compareSpec(
       }
     }
 
-    // Effects: shadows and blurs. An effect type this does not understand is not a pass.
-    if (node.effects?.length) {
+    // Effects: shadows and blurs. An effect type this does not understand is not a pass, and an
+    // effect only the page has fails with expected "none".
+    if (!node.effects?.length) {
+      const seen = [style.boxShadow, style.filter, style.backdropFilter].filter((x) => x && x !== "none")
+      if (seen.length) {
+        findings.push({
+          check: "spec",
+          kind: "effects",
+          status: "fail",
+          target: targetOf(node, el),
+          expected: "none",
+          actual: seen.join("; "),
+        })
+      }
+    } else {
       const wanted = node.effects.map(parseDesignEffect)
       const unknown = wanted.find((e) => e.kind === "unknown")
       if (unknown && unknown.kind === "unknown") {
@@ -438,30 +512,58 @@ export function compareSpec(
 
     const own = pairOf.get(node.id)
     if (!own || kids.length === 0 || !own.el.box) continue
-    const first = pairOf.get(kids[0].id)
-    const last = pairOf.get(kids[kids.length - 1].id)
-    const [top, right, bottom, left] = node.layout.padding
-    const crossStart = horizontal ? top : left
-    const nominalStart = horizontal ? left : top
-    const parent = own.el.box
-    const sides: { label: string; nominal: number; child: DesignNode; el?: DomElement; actual?: (c: Box) => number; atEnd: boolean }[] = [
-      { label: horizontal ? "left" : "top", nominal: nominalStart, child: kids[0], el: first?.el, actual: (c) => start(c) - start(parent), atEnd: false },
-      { label: horizontal ? "top" : "left", nominal: crossStart, child: kids[0], el: first?.el, actual: (c) => (horizontal ? c.y - parent.y : c.x - parent.x), atEnd: false },
-      { label: horizontal ? "right" : "bottom", nominal: horizontal ? right : bottom, child: kids[kids.length - 1], el: last?.el, actual: (c) => end(parent) - end(c), atEnd: true },
+    if (!node.box || kids.some((k) => !k.box)) {
+      skip("padding", own.node, own.el, "the design has no box for the container or one of its children")
+      continue
+    }
+    const parentDesign = node.box
+    const parentDom = own.el.box
+    const first = kids[0]
+    const last = kids[kids.length - 1]
+    const allPaired = kids.every((k) => pairOf.has(k.id))
+    const domKids = kids.flatMap((k) => {
+      const pr = pairOf.get(k.id)
+      return pr?.el.box ? [geomBox(pr.node, pr.el)] : []
+    })
+    const designKids = kids.map((k) => k.box as Box)
+    const minOf = (xs: number[]) => Math.min(...xs)
+    const maxOf = (xs: number[]) => Math.max(...xs)
+    // Along the axis: the first and last child. Across it: the children's extent.
+    const cross = (b: Box) => (horizontal ? b.y : b.x)
+    const crossEnd = (b: Box) => (horizontal ? b.y + b.height : b.x + b.width)
+    const sides: { label: string; need: DesignNode[]; design: number; dom: () => number }[] = [
+      {
+        label: horizontal ? "left" : "top",
+        need: [first],
+        design: start(first.box as Box) - start(parentDesign),
+        dom: () => start(geomBox(pairOf.get(first.id)?.node as DesignNode, pairOf.get(first.id)?.el as DomElement)) - start(parentDom),
+      },
+      {
+        label: horizontal ? "right" : "bottom",
+        need: [last],
+        design: end(parentDesign) - end(last.box as Box),
+        dom: () => end(parentDom) - end(geomBox(pairOf.get(last.id)?.node as DesignNode, pairOf.get(last.id)?.el as DomElement)),
+      },
+      {
+        label: horizontal ? "top" : "left",
+        need: kids,
+        design: minOf(designKids.map(cross)) - cross(parentDesign),
+        dom: () => minOf(domKids.map(cross)) - cross(parentDom),
+      },
+      {
+        label: horizontal ? "bottom" : "right",
+        need: kids,
+        design: crossEnd(parentDesign) - maxOf(designKids.map(crossEnd)),
+        dom: () => crossEnd(parentDom) - maxOf(domKids.map(crossEnd)),
+      },
     ]
-    for (const s of sides) {
-      const childPair = pairOf.get(s.child.id)
-      if (!childPair || !s.el?.box || !s.actual) {
-        skip("padding", own.node, own.el, `the ${s.label} padding is measured to ${s.child.id}, which has no accepted pair`)
+    for (const side of sides) {
+      const missing = side.need.find((k) => !pairOf.get(k.id)?.el.box)
+      if (missing || (side.need.length > 1 && !allPaired)) {
+        skip("padding", own.node, own.el, `the ${side.label} padding is measured to ${missing?.id ?? "every child"}, which has no accepted pair`)
         continue
       }
-      let expected = s.nominal * scale
-      if (s.atEnd && node.box && s.child.box) {
-        // See SPACING above: the end side is what the design's own geometry shows.
-        expected = (end(node.box) - end(s.child.box)) * scale
-      }
-      const actual = s.actual(geomBox(childPair.node, childPair.el))
-      measure("padding", own.node, own.el, expected, actual, tol, s.atEnd ? undefined : { name: "spacing", designValue: String(s.nominal) }, `${s.label} `)
+      measure("padding", own.node, own.el, side.design * scale, side.dom(), tol, { name: "spacing", designValue: String(round(side.design)) }, `${side.label} `)
     }
   }
 

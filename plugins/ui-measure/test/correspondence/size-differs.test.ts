@@ -216,3 +216,31 @@ describe("a size-only failure kept as size_differs", () => {
     expect(r.pairs[0].rule).toBe("size_plausible")
   })
 })
+
+describe("a text-matched size_differs child counts for its parent", () => {
+  // Two children: a frame that landed, and a label whose text matches but is 20px
+  // taller. The root is 40px wider than the design. Rule 5 needs EVERY mapped child to
+  // be good, and the label is good only through its text, so the text evidence must be
+  // applied before rule 5 or the root is dropped for the very child that vouches for it.
+  it("keeps the root when its text-matched child is the only thing that differs", () => {
+    const design = designOf([
+      { id: "r", type: "FRAME", box: bb(0, 0, 300, 100) },
+      { id: "a", type: "FRAME", box: bb(0, 0, 50, 50), parentId: "r" },
+      { id: "t", type: "TEXT", text: "Hi", box: bb(0, 60, 100, 20), parentId: "r" },
+    ])
+    const dom = domOf([
+      { selector: "root", tag: "div", box: bb(0, 0, 340, 100) },
+      { selector: "root > a", tag: "div", box: bb(0, 0, 50, 50) },
+      { selector: "root > p", tag: "p", text: "Hi", box: bb(0, 60, 100, 40) },
+    ])
+    const r = verifyMapping(
+      proposalOf([["r", "root"], ["a", "root > a"], ["t", "root > p"]]),
+      design,
+      dom,
+      ONE,
+    )
+    expect(r.accepted.map((v) => v.nodeId)).toEqual(["a"])
+    expect(r.sizeDiffers.map((v) => v.nodeId).sort()).toEqual(["r", "t"])
+    expect(r.pairs.filter((v) => v.outcome === "not_comparable")).toEqual([])
+  })
+})

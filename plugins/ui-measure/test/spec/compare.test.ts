@@ -7,7 +7,7 @@ import { openPage } from "../../src/dom/open"
 import { domTree } from "../../src/dom/tree"
 import { flatten, readNode } from "../../src/figma/read"
 import { verifyMapping } from "../../src/correspondence/verify"
-import type { DesignTree, Proposal } from "../../src/correspondence/types"
+import type { Box, DesignNode, DesignTree, DomElement, DomStyle, DomTree, Proposal, Verification } from "../../src/correspondence/types"
 import type { Token } from "../../src/tokens"
 import type { Finding } from "../../src/report/types"
 import { compareSpec } from "../../src/spec/compare"
@@ -34,6 +34,32 @@ const proposal: Proposal = {
     { nodeId: "1:3", selector: "#card > :nth-child(2)" },
   ],
   unmapped: { design: [], impl: [] },
+}
+
+const STYLE: DomStyle = {
+  color: "rgb(0, 0, 0)",
+  backgroundColor: "rgba(0, 0, 0, 0)",
+  borderTopWidth: "0px",
+  borderRightWidth: "0px",
+  borderBottomWidth: "0px",
+  borderLeftWidth: "0px",
+  borderTopLeftRadius: "0px",
+  borderTopRightRadius: "0px",
+  borderBottomRightRadius: "0px",
+  borderBottomLeftRadius: "0px",
+  fontFamily: "serif",
+  fontSize: "16px",
+  fontWeight: "400",
+  lineHeight: "normal",
+  boxShadow: "none",
+  filter: "none",
+  backdropFilter: "none",
+}
+
+/** A Verification that accepts every pair given, for trees built by hand. */
+function handBuilt(pairs: { nodeId: string; selector: string }[]): Verification {
+  const verdicts = pairs.map((p) => ({ ...p, outcome: "accepted" as const }))
+  return { pairs: verdicts, accepted: verdicts, sizeDiffers: [], rejected: false }
 }
 
 const freshDesign = (): DesignTree => flatten(readNode(JSON.parse(readFileSync(CARD, "utf8"))))
@@ -136,11 +162,27 @@ describe("compareSpec", () => {
     const size = kind(r, "size")
     expect(size.map((f) => f.target.designNode)).toEqual(["1:3"])
     expect(size[0].deltaPx).toBeCloseTo(40, 0)
-    // The root is the one pair the verifier cannot keep here: only one of its two children is an
-    // ACCEPTED pair (the other is size_differs), so it counts as dropped. Its size is still reported,
-    // as root-size, because that finding does not depend on the pair.
-    expect(r.v.sizeDiffers.map((p) => p.nodeId)).toEqual(["1:3"])
-    expect(r.coverage).toEqual({ pairsProposed: 3, pairsAccepted: 2, dropped: 1 })
+    // Its text matches, so it is size_differs, which lets the verifier rescue the root too.
+    expect(r.v.sizeDiffers.map((p) => p.nodeId).sort()).toEqual(["1:1", "1:3"])
+    expect(r.coverage).toEqual({ pairsProposed: 3, pairsAccepted: 3, dropped: 0 })
+  })
+
+  it("a size-differing pair that is also displaced reports a size fail and a position fail", async () => {
+    const design = freshDesign()
+    const body = design.nodes.find((n) => n.id === "1:3")
+    if (!body?.box) throw new Error("fixture")
+    body.box = { ...body.box, y: body.box.y + 10 }
+    const r = await run("root", { design })
+    expect(kind(r, "size").map((f) => f.target.designNode)).toEqual(["1:3"])
+    const pos = kind(r, "box").filter((f) => f.target.designNode === "1:3")
+    expect(pos).toHaveLength(1)
+    expect(pos[0].deltaPx).toBeCloseTo(10, 0)
+    // Width and height are carried by the size finding alone.
+    expect(pos[0].expected).not.toMatch(/\dx\d/)
+    // Undisplaced, the same pair has a size fail and a passing position.
+    const plain = await run("root")
+    expect(kind(plain, "box").filter((f) => f.target.designNode === "1:3")).toEqual([])
+    expect(kind(plain, "box", "pass").filter((f) => f.target.designNode === "1:3")).toHaveLength(1)
   })
 
   it("1px off passes (floor 2) and 3px off fails", async () => {
@@ -185,5 +227,142 @@ describe("compareSpec", () => {
     } finally {
       await p.close()
     }
+  })
+
+  describe("absence and per-side checks", () => {
+    const without = (id: string, drop: "radius" | "strokeWeight" | "fill" | "effects") => {
+      const d = freshDesign()
+      const n = d.nodes.find((x) => x.id === id)
+      if (!n) throw new Error("fixture")
+      delete n[drop]
+      return d
+    }
+    const mutate = (id: string, f: (n: DesignNode) => void) => {
+      const d = freshDesign()
+      const n = d.nodes.find((x) => x.id === id)
+      if (!n) throw new Error("fixture")
+      f(n)
+      return d
+    }
+
+    it("a radius the design does not have fails with expected none", async () => {
+      const r = await run("clean", { design: without("1:1", "radius") })
+      const f = kind(r, "radius")
+      expect(f).toHaveLength(1)
+      expect(f[0].expected).toBe("none")
+      expect(f[0].actual).toBe("16px")
+    })
+
+    it("a border the design does not have fails with expected none", async () => {
+      const f = kind(await run("clean", { design: without("1:1", "strokeWeight") }), "border-width")
+      expect(f).toHaveLength(1)
+      expect(f[0].expected).toBe("none")
+    })
+
+    it("a background the design does not have fails with expected none, and unthemed excuses it", async () => {
+      const f = kind(await run("clean", { design: without("1:1", "fill") }), "colour")
+      expect(f).toHaveLength(1)
+      expect(f[0].expected).toBe("none")
+      expect(f[0].actual).toBe("#ffffff")
+      expect(kind(await run("clean", { design: without("1:1", "fill"), unthemed: ["#fff"] }), "colour")).toEqual([])
+    })
+
+    it("a shadow only the page has fails with expected none", async () => {
+      const f = kind(await run("clean", { design: without("1:1", "effects") }), "effects")
+      expect(f).toHaveLength(1)
+      expect(f[0].expected).toBe("none")
+      expect(f[0].actual).toContain("rgba(0, 0, 0, 0.1)")
+    })
+
+    it("a design effect the page lacks fails", async () => {
+      const f = kind(await run("clean", { design: mutate("1:1", (n) => (n.effects = ["DROP_SHADOW 0 8 16 rgba(0, 0, 0, 0.3)"])) }), "effects")
+      expect(f).toHaveLength(1)
+    })
+
+    it("a border on a non-top side fails and names that side", async () => {
+      const r = await run("border-left")
+      const f = kind(r, "border-width")
+      expect(f).toHaveLength(1)
+      expect(f[0].actual).toContain("left 4px")
+      expect(f[0].actual).not.toContain("top")
+      expect(f[0].deltaPx).toBeCloseTo(3, 0)
+    })
+
+    it("font family, size and weight each fail on their own", async () => {
+      const f = (id: string, change: (font: NonNullable<DesignNode["font"]>) => void) =>
+        run("clean", {
+          design: mutate(id, (n) => {
+            if (!n.font) throw new Error("fixture")
+            n.font = { ...n.font }
+            change(n.font)
+          }),
+        })
+      const family = await f("1:2", (x) => (x.family = "Other Sans"))
+      expect(kind(family, "font-family")).toHaveLength(1)
+      expect(fails(family)).toHaveLength(1)
+      const size = await f("1:2", (x) => (x.size = 22))
+      expect(kind(size, "font-size")).toHaveLength(1)
+      expect(kind(size, "font-size")[0].deltaPx).toBeCloseTo(2, 0)
+      expect(fails(size)).toHaveLength(1)
+      const weight = await f("1:2", (x) => (x.weight = 700))
+      expect(kind(weight, "font-weight")).toHaveLength(1)
+      expect(fails(weight)).toHaveLength(1)
+    })
+
+    it("a vector's fill is not_comparable with a reason, never silence", async () => {
+      const design = freshDesign()
+      design.nodes.push({ id: "9:1", type: "VECTOR", parentId: "1:1", fill: "#ff0000", box: { x: 0, y: 0, width: 1, height: 1 } })
+      const dom = {
+        root: { selector: "#r", tag: "div", box: { x: 0, y: 0, width: 1, height: 1 }, style: STYLE },
+        elements: [] as DomElement[],
+      }
+      const icon: DomElement = { selector: "#r > svg", tag: "svg", box: { x: 0, y: 0, width: 1, height: 1 }, style: STYLE }
+      dom.elements = [dom.root, icon]
+      const v = handBuilt([{ nodeId: "9:1", selector: "#r > svg" }])
+      const out = compareSpec(design, dom, v, { scale: 1 })
+      const fill = out.findings.filter((f) => f.kind === "colour")
+      expect(fill).toHaveLength(1)
+      expect(fill[0].status).toBe("not_comparable")
+      expect(fill[0].reason).toBe("graphic fill is not compared")
+    })
+  })
+
+  describe("padding is read from the design's own geometry", () => {
+    const frame = (children: { id: string; box: Box }[], padding: [number, number, number, number]): DesignTree => {
+      const root: DesignNode = {
+        id: "r",
+        type: "FRAME",
+        box: { x: 0, y: 0, width: 300, height: 200 },
+        layout: { mode: "VERTICAL", gap: 0, padding },
+      }
+      const nodes = [root, ...children.map((c): DesignNode => ({ id: c.id, type: "FRAME", box: c.box, parentId: "r" }))]
+      return { root, nodes }
+    }
+    const domFor = (children: { id: string; box: Box }[]): DomTree => {
+      const els: DomElement[] = [
+        { selector: "#r", tag: "div", box: { x: 0, y: 0, width: 300, height: 200 }, style: STYLE },
+        ...children.map((c): DomElement => ({ selector: `#r > #${c.id}`, tag: "div", box: c.box, style: STYLE })),
+      ]
+      return { root: els[0], elements: els }
+    }
+    const pairs = (ids: string[]) => handBuilt([{ nodeId: "r", selector: "#r" }, ...ids.map((id) => ({ nodeId: id, selector: `#r > #${id}` }))])
+    const padding = (fs: Finding[]) => fs.filter((f) => f.kind === "padding")
+
+    it("a centred child passes though the declared padding says 0", () => {
+      const kids = [{ id: "a", box: { x: 100, y: 50, width: 100, height: 40 } }]
+      const out = compareSpec(frame(kids, [0, 0, 0, 0]), domFor(kids), pairs(["a"]), { scale: 1 })
+      const p = padding(out.findings)
+      expect(p).toHaveLength(4)
+      expect(p.every((f) => f.status === "pass")).toBe(true)
+    })
+
+    it("a child that moved from the centre fails the sides it moved", () => {
+      const was = [{ id: "a", box: { x: 100, y: 50, width: 100, height: 40 } }]
+      const now = [{ id: "a", box: { x: 80, y: 50, width: 100, height: 40 } }]
+      const out = compareSpec(frame(was, [0, 0, 0, 0]), domFor(now), pairs(["a"]), { scale: 1 })
+      const bad = padding(out.findings).filter((f) => f.status === "fail")
+      expect(bad.map((f) => f.expected?.split(" ")[0]).sort()).toEqual(["left", "right"])
+      expect(bad.every((f) => Math.abs(f.deltaPx ?? 0) === 20)).toBe(true)
+    })
   })
 })

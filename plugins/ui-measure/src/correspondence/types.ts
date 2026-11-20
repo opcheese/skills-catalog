@@ -59,6 +59,9 @@ export interface DomStyle {
   color: string
   backgroundColor: string
   borderTopWidth: string
+  borderRightWidth: string
+  borderBottomWidth: string
+  borderLeftWidth: string
   borderTopLeftRadius: string
   borderTopRightRadius: string
   borderBottomRightRadius: string
