@@ -26,7 +26,7 @@ task is the only second reader before the branch review. Test-loop subagents run
   number or a person is rewritten generically.
 - No model client in the package. A model may only propose pairs, through the `command` proposer.
 - Every finding status is `pass | fail | not_comparable`; `not_comparable` always carries `reason`.
-- Tolerance floor 2px; size plausibility 8px (Galatea's `SIZE_TOLERANCE_PX`); both scaled by `scale`.
+- Tolerance floor 2px for geometry (font size and line height 0.5px — spec amended); size plausibility 8px (Galatea's `SIZE_TOLERANCE_PX`); both scaled by `scale`. A property present on one side and absent on the other (border, radius, shadow) is a presence fact, compared with zero tolerance.
 - Exit codes: 0 clean, 1 mismatches, 2 not comparable, 3 usage or setup error.
 - Playwright is a peer dependency, never bundled; missing Playwright exits 3 with an install hint.
 - Conventional commits with the session trailer. No numbered markdown headings.
