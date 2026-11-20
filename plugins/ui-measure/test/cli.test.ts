@@ -158,6 +158,25 @@ describe("ui-measure CLI", () => {
     const checked = await run(["baseline", "check", ...args])
     expect(checked.status, output(checked)).toBe(0)
   })
+
+  it("baseline record writes mismatches and exits 1", async () => {
+    const result = await run(["baseline", "record", "--config", config, "--target", "geo-bad"])
+    const baseline = join(scratch, "baselines", "geo-bad.json")
+    expect(result.status, output(result)).toBe(1)
+    expect(output(result)).toContain("recorded")
+    expect(existsSync(baseline)).toBe(true)
+    expect(JSON.parse(readFileSync(baseline, "utf8"))).toEqual([
+      expect.objectContaining({ check: "geometry", kind: "clipped", status: "fail" }),
+    ])
+  })
+
+  it("baseline record refuses a missing root and exits 2", async () => {
+    const result = await run(["baseline", "record", "--config", config, "--target", "missing-root"])
+    expect(result.status, output(result)).toBe(2)
+    expect(output(result)).toContain("not comparable")
+    expect(output(result)).toContain("not found")
+    expect(existsSync(join(scratch, "baselines", "missing-root.json"))).toBe(false)
+  })
 })
 
 describe("built package exports", () => {

@@ -8,7 +8,7 @@ import { verifyMapping } from "./correspondence/verify.js"
 import { adapterTarget } from "./dom/adapters.js"
 import { openPage, type OpenPage } from "./dom/open.js"
 import { domTree } from "./dom/tree.js"
-import { SetupError } from "./errors.js"
+import { SetupError, PartialRunError } from "./errors.js"
 import { fetchNode } from "./figma/fetch.js"
 import { flatten, readNode } from "./figma/read.js"
 import { detectGeometry } from "./geometry/detect.js"
@@ -224,10 +224,11 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
     if (isBaseline) {
       if (!config.baselineDir) throw new SetupError("baselineDir is required for baseline commands")
       if (action === "record") {
+        if (result.verdict === "not_comparable") console.log(reportSummary(result))
         recordBaseline(config.baselineDir, options.target as string, result, { force: options.force })
         console.log(reportSummary(result, 19))
         console.log(`recorded baseline for ${options.target}`)
-        return 0
+        return exitCode(result)
       }
       result = {
         ...result,
@@ -239,7 +240,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
     return exitCode(result)
   } catch (error) {
     console.error(`ui-measure: ${error instanceof Error ? error.message : String(error)}`)
-    return 3
+    return error instanceof PartialRunError ? 2 : 3
   }
 }
 

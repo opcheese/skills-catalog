@@ -2125,10 +2125,11 @@ ${USAGE}`);
     if (isBaseline) {
       if (!config.baselineDir) throw new SetupError("baselineDir is required for baseline commands");
       if (action === "record") {
+        if (result.verdict === "not_comparable") console.log(reportSummary(result));
         recordBaseline(config.baselineDir, options.target, result, { force: options.force });
         console.log(reportSummary(result, 19));
         console.log(`recorded baseline for ${options.target}`);
-        return 0;
+        return exitCode(result);
       }
       result = {
         ...result,
@@ -2140,7 +2141,7 @@ ${USAGE}`);
     return exitCode(result);
   } catch (error) {
     console.error(`ui-measure: ${error instanceof Error ? error.message : String(error)}`);
-    return 3;
+    return error instanceof PartialRunError ? 2 : 3;
   }
 }
 process.exitCode = await main();
