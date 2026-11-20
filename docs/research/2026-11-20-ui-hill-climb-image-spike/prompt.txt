@@ -1,0 +1,5 @@
+Open the image file screen.png in the current directory and look at it. Report exactly what you see:
+1. the text in the header bar, and the header's colour;
+2. the text on the button, and the button's colour;
+3. the text in the box below the button, and the box's colour.
+If you cannot view the image, say "CANNOT SEE IMAGE" and nothing else. Do not guess. Last line: the exact model ID you are running as.

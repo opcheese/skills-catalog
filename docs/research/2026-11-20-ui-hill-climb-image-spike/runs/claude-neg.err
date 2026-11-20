@@ -1,0 +1,3 @@
+credits-delegate: model=sonnet budget=$0.5 agent=default bare=1 write_dir=none allow=0 auth=api-credits key_file=/home/newub/.config/claude-credits/key
+credits-delegate: cost_usd=0 served_by=unknown is_error=true
+exit=1
