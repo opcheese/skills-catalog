@@ -17,7 +17,7 @@ describe("fetchNode", () => {
 
   it("fails with the status and without the token or file key", async () => {
     vi.stubGlobal("fetch", async () => new Response("no", { status: 403 }))
-    const err: Error = await fetchNode("KEY", "1:2", "tok-123").catch((e: Error) => e)
+    const err = (await fetchNode("KEY", "1:2", "tok-123").catch((e: unknown) => e)) as Error
     expect(err.message).toContain("403")
     expect(err.message).not.toContain("tok-123")
     expect(err.message).not.toContain("KEY")
