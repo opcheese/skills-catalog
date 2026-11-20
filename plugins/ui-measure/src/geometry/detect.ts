@@ -23,7 +23,8 @@ export async function detectGeometry(p: OpenPage, cfg: GeometryConfig): Promise<
     ({ rootSelector, insetPx, nonScrolling }) => {
       const first = document.querySelector(rootSelector)
       if (!first) throw new Error(`root ${rootSelector} not found`)
-      const TOL = 1 // sub-pixel layout rounding, CSS px
+      const htmlStyle = getComputedStyle(document.documentElement)
+      const TOL = 2 // the geometry tolerance floor, CSS px
       const out: Raw[] = []
       const drawn = new Map<Element, string>()
       const stack: { el: Element; selector: string }[] = [{ el: first, selector: rootSelector }]
@@ -70,7 +71,7 @@ export async function detectGeometry(p: OpenPage, cfg: GeometryConfig): Promise<
 
         // clipped: the element itself cuts its own text off, or an ancestor that clips (overflow
         // other than visible, not scrollable) ends before the element does. An ellipsis is a
-        // deliberate truncation, so a box that sets text-overflow: ellipsis is not reported.
+        // deliberate truncation, so ellipsis-truncated text is intentionally not reported.
         let clipped: Raw | null = null
         let n: Element | null = el
         while (n && n !== document.body && n !== document.documentElement) {
@@ -107,22 +108,30 @@ export async function detectGeometry(p: OpenPage, cfg: GeometryConfig): Promise<
           continue
         }
 
-        // off-canvas: left of or above the page origin, or past the viewport's right edge. The
-        // bottom is not checked: the page scrolls down. Skipped inside a scroll container or a
-        // clipping ancestor, where it is not off the page but inside a box (clipped covers that).
-        let contained = false
+        // off-canvas, all edges in viewport coordinates (the page is measured at scroll 0,0).
+        // Left and top: anything at a negative coordinate is unreachable. Right and bottom: the
+        // limit is the viewport when the document cannot scroll on that axis (html or body clips
+        // it, or nothing overflows), else the document's scrollable extent, which scrolling reaches.
+        // Exempt only inside a real scroll container (overflow auto/scroll with content to scroll);
+        // a clipping ancestor is not an exemption, and `clipped` has already had its say.
+        let scrolls = false
         for (let a = el.parentElement; a && a !== document.body && a !== document.documentElement; a = a.parentElement) {
           const as = getComputedStyle(a)
-          if (as.overflowX !== "visible" || as.overflowY !== "visible") {
-            contained = true
+          const sx = (as.overflowX === "auto" || as.overflowX === "scroll") && a.scrollWidth > a.clientWidth
+          const sy = (as.overflowY === "auto" || as.overflowY === "scroll") && a.scrollHeight > a.clientHeight
+          if (sx || sy) {
+            scrolls = true
             break
           }
         }
-        if (!contained) {
-          const left = rect.left + window.scrollX
-          const top = rect.top + window.scrollY
-          const viewW = document.documentElement.clientWidth
-          const past = Math.max(-left, -top, rect.right - viewW)
+        if (!scrolls) {
+          const de = document.documentElement
+          const bodyStyle = getComputedStyle(document.body)
+          const clipsX = [htmlStyle.overflowX, bodyStyle.overflowX].some((v) => v === "hidden" || v === "clip")
+          const clipsY = [htmlStyle.overflowY, bodyStyle.overflowY].some((v) => v === "hidden" || v === "clip")
+          const limitR = clipsX || de.scrollWidth <= de.clientWidth ? de.clientWidth : de.scrollWidth
+          const limitB = clipsY || de.scrollHeight <= de.clientHeight ? de.clientHeight : de.scrollHeight
+          const past = Math.max(-rect.left, -rect.top, rect.right - limitR, rect.bottom - limitB)
           if (past > TOL) {
             out.push({
               ...base,

@@ -25,7 +25,7 @@ async function run(
   root = "#root",
 ): Promise<{ findings: Finding[]; usable: boolean[] }> {
   const p = await openPage(
-    { adapter: { kind: "url", url: `${server.origin}/${name}.html`, root }, viewport: [800, 600] },
+    { adapter: { kind: "url", url: `${server.origin}/${name.replace("?", ".html?")}${name.includes("?") ? "" : ".html"}`, root }, viewport: [800, 600] },
     { browser },
   )
   if ("notComparable" in p) throw new Error(p.notComparable)
@@ -69,6 +69,35 @@ describe("detectGeometry", () => {
   it("elements that are not drawn are skipped", async () => {
     const { findings } = await run("geo-hidden")
     expect(findings).toEqual([])
+  })
+
+  it("off-canvas bottom: a box below the viewport is off-canvas only when the document cannot scroll", async () => {
+    const bad = await run("geo-bottom-bad")
+    expect(bad.findings.map((f) => f.kind)).toEqual(["off-canvas"])
+    expect((await run("geo-bottom-good")).findings).toEqual([])
+  })
+
+  it("an overflow:hidden ancestor does not exempt a box outside the viewport", async () => {
+    const bad = await run("geo-hiddenanc-bad")
+    expect(bad.findings).toHaveLength(1)
+    expect(["clipped", "off-canvas"]).toContain(bad.findings[0].kind)
+    expect((await run("geo-hiddenanc-good")).findings).toEqual([])
+  })
+
+  it("a real scroll container exempts its overflowing content", async () => {
+    expect((await run("geo-scrollanc-ok")).findings).toEqual([])
+  })
+
+  it("tolerance floor is 2px: 1.5px overhang passes, 3px fails (clipped)", async () => {
+    expect((await run("geo-tol?clip=1.5")).findings).toEqual([])
+    const bad = await run("geo-tol?clip=3")
+    expect(bad.findings.map((f) => f.kind)).toEqual(["clipped"])
+  })
+
+  it("tolerance floor is 2px: 1.5px overhang passes, 3px fails (off-canvas)", async () => {
+    expect((await run("geo-tol?off=1.5")).findings).toEqual([])
+    const bad = await run("geo-tol?off=3")
+    expect(bad.findings.map((f) => f.kind)).toEqual(["off-canvas"])
   })
 
   it("text with no overflowing ancestor and no background raises nothing (card fixture)", async () => {
