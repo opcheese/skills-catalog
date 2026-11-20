@@ -58,6 +58,72 @@ function stringify(value) {
         return JSON.stringify(value);
     return undefined;
 }
+function formatColor(components, alpha) {
+    const channels = components.map((n) => Math.round(n * 255));
+    const a = Math.round(alpha * 1000) / 1000;
+    if (a >= 1)
+        return `#${channels.map((n) => n.toString(16).padStart(2, "0")).join("")}`;
+    return `rgba(${channels.join(", ")}, ${a})`;
+}
+function colorObject(value) {
+    if (!isObject(value))
+        throw new Error("color must be an srgb object or a string");
+    if (value.colorSpace !== undefined && value.colorSpace !== "srgb") {
+        throw new Error(`unsupported color space ${JSON.stringify(value.colorSpace)}`);
+    }
+    let components;
+    let hexAlpha = 1;
+    if (value.hex !== undefined) {
+        if (typeof value.hex !== "string")
+            throw new Error("hex must be a string");
+        const match = /^#([0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.exec(value.hex);
+        if (!match)
+            throw new Error("hex must be #rgb, #rgba, #rrggbb, or #rrggbbaa");
+        let hex = match[1];
+        if (hex.length <= 4)
+            hex = [...hex].map((c) => c + c).join("");
+        components = [0, 2, 4].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
+        if (hex.length === 8)
+            hexAlpha = parseInt(hex.slice(6, 8), 16) / 255;
+    }
+    else {
+        if (value.colorSpace !== "srgb")
+            throw new Error("color requires colorSpace srgb or a hex string");
+        if (!Array.isArray(value.components) || value.components.length !== 3 ||
+            value.components.some((n) => typeof n !== "number" || !Number.isFinite(n) || n < 0 || n > 1)) {
+            throw new Error("srgb components must be three finite numbers from 0 to 1");
+        }
+        components = value.components;
+    }
+    if (value.alpha !== undefined &&
+        (typeof value.alpha !== "number" || !Number.isFinite(value.alpha) || value.alpha < 0 || value.alpha > 1)) {
+        throw new Error("alpha must be a finite number from 0 to 1");
+    }
+    const alpha = hexAlpha * (typeof value.alpha === "number" ? value.alpha : 1);
+    return formatColor(components, alpha);
+}
+function shadowDimension(value, field) {
+    const str = stringify(value);
+    const match = str ? /^(-?(?:\d+(?:\.\d+)?|\.\d+))px$/.exec(str.trim()) : null;
+    if (!match)
+        throw new Error(`${field} must be a pixel dimension`);
+    return Number(match[1]);
+}
+function shadowObject(value) {
+    if (!isObject(value))
+        throw new Error("shadow must be an object or an effect string");
+    if (value.inset !== undefined && typeof value.inset !== "boolean")
+        throw new Error("inset must be boolean");
+    const x = shadowDimension(value.offsetX, "offsetX");
+    const y = shadowDimension(value.offsetY, "offsetY");
+    const blur = shadowDimension(value.blur, "blur");
+    const spread = value.spread === undefined ? 0 : shadowDimension(value.spread, "spread");
+    const parts = [value.inset ? "INNER_SHADOW" : "DROP_SHADOW", x, y, blur];
+    if (spread)
+        parts.push(spread);
+    parts.push(colorObject(value.color));
+    return parts.join(" ");
+}
 function collect(node, prefix, inherited, out) {
     const type = typeof node.$type === "string" ? node.$type : inherited;
     for (const [key, child] of Object.entries(node)) {
@@ -133,7 +199,19 @@ export function parseDtcg(text) {
             errors.push(`token ${raw.path} has unsupported $type "${type}"`);
             continue;
         }
-        const str = stringify(value);
+        let str;
+        try {
+            if (property === "color" && typeof value !== "string")
+                str = colorObject(value);
+            else if (property === "effect" && typeof value !== "string")
+                str = shadowObject(value);
+            else
+                str = stringify(value);
+        }
+        catch (error) {
+            errors.push(`token ${raw.path} has an unusable $value: ${error instanceof Error ? error.message : String(error)}`);
+            continue;
+        }
         if (str === undefined) {
             errors.push(`token ${raw.path} has an unusable $value`);
             continue;

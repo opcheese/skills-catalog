@@ -44,96 +44,90 @@ export async function detectGeometry(p, cfg) {
                 }
             }
             own = own.trim();
-            if (!own)
-                continue;
             const rect = el.getBoundingClientRect();
             const base = { selector: item.selector, text: own.slice(0, 80) };
-            // zero-size
-            if (rect.width === 0 || rect.height === 0) {
-                out.push({
-                    ...base,
-                    kind: "zero-size",
-                    expected: "non-zero box",
-                    actual: `${rect.width}x${rect.height}px`,
-                    deltaPx: 0,
-                });
-                continue;
-            }
-            // clipped: the element itself cuts its own text off, or an ancestor that clips (overflow
-            // other than visible, not scrollable) ends before the element does. An ellipsis is a
-            // deliberate truncation, so ellipsis-truncated text is intentionally not reported.
-            let clipped = null;
-            let n = el;
-            while (n && n !== document.body && n !== document.documentElement) {
-                const ns = getComputedStyle(n);
-                const clipX = ns.overflowX === "hidden" || ns.overflowX === "clip";
-                const clipY = ns.overflowY === "hidden" || ns.overflowY === "clip";
-                if ((clipX || clipY) && ns.textOverflow !== "ellipsis") {
-                    if (n === el) {
-                        const overX = clipX ? el.scrollWidth - el.clientWidth : 0;
-                        const overY = clipY ? el.scrollHeight - el.clientHeight : 0;
-                        const over = Math.max(overX, overY);
-                        if (over > TOL) {
-                            clipped = { ...base, kind: "clipped", expected: "all text inside its own box", actual: `${over}px cut off`, deltaPx: over };
-                        }
-                    }
-                    else {
-                        const r = n.getBoundingClientRect();
-                        const left = r.left + n.clientLeft;
-                        const top = r.top + n.clientTop;
-                        const right = left + n.clientWidth;
-                        const bottom = top + n.clientHeight;
-                        const overX = clipX ? Math.max(left - rect.left, rect.right - right) : 0;
-                        const overY = clipY ? Math.max(top - rect.top, rect.bottom - bottom) : 0;
-                        const over = Math.max(overX, overY);
-                        if (over > TOL) {
-                            clipped = { ...base, kind: "clipped", expected: "inside the clipping ancestor", actual: `${Math.round(over * 10) / 10}px past it`, deltaPx: over };
-                        }
-                    }
-                    if (clipped)
-                        break;
-                }
-                n = n.parentElement;
-            }
-            if (clipped) {
-                out.push(clipped);
-                continue;
-            }
-            // off-canvas, in document coordinates (rect plus scroll offset, so a step that scrolled the
-            // page does not matter). Left and top: anything at a negative coordinate is unreachable.
-            // Right: always the viewport width, because horizontal page scroll is itself a defect.
-            // Bottom: the viewport height when the document cannot scroll vertically (html or body
-            // clips it, or nothing overflows); otherwise scrolling reaches it and it is not off-canvas.
-            // Exempt only inside a real scroll container (overflow auto/scroll with content to scroll);
-            // a clipping ancestor is not an exemption, and `clipped` has already had its say.
-            let scrolls = false;
-            for (let a = el.parentElement; a && a !== document.body && a !== document.documentElement; a = a.parentElement) {
-                const as = getComputedStyle(a);
-                const sx = (as.overflowX === "auto" || as.overflowX === "scroll") && a.scrollWidth > a.clientWidth;
-                const sy = (as.overflowY === "auto" || as.overflowY === "scroll") && a.scrollHeight > a.clientHeight;
-                if (sx || sy) {
-                    scrolls = true;
-                    break;
-                }
-            }
-            if (!scrolls) {
-                const de = document.documentElement;
-                const bodyStyle = getComputedStyle(document.body);
-                const clipsY = [htmlStyle.overflowY, bodyStyle.overflowY].some((v) => v === "hidden" || v === "clip");
-                const bottomChecked = clipsY || de.scrollHeight <= de.clientHeight;
-                const docBottom = rect.bottom + window.scrollY;
-                const past = Math.max(-(rect.left + window.scrollX), -(rect.top + window.scrollY), rect.right + window.scrollX - de.clientWidth, bottomChecked ? docBottom - de.clientHeight : 0);
-                if (past > TOL) {
+            if (own) {
+                // zero-size and clipped are text checks.
+                if (rect.width === 0 || rect.height === 0) {
                     out.push({
                         ...base,
-                        kind: "off-canvas",
-                        expected: "inside the viewport",
-                        actual: `${Math.round(past * 10) / 10}px outside`,
-                        deltaPx: past,
+                        kind: "zero-size",
+                        expected: "non-zero box",
+                        actual: `${rect.width}x${rect.height}px`,
+                        deltaPx: 0,
                     });
                     continue;
                 }
+                // clipped: the element itself cuts its own text off, or an ancestor that clips (overflow
+                // other than visible, not scrollable) ends before the element does. An ellipsis is a
+                // deliberate truncation, so ellipsis-truncated text is intentionally not reported.
+                let clipped = null;
+                let n = el;
+                while (n && n !== document.body && n !== document.documentElement) {
+                    const ns = getComputedStyle(n);
+                    const clipX = ns.overflowX === "hidden" || ns.overflowX === "clip";
+                    const clipY = ns.overflowY === "hidden" || ns.overflowY === "clip";
+                    if ((clipX || clipY) && ns.textOverflow !== "ellipsis") {
+                        if (n === el) {
+                            const overX = clipX ? el.scrollWidth - el.clientWidth : 0;
+                            const overY = clipY ? el.scrollHeight - el.clientHeight : 0;
+                            const over = Math.max(overX, overY);
+                            if (over > TOL) {
+                                clipped = { ...base, kind: "clipped", expected: "all text inside its own box", actual: `${over}px cut off`, deltaPx: over };
+                            }
+                        }
+                        else {
+                            const r = n.getBoundingClientRect();
+                            const left = r.left + n.clientLeft;
+                            const top = r.top + n.clientTop;
+                            const right = left + n.clientWidth;
+                            const bottom = top + n.clientHeight;
+                            const overX = clipX ? Math.max(left - rect.left, rect.right - right) : 0;
+                            const overY = clipY ? Math.max(top - rect.top, rect.bottom - bottom) : 0;
+                            const over = Math.max(overX, overY);
+                            if (over > TOL) {
+                                clipped = { ...base, kind: "clipped", expected: "inside the clipping ancestor", actual: `${Math.round(over * 10) / 10}px past it`, deltaPx: over };
+                            }
+                        }
+                        if (clipped)
+                            break;
+                    }
+                    n = n.parentElement;
+                }
+                if (clipped) {
+                    out.push(clipped);
+                    continue;
+                }
             }
+            // Off-canvas uses document coordinates so a step that scrolled the page does not matter.
+            // Left and top are always unreachable. Right is exempt only inside a horizontal scroll
+            // container; bottom is exempt only inside a vertical one or when the document can scroll.
+            let scrollsX = false;
+            let scrollsY = false;
+            for (let a = el.parentElement; a && a !== document.body && a !== document.documentElement; a = a.parentElement) {
+                const as = getComputedStyle(a);
+                if ((as.overflowX === "auto" || as.overflowX === "scroll") && a.scrollWidth > a.clientWidth)
+                    scrollsX = true;
+                if ((as.overflowY === "auto" || as.overflowY === "scroll") && a.scrollHeight > a.clientHeight)
+                    scrollsY = true;
+            }
+            const de = document.documentElement;
+            const bodyStyle = getComputedStyle(document.body);
+            const clipsY = [htmlStyle.overflowY, bodyStyle.overflowY].some((v) => v === "hidden" || v === "clip");
+            const bottomChecked = clipsY || de.scrollHeight <= de.clientHeight;
+            const past = Math.max(-(rect.left + window.scrollX), -(rect.top + window.scrollY), scrollsX ? 0 : rect.right + window.scrollX - de.clientWidth, !scrollsY && bottomChecked ? rect.bottom + window.scrollY - de.clientHeight : 0);
+            if (past > TOL) {
+                out.push({
+                    ...base,
+                    kind: "off-canvas",
+                    expected: "inside the viewport",
+                    actual: `${Math.round(past * 10) / 10}px outside`,
+                    deltaPx: past,
+                });
+                continue;
+            }
+            if (!own)
+                continue;
             // flush-edge: the glyph runs (own text only) against the padding edge of the nearest
             // bordered or backgrounded container, the element itself included. html and body are
             // not containers: the page edge is the off-canvas check's business. A text box that is

@@ -426,9 +426,8 @@ export function verifyMapping(proposal, design, dom, opts) {
     // `size_differs`, with a note. Downstream measures its spacing and reports
     // its size as a finding instead of treating the two sizes as equal.
     //
-    // Selector containment is what makes a child a child: the trees here are
-    // flat and no rule walks upward, so a child is an element whose selector
-    // starts with this one's plus " > ".
+    // A supporting pair must be both a DOM descendant (its selector starts with
+    // this one's plus " > ") and a DIRECT child in the design (`parentId`).
     //
     // It requires POSITIVE evidence — at least two mapped children, all of them
     // good (`accepted` or `size_differs`, so a rescued child still counts). One
@@ -455,7 +454,7 @@ export function verifyMapping(proposal, design, dom, opts) {
                 continue;
             }
             const prefix = `${g.v.selector} > `;
-            const children = verdicts.filter((o) => o.selector.startsWith(prefix));
+            const children = verdicts.filter((o) => o.selector.startsWith(prefix) && nodesById.get(o.nodeId)?.parentId === g.v.nodeId);
             if (children.length < 2)
                 continue;
             if (!children.every(good))

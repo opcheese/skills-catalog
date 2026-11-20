@@ -1,29 +1,43 @@
+import { NotComparableError } from "../errors.js";
 /** The input is a `GET /v1/files/:key/nodes` response, or the node itself.
  *
  *  A multi-node response has no meaningful "first" node, and picking one would
  *  measure a different component than the one asked for. */
 export function readNode(json, nodeId) {
+    const requireNode = (value) => {
+        if (typeof value !== "object" || value === null || Array.isArray(value) ||
+            typeof value.id !== "string" || value.id === "" ||
+            typeof value.type !== "string" || value.type === "") {
+            throw new Error("Figma node must be an object with non-empty string id and type fields");
+        }
+        return value;
+    };
     const raw = json;
     const nodes = raw?.nodes;
-    if (nodes && typeof nodes === "object") {
+    if (nodes && typeof nodes === "object" && !Array.isArray(nodes)) {
         const map = nodes;
         const ids = Object.keys(map);
+        if (ids.length === 0)
+            throw new Error("Figma response contains no nodes");
         if (nodeId !== undefined) {
             const hit = map[nodeId];
-            if (!hit?.document) {
+            if (!hit) {
                 throw new Error(`response has no node '${nodeId}'. present: ${ids.join(", ")}`);
             }
-            return hit.document;
+            if (!hit.document)
+                throw new Error(`response node '${nodeId}' has no document`);
+            return requireNode(hit.document);
         }
         if (ids.length > 1) {
             throw new Error(`response carries ${ids.length} nodes (${ids.join(", ")}); pass ` +
                 "--node-id to say which one to measure");
         }
         const only = map[ids[0]];
-        if (only?.document)
-            return only.document;
+        if (!only?.document)
+            throw new Error(`response node '${ids[0]}' has no document`);
+        return requireNode(only.document);
     }
-    return json;
+    return requireNode(json);
 }
 const hex = (n) => Math.round(Math.min(1, Math.max(0, n)) * 255)
     .toString(16)
@@ -90,6 +104,8 @@ function readOne(node, kids, parentId) {
     }
     if (typeof node.cornerRadius === "number")
         self.radius = node.cornerRadius;
+    if (node.rectangleCornerRadii)
+        self.radii = [...node.rectangleCornerRadii];
     if (typeof node.strokeWeight === "number")
         self.strokeWeight = node.strokeWeight;
     const fill = firstSolidFill(node.fills);
@@ -116,9 +132,11 @@ function readOne(node, kids, parentId) {
 /** Preorder flatten — the verifier reads a flat list and no rule walks upward,
  *  so every non-root node carries its `parentId`.
  *
- *  A `visible: false` node is not on screen, so it and everything under it is
- *  dropped: nothing in the DOM can correspond to it. */
+ *  A `visible: false` child is not on screen, so it and everything under it is
+ *  dropped. A hidden requested root leaves nothing to measure and is refused. */
 export function flatten(root) {
+    if (root.visible === false)
+        throw new NotComparableError("design root is hidden");
     const nodes = [];
     const walk = (node, parentId) => {
         const kids = (node.children ?? []).filter((c) => c.visible !== false);

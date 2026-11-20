@@ -39,6 +39,7 @@ export interface RawNode {
     paddingBottom?: number;
     paddingLeft?: number;
     cornerRadius?: number;
+    rectangleCornerRadii?: [number, number, number, number];
     strokeWeight?: number;
     fills?: RawPaint[];
     effects?: RawEffect[];
@@ -58,7 +59,7 @@ export declare function readNode(json: unknown, nodeId?: string): RawNode;
 /** Preorder flatten — the verifier reads a flat list and no rule walks upward,
  *  so every non-root node carries its `parentId`.
  *
- *  A `visible: false` node is not on screen, so it and everything under it is
- *  dropped: nothing in the DOM can correspond to it. */
+ *  A `visible: false` child is not on screen, so it and everything under it is
+ *  dropped. A hidden requested root leaves nothing to measure and is refused. */
 export declare function flatten(root: RawNode): DesignTree;
 export {};

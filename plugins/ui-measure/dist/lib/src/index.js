@@ -12,4 +12,4 @@ export { detectGeometry } from "./geometry/detect.js";
 export { loadTokens, tokenFor } from "./tokens/index.js";
 export { baselineKey, baselinePath, classify, readBaseline, recordBaseline, serialiseBaseline, } from "./baseline/baseline.js";
 export { reportSummary, writeReport } from "./report/write.js";
-export { BaselineExistsError, PartialRunError, SetupError } from "./errors.js";
+export { BaselineExistsError, PartialRunError, SetupError, NotComparableError } from "./errors.js";

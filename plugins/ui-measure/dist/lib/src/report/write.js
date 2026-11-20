@@ -17,7 +17,7 @@ export function reportSummary(report, maxLines = 20) {
         const detail = finding.status === "not_comparable"
             ? finding.reason ?? "no reason supplied"
             : `${finding.expected ?? "mismatch"} -> ${finding.actual ?? "unavailable"}`;
-        lines.push(`${finding.status} ${finding.check}/${finding.kind} ${finding.target.selector}: ${detail}`.replaceAll("\n", " "));
+        lines.push(`${finding.status}${finding.origin ? ` ${finding.origin}` : ""} ${finding.check}/${finding.kind} ${finding.target.selector}: ${detail}`.replaceAll("\n", " "));
     }
     if (shown.length < notable.length && lines.length < maxLines) {
         lines.push(`... ${notable.length - shown.length} more findings`);

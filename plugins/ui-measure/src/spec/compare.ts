@@ -300,11 +300,12 @@ export function compareSpec(
       continue
     }
 
-    // Radius: clamped to half the shorter side on both sides, as CSS clamps it. A design with no
-    // radius expects none.
+    // Radius: clamped to half the shorter side on both sides, as CSS clamps it. Compare every
+    // corner independently. A design with no radius expects none, with no tolerance for presence.
     if (el.box) {
       const cap = Math.min(el.box.width, el.box.height) / 2
-      const expected = Math.min((node.radius ?? 0) * scale, cap)
+      const designRadii = node.radii ?? [node.radius ?? 0, node.radius ?? 0, node.radius ?? 0, node.radius ?? 0]
+      const expected = designRadii.map((r) => Math.min(r * scale, cap))
       const raw = [style.borderTopLeftRadius, style.borderTopRightRadius, style.borderBottomRightRadius, style.borderBottomLeftRadius]
       const corners = raw.map((r) => {
         const first = r.trim().split(/\s+/)[0]
@@ -316,18 +317,21 @@ export function compareSpec(
         skip("radius", node, el, `radius ${raw.join(" ")} is not a length or percentage`)
       } else {
         const got = corners as number[]
-        const worst = Math.max(...got.map((c) => Math.abs(c - expected)))
-        const far = got.reduce((a, b) => (Math.abs(b - expected) > Math.abs(a - expected) ? b : a))
-        const has = node.radius !== undefined && node.radius > 0
+        const deltas = got.map((c, i) => Math.abs(c - expected[i]))
+        const worst = Math.max(...deltas)
+        const far = got[deltas.indexOf(worst)]
+        const has = designRadii.some((r) => r > 0)
         // Nothing to report when neither side has a radius.
         if (has || worst > 0) {
           findings.push({
             check: "spec",
             kind: "radius",
-            status: worst > tol ? "fail" : "pass",
+            status: worst > (has ? tol : 0) ? "fail" : "pass",
             target: targetOf(node, el),
-            expected: has ? named("radius", String(node.radius), px(expected)) : "none",
-            actual: px(far),
+            expected: node.radii
+              ? expected.map(px).join(", ")
+              : has ? named("radius", String(node.radius), px(expected[0])) : "none",
+            actual: node.radii ? got.map(px).join(", ") : px(far),
             deltaPx: round(worst),
           })
         }
@@ -447,6 +451,23 @@ export function compareSpec(
       }
     } else {
       const wanted = node.effects.map(parseDesignEffect)
+      const unexpected = (["filter", "backdropFilter"] as const).flatMap((property) => {
+        const value = style[property]
+        if (!value || value === "none") return []
+        const hasBlur = wanted.some((e) => e.kind === "blur" && e.of === property)
+        const remainder = hasBlur ? value.replace(/blur\([^)]*\)/, "").trim() : value
+        return remainder ? [`${property}: ${remainder}`] : []
+      })
+      if (unexpected.length) {
+        findings.push({
+          check: "spec",
+          kind: "effects",
+          status: "fail",
+          target: targetOf(node, el),
+          expected: "none",
+          actual: unexpected.join("; "),
+        })
+      }
       const unknown = wanted.find((e) => e.kind === "unknown")
       if (unknown && unknown.kind === "unknown") {
         skip("effects", node, el, `effect type ${unknown.type} is not compared`)

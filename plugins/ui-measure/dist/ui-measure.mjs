@@ -15,6 +15,12 @@ var SetupError = class extends Error {
     this.name = "SetupError";
   }
 };
+var NotComparableError = class extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "NotComparableError";
+  }
+};
 var PartialRunError = class extends Error {
   constructor(message) {
     super(message);
@@ -567,7 +573,9 @@ function verifyMapping(proposal, design2, dom, opts) {
         continue;
       }
       const prefix = `${g.v.selector} > `;
-      const children = verdicts.filter((o) => o.selector.startsWith(prefix));
+      const children = verdicts.filter(
+        (o) => o.selector.startsWith(prefix) && nodesById.get(o.nodeId)?.parentId === g.v.nodeId
+      );
       if (children.length < 2) continue;
       if (!children.every(good)) continue;
       g.v.outcome = "size_differs";
@@ -865,19 +873,27 @@ async function fetchNode(fileKey, nodeId, token) {
 
 // src/figma/read.ts
 function readNode(json, nodeId) {
+  const requireNode = (value) => {
+    if (typeof value !== "object" || value === null || Array.isArray(value) || typeof value.id !== "string" || value.id === "" || typeof value.type !== "string" || value.type === "") {
+      throw new Error("Figma node must be an object with non-empty string id and type fields");
+    }
+    return value;
+  };
   const raw = json;
   const nodes = raw?.nodes;
-  if (nodes && typeof nodes === "object") {
+  if (nodes && typeof nodes === "object" && !Array.isArray(nodes)) {
     const map = nodes;
     const ids = Object.keys(map);
+    if (ids.length === 0) throw new Error("Figma response contains no nodes");
     if (nodeId !== void 0) {
       const hit = map[nodeId];
-      if (!hit?.document) {
+      if (!hit) {
         throw new Error(
           `response has no node '${nodeId}'. present: ${ids.join(", ")}`
         );
       }
-      return hit.document;
+      if (!hit.document) throw new Error(`response node '${nodeId}' has no document`);
+      return requireNode(hit.document);
     }
     if (ids.length > 1) {
       throw new Error(
@@ -885,9 +901,10 @@ function readNode(json, nodeId) {
       );
     }
     const only = map[ids[0]];
-    if (only?.document) return only.document;
+    if (!only?.document) throw new Error(`response node '${ids[0]}' has no document`);
+    return requireNode(only.document);
   }
-  return json;
+  return requireNode(json);
 }
 var hex = (n) => Math.round(Math.min(1, Math.max(0, n)) * 255).toString(16).padStart(2, "0");
 function colour(c, extra = 1) {
@@ -942,6 +959,7 @@ function readOne(node, kids, parentId) {
     };
   }
   if (typeof node.cornerRadius === "number") self.radius = node.cornerRadius;
+  if (node.rectangleCornerRadii) self.radii = [...node.rectangleCornerRadii];
   if (typeof node.strokeWeight === "number") self.strokeWeight = node.strokeWeight;
   const fill = firstSolidFill(node.fills);
   if (fill) self.fill = fill;
@@ -958,6 +976,7 @@ function readOne(node, kids, parentId) {
   return self;
 }
 function flatten(root) {
+  if (root.visible === false) throw new NotComparableError("design root is hidden");
   const nodes = [];
   const walk = (node, parentId) => {
     const kids = (node.children ?? []).filter((c) => c.visible !== false);
@@ -1002,87 +1021,83 @@ async function detectGeometry(p, cfg) {
           }
         }
         own = own.trim();
-        if (!own) continue;
         const rect = el.getBoundingClientRect();
         const base = { selector: item.selector, text: own.slice(0, 80) };
-        if (rect.width === 0 || rect.height === 0) {
-          out.push({
-            ...base,
-            kind: "zero-size",
-            expected: "non-zero box",
-            actual: `${rect.width}x${rect.height}px`,
-            deltaPx: 0
-          });
-          continue;
-        }
-        let clipped = null;
-        let n = el;
-        while (n && n !== document.body && n !== document.documentElement) {
-          const ns = getComputedStyle(n);
-          const clipX = ns.overflowX === "hidden" || ns.overflowX === "clip";
-          const clipY = ns.overflowY === "hidden" || ns.overflowY === "clip";
-          if ((clipX || clipY) && ns.textOverflow !== "ellipsis") {
-            if (n === el) {
-              const overX = clipX ? el.scrollWidth - el.clientWidth : 0;
-              const overY = clipY ? el.scrollHeight - el.clientHeight : 0;
-              const over = Math.max(overX, overY);
-              if (over > TOL) {
-                clipped = { ...base, kind: "clipped", expected: "all text inside its own box", actual: `${over}px cut off`, deltaPx: over };
-              }
-            } else {
-              const r = n.getBoundingClientRect();
-              const left = r.left + n.clientLeft;
-              const top = r.top + n.clientTop;
-              const right = left + n.clientWidth;
-              const bottom = top + n.clientHeight;
-              const overX = clipX ? Math.max(left - rect.left, rect.right - right) : 0;
-              const overY = clipY ? Math.max(top - rect.top, rect.bottom - bottom) : 0;
-              const over = Math.max(overX, overY);
-              if (over > TOL) {
-                clipped = { ...base, kind: "clipped", expected: "inside the clipping ancestor", actual: `${Math.round(over * 10) / 10}px past it`, deltaPx: over };
-              }
-            }
-            if (clipped) break;
-          }
-          n = n.parentElement;
-        }
-        if (clipped) {
-          out.push(clipped);
-          continue;
-        }
-        let scrolls = false;
-        for (let a = el.parentElement; a && a !== document.body && a !== document.documentElement; a = a.parentElement) {
-          const as = getComputedStyle(a);
-          const sx = (as.overflowX === "auto" || as.overflowX === "scroll") && a.scrollWidth > a.clientWidth;
-          const sy = (as.overflowY === "auto" || as.overflowY === "scroll") && a.scrollHeight > a.clientHeight;
-          if (sx || sy) {
-            scrolls = true;
-            break;
-          }
-        }
-        if (!scrolls) {
-          const de = document.documentElement;
-          const bodyStyle = getComputedStyle(document.body);
-          const clipsY = [htmlStyle.overflowY, bodyStyle.overflowY].some((v) => v === "hidden" || v === "clip");
-          const bottomChecked = clipsY || de.scrollHeight <= de.clientHeight;
-          const docBottom = rect.bottom + window.scrollY;
-          const past = Math.max(
-            -(rect.left + window.scrollX),
-            -(rect.top + window.scrollY),
-            rect.right + window.scrollX - de.clientWidth,
-            bottomChecked ? docBottom - de.clientHeight : 0
-          );
-          if (past > TOL) {
+        if (own) {
+          if (rect.width === 0 || rect.height === 0) {
             out.push({
               ...base,
-              kind: "off-canvas",
-              expected: "inside the viewport",
-              actual: `${Math.round(past * 10) / 10}px outside`,
-              deltaPx: past
+              kind: "zero-size",
+              expected: "non-zero box",
+              actual: `${rect.width}x${rect.height}px`,
+              deltaPx: 0
             });
             continue;
           }
+          let clipped = null;
+          let n = el;
+          while (n && n !== document.body && n !== document.documentElement) {
+            const ns = getComputedStyle(n);
+            const clipX = ns.overflowX === "hidden" || ns.overflowX === "clip";
+            const clipY = ns.overflowY === "hidden" || ns.overflowY === "clip";
+            if ((clipX || clipY) && ns.textOverflow !== "ellipsis") {
+              if (n === el) {
+                const overX = clipX ? el.scrollWidth - el.clientWidth : 0;
+                const overY = clipY ? el.scrollHeight - el.clientHeight : 0;
+                const over = Math.max(overX, overY);
+                if (over > TOL) {
+                  clipped = { ...base, kind: "clipped", expected: "all text inside its own box", actual: `${over}px cut off`, deltaPx: over };
+                }
+              } else {
+                const r = n.getBoundingClientRect();
+                const left = r.left + n.clientLeft;
+                const top = r.top + n.clientTop;
+                const right = left + n.clientWidth;
+                const bottom = top + n.clientHeight;
+                const overX = clipX ? Math.max(left - rect.left, rect.right - right) : 0;
+                const overY = clipY ? Math.max(top - rect.top, rect.bottom - bottom) : 0;
+                const over = Math.max(overX, overY);
+                if (over > TOL) {
+                  clipped = { ...base, kind: "clipped", expected: "inside the clipping ancestor", actual: `${Math.round(over * 10) / 10}px past it`, deltaPx: over };
+                }
+              }
+              if (clipped) break;
+            }
+            n = n.parentElement;
+          }
+          if (clipped) {
+            out.push(clipped);
+            continue;
+          }
         }
+        let scrollsX = false;
+        let scrollsY = false;
+        for (let a = el.parentElement; a && a !== document.body && a !== document.documentElement; a = a.parentElement) {
+          const as = getComputedStyle(a);
+          if ((as.overflowX === "auto" || as.overflowX === "scroll") && a.scrollWidth > a.clientWidth) scrollsX = true;
+          if ((as.overflowY === "auto" || as.overflowY === "scroll") && a.scrollHeight > a.clientHeight) scrollsY = true;
+        }
+        const de = document.documentElement;
+        const bodyStyle = getComputedStyle(document.body);
+        const clipsY = [htmlStyle.overflowY, bodyStyle.overflowY].some((v) => v === "hidden" || v === "clip");
+        const bottomChecked = clipsY || de.scrollHeight <= de.clientHeight;
+        const past = Math.max(
+          -(rect.left + window.scrollX),
+          -(rect.top + window.scrollY),
+          scrollsX ? 0 : rect.right + window.scrollX - de.clientWidth,
+          !scrollsY && bottomChecked ? rect.bottom + window.scrollY - de.clientHeight : 0
+        );
+        if (past > TOL) {
+          out.push({
+            ...base,
+            kind: "off-canvas",
+            expected: "inside the viewport",
+            actual: `${Math.round(past * 10) / 10}px outside`,
+            deltaPx: past
+          });
+          continue;
+        }
+        if (!own) continue;
         let box = el;
         while (box && box !== document.body && box !== document.documentElement) {
           const bs = getComputedStyle(box);
@@ -1187,7 +1202,7 @@ function reportSummary(report2, maxLines = 20) {
   for (const finding of shown) {
     const detail = finding.status === "not_comparable" ? finding.reason ?? "no reason supplied" : `${finding.expected ?? "mismatch"} -> ${finding.actual ?? "unavailable"}`;
     lines.push(
-      `${finding.status} ${finding.check}/${finding.kind} ${finding.target.selector}: ${detail}`.replaceAll("\n", " ")
+      `${finding.status}${finding.origin ? ` ${finding.origin}` : ""} ${finding.check}/${finding.kind} ${finding.target.selector}: ${detail}`.replaceAll("\n", " ")
     );
   }
   if (shown.length < notable.length && lines.length < maxLines) {
@@ -1246,6 +1261,58 @@ function stringify(value) {
   }
   if (value !== null && typeof value === "object") return JSON.stringify(value);
   return void 0;
+}
+function formatColor(components, alpha) {
+  const channels = components.map((n) => Math.round(n * 255));
+  const a = Math.round(alpha * 1e3) / 1e3;
+  if (a >= 1) return `#${channels.map((n) => n.toString(16).padStart(2, "0")).join("")}`;
+  return `rgba(${channels.join(", ")}, ${a})`;
+}
+function colorObject(value) {
+  if (!isObject(value)) throw new Error("color must be an srgb object or a string");
+  if (value.colorSpace !== void 0 && value.colorSpace !== "srgb") {
+    throw new Error(`unsupported color space ${JSON.stringify(value.colorSpace)}`);
+  }
+  let components;
+  let hexAlpha = 1;
+  if (value.hex !== void 0) {
+    if (typeof value.hex !== "string") throw new Error("hex must be a string");
+    const match = /^#([0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.exec(value.hex);
+    if (!match) throw new Error("hex must be #rgb, #rgba, #rrggbb, or #rrggbbaa");
+    let hex2 = match[1];
+    if (hex2.length <= 4) hex2 = [...hex2].map((c) => c + c).join("");
+    components = [0, 2, 4].map((i) => parseInt(hex2.slice(i, i + 2), 16) / 255);
+    if (hex2.length === 8) hexAlpha = parseInt(hex2.slice(6, 8), 16) / 255;
+  } else {
+    if (value.colorSpace !== "srgb") throw new Error("color requires colorSpace srgb or a hex string");
+    if (!Array.isArray(value.components) || value.components.length !== 3 || value.components.some((n) => typeof n !== "number" || !Number.isFinite(n) || n < 0 || n > 1)) {
+      throw new Error("srgb components must be three finite numbers from 0 to 1");
+    }
+    components = value.components;
+  }
+  if (value.alpha !== void 0 && (typeof value.alpha !== "number" || !Number.isFinite(value.alpha) || value.alpha < 0 || value.alpha > 1)) {
+    throw new Error("alpha must be a finite number from 0 to 1");
+  }
+  const alpha = hexAlpha * (typeof value.alpha === "number" ? value.alpha : 1);
+  return formatColor(components, alpha);
+}
+function shadowDimension(value, field) {
+  const str = stringify(value);
+  const match = str ? /^(-?(?:\d+(?:\.\d+)?|\.\d+))px$/.exec(str.trim()) : null;
+  if (!match) throw new Error(`${field} must be a pixel dimension`);
+  return Number(match[1]);
+}
+function shadowObject(value) {
+  if (!isObject(value)) throw new Error("shadow must be an object or an effect string");
+  if (value.inset !== void 0 && typeof value.inset !== "boolean") throw new Error("inset must be boolean");
+  const x = shadowDimension(value.offsetX, "offsetX");
+  const y = shadowDimension(value.offsetY, "offsetY");
+  const blur = shadowDimension(value.blur, "blur");
+  const spread = value.spread === void 0 ? 0 : shadowDimension(value.spread, "spread");
+  const parts = [value.inset ? "INNER_SHADOW" : "DROP_SHADOW", x, y, blur];
+  if (spread) parts.push(spread);
+  parts.push(colorObject(value.color));
+  return parts.join(" ");
 }
 function collect(node, prefix, inherited, out) {
   const type = typeof node.$type === "string" ? node.$type : inherited;
@@ -1314,7 +1381,15 @@ function parseDtcg(text) {
       errors.push(`token ${raw.path} has unsupported $type "${type}"`);
       continue;
     }
-    const str = stringify(value);
+    let str;
+    try {
+      if (property === "color" && typeof value !== "string") str = colorObject(value);
+      else if (property === "effect" && typeof value !== "string") str = shadowObject(value);
+      else str = stringify(value);
+    } catch (error) {
+      errors.push(`token ${raw.path} has an unusable $value: ${error instanceof Error ? error.message : String(error)}`);
+      continue;
+    }
     if (str === void 0) {
       errors.push(`token ${raw.path} has an unusable $value`);
       continue;
@@ -1657,7 +1732,8 @@ function compareSpec(design2, dom, v, opts) {
     }
     if (el.box) {
       const cap = Math.min(el.box.width, el.box.height) / 2;
-      const expected = Math.min((node.radius ?? 0) * scale, cap);
+      const designRadii = node.radii ?? [node.radius ?? 0, node.radius ?? 0, node.radius ?? 0, node.radius ?? 0];
+      const expected = designRadii.map((r) => Math.min(r * scale, cap));
       const raw = [style.borderTopLeftRadius, style.borderTopRightRadius, style.borderBottomRightRadius, style.borderBottomLeftRadius];
       const corners = raw.map((r) => {
         const first = r.trim().split(/\s+/)[0];
@@ -1669,17 +1745,18 @@ function compareSpec(design2, dom, v, opts) {
         skip("radius", node, el, `radius ${raw.join(" ")} is not a length or percentage`);
       } else {
         const got = corners;
-        const worst = Math.max(...got.map((c) => Math.abs(c - expected)));
-        const far = got.reduce((a, b) => Math.abs(b - expected) > Math.abs(a - expected) ? b : a);
-        const has = node.radius !== void 0 && node.radius > 0;
+        const deltas = got.map((c, i) => Math.abs(c - expected[i]));
+        const worst = Math.max(...deltas);
+        const far = got[deltas.indexOf(worst)];
+        const has = designRadii.some((r) => r > 0);
         if (has || worst > 0) {
           findings.push({
             check: "spec",
             kind: "radius",
-            status: worst > tol ? "fail" : "pass",
+            status: worst > (has ? tol : 0) ? "fail" : "pass",
             target: targetOf(node, el),
-            expected: has ? named("radius", String(node.radius), px(expected)) : "none",
-            actual: px(far),
+            expected: node.radii ? expected.map(px).join(", ") : has ? named("radius", String(node.radius), px(expected[0])) : "none",
+            actual: node.radii ? got.map(px).join(", ") : px(far),
             deltaPx: round(worst)
           });
         }
@@ -1787,6 +1864,23 @@ function compareSpec(design2, dom, v, opts) {
       }
     } else {
       const wanted = node.effects.map(parseDesignEffect);
+      const unexpected = ["filter", "backdropFilter"].flatMap((property) => {
+        const value = style[property];
+        if (!value || value === "none") return [];
+        const hasBlur = wanted.some((e) => e.kind === "blur" && e.of === property);
+        const remainder = hasBlur ? value.replace(/blur\([^)]*\)/, "").trim() : value;
+        return remainder ? [`${property}: ${remainder}`] : [];
+      });
+      if (unexpected.length) {
+        findings.push({
+          check: "spec",
+          kind: "effects",
+          status: "fail",
+          target: targetOf(node, el),
+          expected: "none",
+          actual: unexpected.join("; ")
+        });
+      }
       const unknown = wanted.find((e) => e.kind === "unknown");
       if (unknown && unknown.kind === "unknown") {
         skip("effects", node, el, `effect type ${unknown.type} is not compared`);
@@ -1951,7 +2045,9 @@ var USAGE = `Usage:
   ui-measure geometry --config C --target T [--json OUT]
   ui-measure spec --config C --target T [--node FILE | --figma NODE_ID]
     [--proposer recorded --proposal FILE | --proposer command -- ARGV...] [--json OUT]
-  ui-measure baseline record|check --config C --target T [--force] [--json OUT]`;
+  ui-measure baseline record|check --config C --target T [--mode geometry|spec]
+    [--node FILE | --figma NODE_ID] [--proposer recorded --proposal FILE | --proposer command -- ARGV...]
+    [--force] [--json OUT]`;
 function parseOptions(args) {
   const out = { command: [] };
   for (let i = 0; i < args.length; i++) {
@@ -1969,7 +2065,7 @@ function parseOptions(args) {
       continue;
     }
     const key = arg.replace(/^--/, "");
-    if (!["config", "target", "json", "node", "figma", "proposer", "proposal"].includes(key)) {
+    if (!["config", "target", "json", "node", "figma", "proposer", "proposal", "mode"].includes(key)) {
       throw new SetupError(`unknown option ${arg}
 ${USAGE}`);
     }
@@ -2015,10 +2111,11 @@ function notComparable(target, check, reason) {
   );
 }
 function verdict(findings, coverage) {
-  if (coverage.pairsProposed === 0 && coverage.pairsAccepted === 0 && findings.some((f) => f.check === "spec") || coverage.dropped > coverage.pairsProposed / 2) {
+  if (findings.some((f) => f.status === "fail")) return "mismatches";
+  if (findings.some((f) => f.status === "not_comparable") || coverage.pairsProposed === 0 && coverage.pairsAccepted === 0 && findings.some((f) => f.check === "spec") || coverage.dropped > coverage.pairsProposed / 2) {
     return "not_comparable";
   }
-  return findings.some((f) => f.status === "fail") ? "mismatches" : "clean";
+  return "clean";
 }
 async function geometry(target, config) {
   const opened = await openPage(target);
@@ -2026,7 +2123,7 @@ async function geometry(target, config) {
   try {
     const findings = await detectGeometry(opened, config.geometry ?? { insetPx: 4, nonScrolling: [] });
     const coverage = { pairsProposed: 0, pairsAccepted: 0, dropped: 0 };
-    return report(target, opened, findings, coverage, findings.some((f) => f.status === "fail") ? "mismatches" : "clean");
+    return report(target, opened, findings, coverage, verdict(findings, coverage));
   } finally {
     await opened.close();
   }
@@ -2061,7 +2158,15 @@ async function design(target, options) {
   return flatten(readNode(json, nodeId));
 }
 async function spec(target, config, options) {
-  const [designTree, mappingProposer] = await Promise.all([design(target, options), proposer(options)]);
+  let designTree;
+  let mappingProposer;
+  try {
+    ;
+    [designTree, mappingProposer] = await Promise.all([design(target, options), proposer(options)]);
+  } catch (error) {
+    if (error instanceof NotComparableError) return notComparable(target, "spec", error.message);
+    throw error;
+  }
   let tokens;
   if (config.tokens) {
     const loaded = loadTokens(config.tokens.path, config.tokens.format);
@@ -2120,7 +2225,10 @@ ${USAGE}`);
     const config = loadConfig(options.config);
     const target = selected(config, options);
     if (!isBaseline && options.force) throw new SetupError("--force is only valid for baseline record");
-    let result = command === "spec" ? await spec(target, config, options) : await geometry(target, config);
+    if (!isBaseline && options.mode) throw new SetupError("--mode is only valid for baseline commands");
+    const mode = options.mode ?? "geometry";
+    if (mode !== "geometry" && mode !== "spec") throw new SetupError("--mode must be geometry or spec");
+    let result = command === "spec" || isBaseline && mode === "spec" ? await spec(target, config, options) : await geometry(target, config);
     if (options.json) await writeReport(resolve2(options.json), result);
     if (isBaseline) {
       if (!config.baselineDir) throw new SetupError("baselineDir is required for baseline commands");
@@ -2131,9 +2239,11 @@ ${USAGE}`);
         console.log(`recorded baseline for ${options.target}`);
         return exitCode(result);
       }
+      const findings = classify(result.findings, readBaseline(config.baselineDir, options.target));
       result = {
         ...result,
-        findings: classify(result.findings, readBaseline(config.baselineDir, options.target))
+        findings,
+        verdict: verdict(findings.filter((f) => f.origin !== "inherited"), result.coverage)
       };
       if (options.json) await writeReport(resolve2(options.json), result);
     }

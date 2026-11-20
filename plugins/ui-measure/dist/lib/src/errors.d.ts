@@ -2,6 +2,10 @@
 export declare class SetupError extends Error {
     constructor(message: string);
 }
+/** A requested design or page has nothing that can be measured (exit code 2). */
+export declare class NotComparableError extends Error {
+    constructor(message: string);
+}
 /** A run that measured only part of the page was offered as a baseline. */
 export declare class PartialRunError extends Error {
     constructor(message: string);

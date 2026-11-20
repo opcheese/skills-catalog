@@ -14,4 +14,4 @@ export { loadTokens, tokenFor, type Token, type TokenProperty } from "./tokens/i
 export { baselineKey, baselinePath, classify, readBaseline, recordBaseline, serialiseBaseline, } from "./baseline/baseline.js";
 export type { Finding, Report, Status } from "./report/types.js";
 export { reportSummary, writeReport } from "./report/write.js";
-export { BaselineExistsError, PartialRunError, SetupError } from "./errors.js";
+export { BaselineExistsError, PartialRunError, SetupError, NotComparableError } from "./errors.js";

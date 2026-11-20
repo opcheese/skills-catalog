@@ -327,6 +327,61 @@ describe("compareSpec", () => {
     })
   })
 
+  describe("single-node radius and effect regressions", () => {
+    const compareOne = (node: DesignNode, style: Partial<DomStyle> = {}) => {
+      const root = { ...node, box: { x: 0, y: 0, width: 100, height: 100 } }
+      const el: DomElement = {
+        selector: "#r",
+        tag: "div",
+        box: { x: 0, y: 0, width: 100, height: 100 },
+        style: { ...STYLE, ...style },
+      }
+      return compareSpec(
+        { root, nodes: [root] },
+        { root: el, elements: [el] },
+        handBuilt([{ nodeId: root.id, selector: el.selector }]),
+        { scale: 1 },
+      )
+    }
+
+    it("compares each design corner radius against its computed longhand", () => {
+      const node: DesignNode = { id: "r", type: "RECTANGLE", radii: [4, 8, 12, 16] }
+      const matching = compareOne(node, {
+        borderTopLeftRadius: "4px",
+        borderTopRightRadius: "8px",
+        borderBottomRightRadius: "12px",
+        borderBottomLeftRadius: "16px",
+      })
+      expect(kind(matching, "radius", "pass")).toHaveLength(1)
+      const changed = compareOne(node, {
+        borderTopLeftRadius: "4px",
+        borderTopRightRadius: "20px",
+        borderBottomRightRadius: "12px",
+        borderBottomLeftRadius: "16px",
+      })
+      expect(kind(changed, "radius")).toHaveLength(1)
+      expect(kind(changed, "radius")[0].deltaPx).toBe(12)
+    })
+
+    it("an unexpected 1px radius fails when the design has none", () => {
+      const out = compareOne({ id: "r", type: "RECTANGLE" }, { borderTopLeftRadius: "1px" })
+      expect(kind(out, "radius")).toHaveLength(1)
+      expect(kind(out, "radius")[0].expected).toBe("none")
+      expect(kind(out, "radius")[0].deltaPx).toBe(1)
+    })
+
+    it("a matching design shadow does not hide an unexpected page blur", () => {
+      const out = compareOne(
+        { id: "r", type: "FRAME", effects: ["DROP_SHADOW 0 4 8 rgba(0, 0, 0, 0.1)"] },
+        { boxShadow: "rgba(0, 0, 0, 0.1) 0px 4px 8px 0px", filter: "blur(10px)" },
+      )
+      const failed = kind(out, "effects")
+      expect(failed).toHaveLength(1)
+      expect(failed[0].expected).toBe("none")
+      expect(failed[0].actual).toContain("blur(10px)")
+    })
+  })
+
   describe("padding is read from the design's own geometry", () => {
     const frame = (children: { id: string; box: Box }[], padding: [number, number, number, number]): DesignTree => {
       const root: DesignNode = {

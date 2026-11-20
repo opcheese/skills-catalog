@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { loadTokens, tokenFor } from "../../src/tokens";
+import { parseDtcg } from "../../src/tokens/dtcg";
 
 const fx = (n: string) => new URL(`../fixtures/tokens/${n}`, import.meta.url).pathname;
 
@@ -88,6 +89,48 @@ describe("dtcg typography classification", () => {
   it("keeps plain dimensions as spacing", () => {
     expect(get("space.md")?.property).toBe("spacing");
   });
+});
+
+describe("dtcg object values", () => {
+  it("normalises srgb and hex color objects and shadow objects for tokenFor", () => {
+    const { tokens, errors } = parseDtcg(JSON.stringify({
+      color: {
+        $type: "color",
+        object: { $value: { colorSpace: "srgb", components: [0.1, 0.2, 0.3] } },
+        translucent: { $value: { colorSpace: "srgb", components: [0, 0, 0], alpha: 0.1 } },
+        hex: { $value: { hex: "#0A84FF" } },
+      },
+      elevation: {
+        $type: "shadow",
+        card: {
+          $value: {
+            color: { colorSpace: "srgb", components: [0, 0, 0], alpha: 0.1 },
+            offsetX: "0px",
+            offsetY: { value: 4, unit: "px" },
+            blur: "8px",
+            spread: "0px",
+          },
+        },
+      },
+    }))
+    expect(errors).toEqual([])
+    expect(tokenFor(tokens, "color", "#1a334d")?.name).toBe("color.object")
+    expect(tokenFor(tokens, "color", "rgba(0, 0, 0, 0.1)")?.name).toBe("color.translucent")
+    expect(tokenFor(tokens, "color", "#0a84ff")?.name).toBe("color.hex")
+    expect(tokenFor(tokens, "effect", "DROP_SHADOW 0 4 8 rgba(0, 0, 0, 0.1)")?.name).toBe("elevation.card")
+  })
+
+  it("reports unsupported color spaces and malformed object forms with token names", () => {
+    const { errors } = parseDtcg(JSON.stringify({
+      color: {
+        $type: "color",
+        wide: { $value: { colorSpace: "display-p3", components: [1, 0, 0] } },
+        broken: { $value: { colorSpace: "srgb", components: [1, 0] } },
+      },
+    }))
+    expect(errors.some((e) => e.includes("color.wide") && e.includes("display-p3"))).toBe(true)
+    expect(errors.some((e) => e.includes("color.broken"))).toBe(true)
+  })
 });
 
 describe("tokenFor leading decimals", () => {

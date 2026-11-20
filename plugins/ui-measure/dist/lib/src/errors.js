@@ -5,6 +5,13 @@ export class SetupError extends Error {
         this.name = "SetupError";
     }
 }
+/** A requested design or page has nothing that can be measured (exit code 2). */
+export class NotComparableError extends Error {
+    constructor(message) {
+        super(message);
+        this.name = "NotComparableError";
+    }
+}
 /** A run that measured only part of the page was offered as a baseline. */
 export class PartialRunError extends Error {
     constructor(message) {
