@@ -61,6 +61,8 @@ import type {
  *  because it is measuring; here the question is only whether two things could
  *  be the same thing. */
 export const SIZE_TOLERANCE_PX = 8
+// SIZE_TOLERANCE_PX is in DESIGN pixels; the rule compares in CSS pixels, so
+// it applies as SIZE_TOLERANCE_PX * scale.
 
 /** Design types that are leaf graphics, and the tags that can render them. */
 const GRAPHIC_TYPES = new Set([
@@ -123,8 +125,10 @@ function typeCompatible(
 /** The design's origin is the Figma canvas (e.g. {x: 429, y: 214}); the DOM's
  *  is the viewport. Raw coordinates are not comparable, so a design box is
  *  expressed in the element coordinate space of the DOM root: translated by the
- *  two roots' origins and divided by `scale`, the design pixels per CSS pixel
- *  (a frame exported at 2x has scale 2).
+ *  two roots' origins and multiplied by `scale`, the CSS pixels per design
+ *  pixel (the live root font size over the design's root font size, so a 5px
+ *  live root against a 10px design root gives 0.5 and CSS boxes half the
+ *  design's).
  *
  *  The roots' WIDTH RATIO is deliberately not used. A ratio inferred from the
  *  two roots silently absorbs a real width deviation of the root into every
@@ -138,10 +142,10 @@ export function normalise(
   scale: number,
 ): Box {
   return {
-    x: domRoot.x + (box.x - designRoot.x) / scale,
-    y: domRoot.y + (box.y - designRoot.y) / scale,
-    width: box.width / scale,
-    height: box.height / scale,
+    x: domRoot.x + (box.x - designRoot.x) * scale,
+    y: domRoot.y + (box.y - designRoot.y) * scale,
+    width: box.width * scale,
+    height: box.height * scale,
   }
 }
 
@@ -374,7 +378,12 @@ export function verifyMapping(
     // normalised coordinate Infinity or NaN. `NaN > tolerance` is FALSE, so rule 4 would
     // have ACCEPTED every pair — the failure mode this file exists to prevent,
     // arriving through arithmetic rather than through a bad proposal.
-    if (!Object.values(normalised).every(Number.isFinite)) {
+    // A zero scale is finite but collapses every design box to a point, and a
+    // negative one mirrors them; neither is a measurement.
+    if (
+      !(opts.scale > 0) ||
+      !Object.values(normalised).every(Number.isFinite)
+    ) {
       reject(
         v,
         "measurable",
@@ -382,7 +391,14 @@ export function verifyMapping(
       )
       continue
     }
-    geometric.push({ v, design: normalised, dom: comparableBox(node, el) })
+    const domBox = comparableBox(node, el)
+    // The DOM side needs the same guard: `NaN > tolerance` is FALSE on this
+    // side too, and a poisoned ink box would otherwise be accepted.
+    if (!Object.values(domBox).every(Number.isFinite)) {
+      reject(v, "measurable", "a box carries a non-finite coordinate")
+      continue
+    }
+    geometric.push({ v, design: normalised, dom: domBox })
   }
 
   // Rule 3: order-consistent. Both sides are ranked in reading order and the
@@ -429,12 +445,14 @@ export function verifyMapping(
       reject(g.v, "measurable", "a box carries a non-finite coordinate")
       continue
     }
-    if (worst > SIZE_TOLERANCE_PX) {
+    const tolerance = SIZE_TOLERANCE_PX * opts.scale
+    if (worst > tolerance) {
       reject(
         g.v,
         "size_plausible",
-        `sizes differ by ${worst.toFixed(1)}px after normalisation, over the ` +
-          `${SIZE_TOLERANCE_PX}px plausibility tolerance`,
+        `sizes differ by ${worst.toFixed(2)}px after normalisation, over the ` +
+          `${tolerance.toFixed(2)}px plausibility tolerance ` +
+          `(${SIZE_TOLERANCE_PX} design px x scale ${opts.scale})`,
       )
     }
   }

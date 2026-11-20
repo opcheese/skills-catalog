@@ -756,42 +756,119 @@ describe("normalise", () => {
     expect(out.height).toBe(40)
   })
 
-  it("divides sizes and offsets from the root by scale", () => {
+  it("multiplies sizes and offsets from the root by scale", () => {
     expect(
       normalise(
         { x: 429 + 40, y: 214 + 20, width: 100, height: 60 },
         designRoot,
         domRoot,
-        2,
+        0.5,
       ),
     ).toEqual({ x: 41.5 + 20, y: 59 + 10, width: 50, height: 30 })
   })
 })
 
 describe("a stated scale", () => {
-  it("accepts a design drawn at 2x against a 1x render", () => {
-    const double = (b: Box): Box => ({
-      x: designTree.root.box!.x + (b.x - designTree.root.box!.x) * 2,
-      y: designTree.root.box!.y + (b.y - designTree.root.box!.y) * 2,
-      width: b.width * 2,
-      height: b.height * 2,
-    })
-    const scaled: DesignTree = {
-      root: {
-        ...designTree.root,
-        box: double(designTree.root.box as Box),
+  // scale is CSS px per design px: a 5px live root against a 10px design
+  // root is 0.5, so a design box 200 wide is a CSS box 100 wide.
+  const root = { x: 0, y: 0, width: 400, height: 200 }
+  const check = (designWidth: number, domWidth: number, scale: number) =>
+    verifyMapping(
+      {
+        pairs: [{ nodeId: "1:2", selector: "#r > :nth-child(1)" }],
+        unmapped: { design: [], impl: [] },
       },
-      nodes: designTree.nodes.map((n) =>
-        n.box ? { ...n, box: double(n.box) } : n,
-      ),
-    }
-    const r = verifyMapping(GOOD_MAPPING, scaled, domTree, { scale: 2 })
-    expect(r.pairs.filter((p) => p.outcome !== "accepted")).toEqual([])
-    // The same trees at scale 1 are not the same sizes: the size rule reads
-    // the stated scale, not an inferred one.
-    expect(verifyMapping(GOOD_MAPPING, scaled, domTree, ONE).rejected).toBe(
-      true,
-    )
+      {
+        root: { id: "1:1", type: "FRAME", box: root },
+        nodes: [
+          { id: "1:1", type: "FRAME", box: root },
+          {
+            id: "1:2",
+            type: "RECTANGLE",
+            box: { x: 0, y: 0, width: designWidth, height: 20 },
+          },
+        ],
+      },
+      {
+        root: { selector: "#r", tag: "div", box: root },
+        elements: [
+          { selector: "#r", tag: "div", box: root },
+          {
+            selector: "#r > :nth-child(1)",
+            tag: "svg",
+            box: { x: 0, y: 0, width: domWidth, height: 10 },
+          },
+        ],
+      },
+      { scale },
+    ).pairs[0]
+
+  it("matches a design 200 wide to a DOM box 100 wide at scale 0.5", () => {
+    expect(check(200, 100, 0.5).outcome).toBe("accepted")
+  })
+
+  it("does not match the same boxes at scale 1", () => {
+    expect(check(200, 100, 1).rule).toBe("size_plausible")
+  })
+
+  it("accepts a 7.9 design px (3.95 CSS px) difference at scale 0.5", () => {
+    expect(check(200 + 7.9, 100, 0.5).outcome).toBe("accepted")
+  })
+
+  it("rejects a 8.1 design px (4.05 CSS px) difference at scale 0.5", () => {
+    const v = check(200 + 8.1, 100, 0.5)
+    expect(v.outcome).toBe("not_comparable")
+    expect(v.rule).toBe("size_plausible")
+  })
+})
+
+describe("a non-finite DOM box", () => {
+  const root = { x: 0, y: 0, width: 100, height: 100 }
+  const check = (box: Box, ink?: Box) =>
+    verifyMapping(
+      {
+        pairs: [{ nodeId: "1:2", selector: "#r > :nth-child(1)" }],
+        unmapped: { design: [], impl: [] },
+      },
+      {
+        root: { id: "1:1", type: "FRAME", box: root },
+        nodes: [
+          { id: "1:1", type: "FRAME", box: root },
+          {
+            id: "1:2",
+            type: "RECTANGLE",
+            hugsWidth: ink !== undefined,
+            box: { x: 0, y: 0, width: 10, height: 10 },
+          },
+        ],
+      },
+      {
+        root: { selector: "#r", tag: "div", box: root },
+        elements: [
+          { selector: "#r", tag: "div", box: root },
+          { selector: "#r > :nth-child(1)", tag: "svg", box, ink },
+        ],
+      },
+      ONE,
+    ).pairs[0]
+  const fine = { x: 0, y: 0, width: 10, height: 10 }
+
+  it("is not comparable when x is NaN", () => {
+    const v = check({ ...fine, x: Number.NaN })
+    expect(v.outcome).toBe("not_comparable")
+    expect(v.rule).toBe("measurable")
+  })
+
+  it("is not comparable when y is Infinity", () => {
+    const v = check({ ...fine, y: Number.POSITIVE_INFINITY })
+    expect(v.outcome).toBe("not_comparable")
+    expect(v.rule).toBe("measurable")
+  })
+
+  it("is not comparable when the ink carries NaN", () => {
+    const v = check(fine, { ...fine, height: Number.NaN })
+    expect(v.outcome).toBe("not_comparable")
+    expect(v.rule).toBe("measurable")
   })
 })
 
