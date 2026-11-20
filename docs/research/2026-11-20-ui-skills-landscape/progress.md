@@ -1,0 +1,7 @@
+- 2026-11-20 setup: local marketplace clone is NOT a git repo (GCS snapshot, .gcs-sha); using GitHub API for history. helper scripts/save.sh written
+- 2026-11-20 frontend-design git history via GitHub API saved (7 commits, 2025-11-20 scaffold ... 2026-10-26 versions; rewrites 2026-06-15 and 2026-09-01); repo 47.8k stars
+- fetched batch 1 (dev.to rewrite article, anthropic blog, impeccable, oneredoak, arxiv, repos). NOTE: did not save youtubesummary.com page for Theo video (rule: no video summaries); uxdesign.cc 403
+- batch 2 fetched (anthropic harness-design, levelup hillclimb, arxiv webgen/vision-guided/redeck/ui-bench, tessl evals, paddo, impeccable readme)
+- batch 3 fetched (latent.space, gameuiagent, judge-not-oracle, gh issue searches)
+- batch 4: GitHub issues on frontend-design (6404, 6299, skills#1808, cc PR 39043 Theo 'retro-futuristic'), Opus 5.5 prompting guide 'Frontend design defaults'
+- 2026-11-20 README.md written; DONE except summary
