@@ -34,3 +34,7 @@ Two judges, so two spikes run side by side with one fixture.
   - Kimi sits on the panel, but only with an agent that has `ReadMediaFile`. kimi-delegation's pinned agent can't be used as is.
   - The spec's "fail if the resolved ID differs" can't be implemented for Kimi. It becomes "fail if the requested ID isn't on the declared list", and Limits says the served model is unconfirmed.
   - The Claude judge is unknown until the Console org has credits. It must be re-run then.
+
+## Fixed in kimi-delegation 1.3.2, 2026-11-20
+
+The pinned read-only agent now carries `ReadMediaFile`. Rerun through `kimi-delegate`'s default path, same prompt and fixture (`runs/after-1.3.2-pos`, `runs/after-1.3.2-neg`): all three texts and colours right on the positive; "entirely white", no invented text, on the blank. The separate `agents/judge-readonly.md` is no longer needed.

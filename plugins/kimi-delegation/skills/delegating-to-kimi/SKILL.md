@@ -45,6 +45,11 @@ project-first, so a repository that ships `.kimi-code/agents/explore.md` with
 back. That is not theoretical — it was tested, and the repo's definition won.
 `--agent-file` outranks project discovery, which is why the default uses it.
 
+The read-only agent can view images: it carries `ReadMediaFile`, which Kimi
+needs for a PNG or JPEG, because its `Read` opens text only. Without it Kimi
+answers "cannot see the image" even though the model sees images fine. To have
+Kimi judge a screenshot, name the file's path in the prompt.
+
 To let Kimi write, name an agent that can:
 
 ```bash

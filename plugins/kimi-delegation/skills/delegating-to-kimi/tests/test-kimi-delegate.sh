@@ -113,6 +113,7 @@ check_contains "the pinned agent file exists" "$([ -f "$AGENT_FILE" ] && echo ye
 AGENT_BODY="$(cat "$AGENT_FILE" 2>/dev/null)"
 check_contains "it allowlists tools" "$AGENT_BODY" "tools:"
 check_contains "it allows reading" "$AGENT_BODY" "Read"
+check_contains "it allows viewing images (Kimi's Read can't open them)" "$AGENT_BODY" "  - ReadMediaFile"
 check_missing "it grants no shell" "$AGENT_BODY" "Bash"
 check_missing "it grants no write tool" "$AGENT_BODY" "Write"
 check_missing "it grants no edit tool" "$AGENT_BODY" "Edit"

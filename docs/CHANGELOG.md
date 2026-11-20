@@ -8,6 +8,14 @@ audience: developers
 
 Notable changes to the catalog: what devs install, and what the docs tell them.
 
+## 2026-11-20: kimi-delegation 1.3.2, the read-only agent can view images
+
+The pinned read-only agent had only `Read`, `Grep` and `Glob`. Kimi's `Read` opens text only, and an
+image needs its separate `ReadMediaFile` tool, so every delegated screenshot came back "CANNOT SEE
+IMAGE" though the model sees images fine. The agent now carries `ReadMediaFile`, which only reads.
+Before and after runs on a known screenshot and a blank control are in
+`docs/research/2026-11-20-ui-hill-climb-image-spike/` (`runs/kimi-*` before, `runs/after-1.3.2-*` after).
+
 ## 2026-11-09: kimi-delegation 1.3.1, exit 65 advice corrected
 
 The S13-C3 replay passed at 255k tokens, where the original run had failed at 85k. So "tokenization

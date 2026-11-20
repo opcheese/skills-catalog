@@ -1,0 +1,2 @@
+kimi-delegate: via=kimi model=kimi-code/k3.1-pro served=unconfirmed endpoint=https://api.kimi.com/coding/v1 agent=delegate-readonly (pinned file) auth=subscription-token thinking=on (effort from config.toml)
+exit=0
