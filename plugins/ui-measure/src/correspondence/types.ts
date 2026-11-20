@@ -44,6 +44,8 @@ export interface DesignNode {
     padding: [number, number, number, number]
   }
   radius?: number
+  /** Unequal rectangle corners in Figma order: top-left, top-right, bottom-right, bottom-left. */
+  radii?: [number, number, number, number]
   strokeWeight?: number
   /** First visible SOLID fill: `#rrggbb`, or `rgba(...)` when translucent. */
   fill?: string

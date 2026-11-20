@@ -21,7 +21,7 @@ export function reportSummary(report: Report, maxLines = 20): string {
       ? finding.reason ?? "no reason supplied"
       : `${finding.expected ?? "mismatch"} -> ${finding.actual ?? "unavailable"}`
     lines.push(
-      `${finding.status} ${finding.check}/${finding.kind} ${finding.target.selector}: ${detail}`.replaceAll("\n", " "),
+      `${finding.status}${finding.origin ? ` ${finding.origin}` : ""} ${finding.check}/${finding.kind} ${finding.target.selector}: ${detail}`.replaceAll("\n", " "),
     )
   }
   if (shown.length < notable.length && lines.length < maxLines) {

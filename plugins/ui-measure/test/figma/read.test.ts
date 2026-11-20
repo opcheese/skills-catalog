@@ -24,9 +24,23 @@ describe("readNode", () => {
     expect(readNode(two, "b").id).toBe("b")
     expect(() => readNode(two, "z")).toThrow(/no node 'z'/)
   })
+  it("rejects empty responses, null documents, and malformed bare nodes", () => {
+    expect(() => readNode({ nodes: {} })).toThrow(/no nodes|empty/i)
+    expect(() => readNode({ nodes: { a: { document: null } } })).toThrow(/node 'a'.*document/i)
+    expect(() => readNode({})).toThrow(/id.*type|type.*id/i)
+  })
 })
 
 describe("flatten", () => {
+  it("refuses a hidden root with a clear reason", () => {
+    expect(() => flatten({ id: "r", type: "FRAME", visible: false })).toThrow("design root is hidden")
+  })
+
+  it("carries per-corner radii in top-left, top-right, bottom-right, bottom-left order", () => {
+    const t = flatten({ id: "r", type: "RECTANGLE", rectangleCornerRadii: [4, 8, 12, 16] })
+    expect(t.root.radii).toEqual([4, 8, 12, 16])
+    expect(t.root.radius).toBeUndefined()
+  })
   it("skips visible:false nodes and their children", () => {
     const ids = tree().nodes.map((n) => n.id)
     expect(ids).toEqual(["1:1", "1:2", "1:3"])

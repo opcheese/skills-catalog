@@ -1,0 +1,7 @@
+{
+  "pairs": [
+    { "nodeId": "1:1", "selector": "#card" },
+    { "nodeId": "1:2", "selector": "#card > :nth-child(1)" }
+  ],
+  "unmapped": { "design": [], "impl": [] }
+}

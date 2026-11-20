@@ -21,4 +21,4 @@ export {
 } from "./baseline/baseline.js"
 export type { Finding, Report, Status } from "./report/types.js"
 export { reportSummary, writeReport } from "./report/write.js"
-export { BaselineExistsError, PartialRunError, SetupError } from "./errors.js"
+export { BaselineExistsError, PartialRunError, SetupError, NotComparableError } from "./errors.js"

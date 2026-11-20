@@ -8,11 +8,21 @@
       "adapter": { "kind": "url", "url": "{{origin}}/geo-clipped-good.html", "root": "#root" },
       "viewport": [800, 600]
     },
+    "card-clean": {
+      "adapter": { "kind": "url", "url": "{{origin}}/card-clean.html", "root": "#card" },
+      "viewport": [800, 600],
+      "designRootFontPx": 16,
+      "node": "{{fixtures}}/figma/card.json"
+    },
     "card-padding": {
       "adapter": { "kind": "url", "url": "{{origin}}/card-padding.html", "root": "#card" },
       "viewport": [800, 600],
       "designRootFontPx": 16,
       "node": "{{fixtures}}/figma/card.json"
+    },
+    "baseline-changing": {
+      "adapter": { "kind": "url", "url": "{{origin}}/geo-tol.html?clip=3", "root": "#root" },
+      "viewport": [800, 600]
     },
     "missing-root": {
       "adapter": { "kind": "url", "url": "{{origin}}/card-clean.html", "root": "#missing" },

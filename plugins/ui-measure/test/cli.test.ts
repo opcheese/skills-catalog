@@ -129,6 +129,81 @@ describe("ui-measure CLI", () => {
     ])
   })
 
+  it("a partial proposal is not_comparable and exits 2 even without mismatches", async () => {
+    const json = join(scratch, "spec-partial.json")
+    const result = await run([
+      "spec",
+      "--config", config,
+      "--target", "card-clean",
+      "--proposer", "recorded",
+      "--proposal", join(FIXTURES, "card-partial-proposal.json"),
+      "--json", json,
+    ])
+    expect(result.status, output(result)).toBe(2)
+    const report = readReport(json)
+    expect(report.verdict).toBe("not_comparable")
+    expect(report.findings.some((f) => f.status === "fail")).toBe(false)
+    expect(report.findings).toEqual(expect.arrayContaining([
+      expect.objectContaining({ kind: "gap", status: "not_comparable", reason: expect.stringContaining("1:3") }),
+    ]))
+  })
+
+  it("baseline check allows inherited defects and rejects a newly introduced defect", async () => {
+    const initialConfig = JSON.parse(readFileSync(config, "utf8"))
+    const changedConfig = join(scratch, "ui-measure-changed.config.json")
+    const args = ["--config", config, "--target", "baseline-changing"]
+    const recorded = await run(["baseline", "record", ...args])
+    expect(recorded.status, output(recorded)).toBe(1)
+    const inherited = await run(["baseline", "check", ...args])
+    expect(inherited.status, output(inherited)).toBe(0)
+    expect(inherited.stdout).toContain("inherited")
+
+    initialConfig.targets["baseline-changing"].adapter.url += "&off=300"
+    writeFileSync(changedConfig, JSON.stringify(initialConfig))
+    const introduced = await run(["baseline", "check", "--config", changedConfig, "--target", "baseline-changing"])
+    expect(introduced.status, output(introduced)).toBe(1)
+    expect(introduced.stdout).toContain("introduced")
+  })
+
+  it("baseline record and check run spec mode and preserve a spec mismatch", async () => {
+    const args = [
+      "--config", config,
+      "--target", "card-padding",
+      "--mode", "spec",
+      "--proposer", "recorded",
+      "--proposal", join(FIXTURES, "card-proposal.json"),
+    ]
+    const recorded = await run(["baseline", "record", ...args])
+    expect(recorded.status, output(recorded)).toBe(1)
+    const baseline = JSON.parse(readFileSync(join(scratch, "baselines", "card-padding.json"), "utf8"))
+    expect(baseline).toEqual(expect.arrayContaining([
+      expect.objectContaining({ check: "spec", kind: "padding", status: "fail" }),
+    ]))
+    const checked = await run(["baseline", "check", ...args])
+    expect(checked.status, output(checked)).toBe(0)
+    expect(checked.stdout).toContain("inherited")
+  })
+
+  it("a hidden design root is not_comparable and exits 2 with its reason", async () => {
+    const json = join(scratch, "hidden-design.json")
+    const result = await run([
+      "spec",
+      "--config", config,
+      "--target", "card-clean",
+      "--node", join(FIXTURES, "figma", "hidden-root.json"),
+      "--proposer", "recorded",
+      "--proposal", join(FIXTURES, "card-proposal.json"),
+      "--json", json,
+    ])
+    expect(result.status, output(result)).toBe(2)
+    expect(output(result)).toContain("design root is hidden")
+    const report = readReport(json)
+    expect(report.verdict).toBe("not_comparable")
+    expect(report.findings).toEqual([
+      expect.objectContaining({ status: "not_comparable", reason: "design root is hidden" }),
+    ])
+  })
+
   it("an unknown target exits 3", async () => {
     const result = await run(["geometry", "--config", config, "--target", "unknown"])
     expect(result.status, output(result)).toBe(3)

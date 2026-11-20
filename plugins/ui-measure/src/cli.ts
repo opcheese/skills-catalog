@@ -8,7 +8,7 @@ import { verifyMapping } from "./correspondence/verify.js"
 import { adapterTarget } from "./dom/adapters.js"
 import { openPage, type OpenPage } from "./dom/open.js"
 import { domTree } from "./dom/tree.js"
-import { SetupError, PartialRunError } from "./errors.js"
+import { SetupError, PartialRunError, NotComparableError } from "./errors.js"
 import { fetchNode } from "./figma/fetch.js"
 import { flatten, readNode } from "./figma/read.js"
 import { detectGeometry } from "./geometry/detect.js"
@@ -22,7 +22,9 @@ const USAGE = `Usage:
   ui-measure geometry --config C --target T [--json OUT]
   ui-measure spec --config C --target T [--node FILE | --figma NODE_ID]
     [--proposer recorded --proposal FILE | --proposer command -- ARGV...] [--json OUT]
-  ui-measure baseline record|check --config C --target T [--force] [--json OUT]`
+  ui-measure baseline record|check --config C --target T [--mode geometry|spec]
+    [--node FILE | --figma NODE_ID] [--proposer recorded --proposal FILE | --proposer command -- ARGV...]
+    [--force] [--json OUT]`
 
 interface Options {
   config?: string
@@ -32,6 +34,7 @@ interface Options {
   figma?: string
   proposer?: string
   proposal?: string
+  mode?: string
   force?: boolean
   help?: boolean
   command: string[]
@@ -54,12 +57,12 @@ function parseOptions(args: string[]): Options {
       continue
     }
     const key = arg.replace(/^--/, "")
-    if (!["config", "target", "json", "node", "figma", "proposer", "proposal"].includes(key)) {
+    if (!["config", "target", "json", "node", "figma", "proposer", "proposal", "mode"].includes(key)) {
       throw new SetupError(`unknown option ${arg}\n${USAGE}`)
     }
     const value = args[++i]
     if (value === undefined || value === "") throw new SetupError(`${arg} needs a value`)
-    out[key as "config" | "target" | "json" | "node" | "figma" | "proposer" | "proposal"] = value
+    out[key as "config" | "target" | "json" | "node" | "figma" | "proposer" | "proposal" | "mode"] = value
   }
   return out
 }
@@ -107,13 +110,15 @@ function notComparable(target: Target, check: Finding["check"], reason: string):
 }
 
 function verdict(findings: Finding[], coverage: Report["coverage"]): Report["verdict"] {
+  if (findings.some((f) => f.status === "fail")) return "mismatches"
   if (
-    coverage.pairsProposed === 0 && coverage.pairsAccepted === 0 && findings.some((f) => f.check === "spec")
-      || coverage.dropped > coverage.pairsProposed / 2
+    findings.some((f) => f.status === "not_comparable") ||
+    coverage.pairsProposed === 0 && coverage.pairsAccepted === 0 && findings.some((f) => f.check === "spec") ||
+    coverage.dropped > coverage.pairsProposed / 2
   ) {
     return "not_comparable"
   }
-  return findings.some((f) => f.status === "fail") ? "mismatches" : "clean"
+  return "clean"
 }
 
 async function geometry(target: Target, config: Config): Promise<Report> {
@@ -122,7 +127,7 @@ async function geometry(target: Target, config: Config): Promise<Report> {
   try {
     const findings = await detectGeometry(opened, config.geometry ?? { insetPx: 4, nonScrolling: [] })
     const coverage = { pairsProposed: 0, pairsAccepted: 0, dropped: 0 }
-    return report(target, opened, findings, coverage, findings.some((f) => f.status === "fail") ? "mismatches" : "clean")
+    return report(target, opened, findings, coverage, verdict(findings, coverage))
   } finally {
     await opened.close()
   }
@@ -160,7 +165,14 @@ async function design(target: Target, options: Options) {
 }
 
 async function spec(target: Target, config: Config, options: Options): Promise<Report> {
-  const [designTree, mappingProposer] = await Promise.all([design(target, options), proposer(options)])
+  let designTree
+  let mappingProposer
+  try {
+    ;[designTree, mappingProposer] = await Promise.all([design(target, options), proposer(options)])
+  } catch (error) {
+    if (error instanceof NotComparableError) return notComparable(target, "spec", error.message)
+    throw error
+  }
   let tokens
   if (config.tokens) {
     const loaded = loadTokens(config.tokens.path, config.tokens.format)
@@ -219,7 +231,12 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
     const config = loadConfig(options.config)
     const target = selected(config, options)
     if (!isBaseline && options.force) throw new SetupError("--force is only valid for baseline record")
-    let result = command === "spec" ? await spec(target, config, options) : await geometry(target, config)
+    if (!isBaseline && options.mode) throw new SetupError("--mode is only valid for baseline commands")
+    const mode = options.mode ?? "geometry"
+    if (mode !== "geometry" && mode !== "spec") throw new SetupError("--mode must be geometry or spec")
+    let result = command === "spec" || isBaseline && mode === "spec"
+      ? await spec(target, config, options)
+      : await geometry(target, config)
     if (options.json) await writeReport(resolve(options.json), result)
     if (isBaseline) {
       if (!config.baselineDir) throw new SetupError("baselineDir is required for baseline commands")
@@ -230,9 +247,11 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
         console.log(`recorded baseline for ${options.target}`)
         return exitCode(result)
       }
+      const findings = classify(result.findings, readBaseline(config.baselineDir, options.target as string))
       result = {
         ...result,
-        findings: classify(result.findings, readBaseline(config.baselineDir, options.target as string)),
+        findings,
+        verdict: verdict(findings.filter((f) => f.origin !== "inherited"), result.coverage),
       }
       if (options.json) await writeReport(resolve(options.json), result)
     }
