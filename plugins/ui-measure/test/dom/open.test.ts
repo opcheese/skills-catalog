@@ -77,6 +77,37 @@ describe("not comparable", () => {
   })
 })
 
+describe("hidden or vanished root", () => {
+  for (const id of ["r-display", "r-visibility", "r-opacity", "r-zero"]) {
+    it(`${id} root is notComparable "is hidden"`, async () => {
+      const r = await openPage(
+        { adapter: { kind: "url", url: `${server.origin}/hidden-root.html`, root: `#${id}` }, viewport: [400, 400] },
+        { browser },
+      )
+      expect(r).toEqual({ notComparable: `root #${id} is hidden` })
+    })
+  }
+
+  it("a visible root on the same page opens", async () => {
+    const p = await open({
+      adapter: { kind: "url", url: `${server.origin}/hidden-root.html`, root: "#r-ok" },
+      viewport: [400, 400],
+    })
+    await p.close()
+  })
+
+  it("a steps module that removes the root is notComparable \"not found after steps\"", async () => {
+    const r = await openPage(
+      {
+        adapter: { kind: "url", url: `${server.origin}/api.html`, root: "#app", steps: `${MODULES}/remove-root.mjs` },
+        viewport: [400, 200],
+      },
+      { browser },
+    )
+    expect(r).toEqual({ notComparable: "root #app not found after steps" })
+  })
+})
+
 describe("screen, scale and dpr", () => {
   it("screen.html renders differently at screen 1280x800 vs 1920x1080 with the same viewport", async () => {
     const widthAt = async (screen: [number, number]) => {
@@ -169,6 +200,7 @@ describe("waiting and scripts", () => {
       viewport: [400, 200],
     })
     try {
+      await p.page.waitForFunction(() => document.querySelector("#out")?.textContent !== "loading")
       expect(await p.page.textContent("#out")).toBe("mocked")
     } finally {
       await p.close()
@@ -181,6 +213,7 @@ describe("waiting and scripts", () => {
       viewport: [400, 200],
     })
     try {
+      await p.page.waitForFunction(() => document.querySelector("#out")?.textContent !== "loading")
       expect(await p.page.textContent("#out")).toBe("real")
     } finally {
       await p.close()

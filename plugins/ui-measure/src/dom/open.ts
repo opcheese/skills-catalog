@@ -67,17 +67,23 @@ export async function openPage(
       )
     }
   }
-  const context = await browser.newContext({
-    viewport: { width: vw, height: vh },
-    screen: { width: screen[0], height: screen[1] },
-    deviceScaleFactor: dpr,
-    reducedMotion: "reduce",
-  })
+  const owned = browser
+  let context: BrowserContext | undefined
+  // Closes what this call opened, including an owned browser when the context could not close.
   const close = async () => {
-    await context.close()
-    if (ownsBrowser) await browser.close()
+    try {
+      await context?.close()
+    } finally {
+      if (ownsBrowser) await owned.close()
+    }
   }
   try {
+    context = await browser.newContext({
+      viewport: { width: vw, height: vh },
+      screen: { width: screen[0], height: screen[1] },
+      deviceScaleFactor: dpr,
+      reducedMotion: "reduce",
+    })
     // The mock installs routes, so it must run before any page exists to load through them.
     if (spec.adapter.kind === "url" && spec.adapter.mock) await runModule(spec.adapter.mock, context)
     const page = await context.newPage()
@@ -101,10 +107,24 @@ export async function openPage(
       await close()
       return { notComparable: `root ${rootSelector} not found` }
     }
-    // Steps run after load and before measuring; they may change layout or fonts.
+    const hiddenBefore = await rootIsHidden(page, rootSelector)
+    if (hiddenBefore) {
+      await close()
+      return { notComparable: `root ${rootSelector} is hidden` }
+    }
+    // Steps run after load and before measuring; they may change layout, fonts or the root itself.
     if (spec.adapter.kind === "url" && spec.adapter.steps) {
       await runModule(spec.adapter.steps, page)
       await page.evaluate(() => document.fonts.ready.then(() => undefined))
+      const after = await rootIsHidden(page, rootSelector)
+      if (after === null) {
+        await close()
+        return { notComparable: `root ${rootSelector} not found after steps` }
+      }
+      if (after) {
+        await close()
+        return { notComparable: `root ${rootSelector} is hidden after steps` }
+      }
     }
     const liveRootFontPx = await page.evaluate(() =>
       parseFloat(getComputedStyle(document.documentElement).fontSize),
@@ -118,7 +138,24 @@ export async function openPage(
       close,
     }
   } catch (e) {
-    await close()
+    await close().catch(() => undefined)
     throw e
   }
+}
+
+/** null when the root is absent; true when it is not drawn: display:none, visibility:hidden,
+ *  zero opacity (its own or an ancestor's) or a zero-size box. */
+async function rootIsHidden(page: Page, selector: string): Promise<boolean | null> {
+  return page.evaluate((sel) => {
+    const el = document.querySelector(sel)
+    if (!el) return null
+    const r = el.getBoundingClientRect()
+    if (r.width === 0 || r.height === 0) return true
+    if (getComputedStyle(el).visibility === "hidden") return true
+    for (let n: Element | null = el; n; n = n.parentElement) {
+      const st = getComputedStyle(n)
+      if (st.display === "none" || st.opacity === "0") return true
+    }
+    return false
+  }, selector)
 }
