@@ -64,6 +64,59 @@ describe("a size-only failure kept as size_differs", () => {
     expect(r.pairs[0].outcome).toBe("size_differs")
   })
 
+  // The brief's exact scenario: nothing but the container and its two
+  // children. Rule 5 sees the same evidence, so it must report size_differs
+  // rather than accepting a pair whose size failed.
+  const twoKids = (): [DesignNode[], DomElement[]] => [
+    [
+      { id: "r", type: "FRAME", box: bb(0, 0, 300, 200) },
+      { id: "c", type: "FRAME", box: bb(0, 0, 200, 50), parentId: "r" },
+      { id: "a", type: "FRAME", box: bb(0, 0, 50, 50), parentId: "c" },
+      { id: "b", type: "FRAME", box: bb(60, 0, 50, 50), parentId: "c" },
+    ],
+    [
+      { selector: "root", tag: "div", box: bb(0, 0, 300, 200) },
+      { selector: "root > c", tag: "div", box: bb(0, 0, 216, 50) },
+      { selector: "root > c > a", tag: "div", box: bb(0, 0, 50, 50) },
+      { selector: "root > c > b", tag: "div", box: bb(60, 0, 50, 50) },
+    ],
+  ]
+
+  it("keeps a container 16px wider with exactly two accepted children as size_differs, not accepted", () => {
+    const [nodes, els] = twoKids()
+    const r = verifyMapping(
+      proposalOf([
+        ["c", "root > c"],
+        ["a", "root > c > a"],
+        ["b", "root > c > b"],
+      ]),
+      designOf(nodes),
+      domOf(els),
+      ONE,
+    )
+    const c = r.pairs.find((v) => v.nodeId === "c")
+    expect(c?.outcome).toBe("size_differs")
+    expect(c?.note).toContain("children")
+    expect(r.accepted.map((v) => v.nodeId)).toEqual(["a", "b"])
+    expect(r.sizeDiffers.map((v) => v.nodeId)).toEqual(["c"])
+  })
+
+  it("leaves a container 16px wider with one accepted child and nothing else not_comparable", () => {
+    const [nodes, els] = twoKids()
+    const r = verifyMapping(
+      proposalOf([
+        ["c", "root > c"],
+        ["a", "root > c > a"],
+      ]),
+      designOf(nodes),
+      domOf(els),
+      ONE,
+    )
+    const c = r.pairs.find((v) => v.nodeId === "c")
+    expect(c?.outcome).toBe("not_comparable")
+    expect(c?.rule).toBe("size_plausible")
+  })
+
   // Two accepted children and one rejected child: rule 5 does not rescue the
   // container (a child failed), so this is the case the new rule decides.
   const containerDesign = (): DesignNode[] => [

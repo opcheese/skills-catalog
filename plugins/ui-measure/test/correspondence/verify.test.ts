@@ -1049,6 +1049,10 @@ describe("a container whose children all landed", () => {
           nodeId: "1:3",
           selector: "#harness-root > :nth-child(1) > :nth-child(1)",
         },
+        {
+          nodeId: "1:5",
+          selector: "#harness-root > :nth-child(1) > :nth-child(2)",
+        },
       ],
       unmapped: { design: [], impl: [] },
     },
@@ -1068,6 +1072,12 @@ describe("a container whose children all landed", () => {
           name: "Left",
           box: { x: 17, y: 40, width: 223, height: 196 },
         },
+        {
+          id: "1:5",
+          type: "FRAME",
+          name: "Right",
+          box: { x: 240, y: 40, width: 60, height: 196 },
+        },
       ],
     },
     dom: {
@@ -1086,14 +1096,19 @@ describe("a container whose children all landed", () => {
             ? { x: 17, y: 40, width: 223, height: 196 }
             : { x: 17, y: 40, width: 120, height: 196 },
         },
+        {
+          selector: "#harness-root > :nth-child(1) > :nth-child(2)",
+          tag: "div",
+          box: { x: 240, y: 40, width: 60, height: 196 },
+        },
       ],
     },
   })
 
-  it("is accepted when only its own box differs", () => {
+  it("is kept as size_differs when only its own box differs", () => {
     const t = trees({ x: 17, y: 40, width: 283, height: 196 }, true)
     const v = verifyMapping(t.proposal, t.design as never, t.dom as never, ONE)
-    expect(v.pairs[0].outcome).toBe("accepted")
+    expect(v.pairs[0].outcome).toBe("size_differs")
   })
 
   it("is still refused when a child did not land", () => {
@@ -1183,6 +1198,17 @@ describe("a container whose child is itself rescued", () => {
             selector:
               "#harness-root > :nth-child(1) > :nth-child(1) > :nth-child(1)",
           },
+          // Second children, each landing exactly: a container is rescued only
+          // when at least two of its children are good.
+          {
+            nodeId: "1:6",
+            selector: "#harness-root > :nth-child(1) > :nth-child(2)",
+          },
+          {
+            nodeId: "1:7",
+            selector:
+              "#harness-root > :nth-child(1) > :nth-child(1) > :nth-child(2)",
+          },
         ],
         unmapped: { design: [], impl: [] },
       },
@@ -1208,6 +1234,18 @@ describe("a container whose child is itself rescued", () => {
             name: "Button",
             box: { x: 253, y: 48, width: 40, height: 40 },
           },
+          {
+            id: "1:6",
+            type: "FRAME",
+            name: "Footer",
+            box: { x: 17, y: 238, width: 100, height: 20 },
+          },
+          {
+            id: "1:7",
+            type: "FRAME",
+            name: "Badge",
+            box: { x: 245, y: 100, width: 30, height: 30 },
+          },
         ],
       },
       {
@@ -1230,11 +1268,25 @@ describe("a container whose child is itself rescued", () => {
             tag: "div",
             box: { x: 253, y: 48, width: 40, height: 40 },
           },
+          {
+            selector: "#harness-root > :nth-child(1) > :nth-child(2)",
+            tag: "div",
+            box: { x: 17, y: 238, width: 100, height: 20 },
+          },
+          {
+            selector:
+              "#harness-root > :nth-child(1) > :nth-child(1) > :nth-child(2)",
+            tag: "div",
+            box: { x: 245, y: 100, width: 30, height: 30 },
+          },
         ],
       },
       ONE,
     )
+    // Parent and child are kept as size_differs (rule 5), the leaves accept.
     expect(v.pairs.map((p) => p.outcome)).toEqual([
+      "size_differs",
+      "size_differs",
       "accepted",
       "accepted",
       "accepted",

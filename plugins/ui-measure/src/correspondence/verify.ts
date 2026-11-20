@@ -467,24 +467,32 @@ export function verifyMapping(
   // it landing within a pixel. That is one container described two ways, not
   // two containers.
   //
+  // A rescued pair is NOT `accepted`: it failed size_plausible, so it becomes
+  // `size_differs`, with a note. Downstream measures its spacing and reports
+  // its size as a finding instead of treating the two sizes as equal.
+  //
   // Selector containment is what makes a child a child: the trees here are
   // flat and no rule walks upward, so a child is an element whose selector
   // starts with this one's plus " > ".
   //
-  // It requires POSITIVE evidence — at least one mapped child, all of them
-  // accepted. A container with no children in the proposal is not rescued:
-  // "nothing contradicts it" is not the same claim as "its contents are in
-  // the right place", and only the second one licenses ignoring a 34px
-  // difference.
+  // It requires POSITIVE evidence — at least two mapped children, all of them
+  // good (`accepted` or `size_differs`, so a rescued child still counts). One
+  // child landing is not a container's contents landing, and a container with
+  // no children in the proposal is not rescued: "nothing contradicts it" is
+  // not the same claim as "its contents are in the right place", and only the
+  // second one licenses ignoring a 34px difference.
   // Applied until it stops changing anything, because a rescue can make its
   // PARENT rescuable and the pairs arrive parent-first. Measured on the real
   // card: a frame was judged while its child was still
   // rejected, and never revisited after the child was rescued -- one pair
   // short of a complete run, for no reason but iteration order.
   //
-  // Terminates: a rescue only ever turns `not_comparable` into `accepted` and
-  // never the reverse, so each pass that changes anything strictly increases
-  // the accepted count, which is bounded by the number of pairs.
+  // Terminates: a rescue only ever turns `not_comparable` into `size_differs`
+  // and never the reverse, so each pass that changes anything strictly
+  // increases the number of kept pairs, which is bounded by the number of
+  // pairs.
+  const good = (v: PairVerdict) =>
+    v.outcome === "accepted" || v.outcome === "size_differs"
   let rescued = true
   while (rescued) {
     rescued = false
@@ -494,11 +502,11 @@ export function verifyMapping(
       }
       const prefix = `${g.v.selector} > `
       const children = verdicts.filter((o) => o.selector.startsWith(prefix))
-      if (children.length === 0) continue
-      if (children.some((c) => c.outcome !== "accepted")) continue
-      g.v.outcome = "accepted"
+      if (children.length < 2) continue
+      if (!children.every(good)) continue
+      g.v.outcome = "size_differs"
+      g.v.note = "kept despite its size: all its mapped children paired"
       delete g.v.rule
-      delete g.v.note
       rescued = true
     }
   }
