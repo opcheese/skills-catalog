@@ -20,11 +20,11 @@ type Raw = { selector: string; kind: string; text?: string; expected?: string; a
  *  finding (the first defect found, in the order zero-size, clipped, off-canvas, flush-edge). */
 export async function detectGeometry(p: OpenPage, cfg: GeometryConfig): Promise<Finding[]> {
   const raw = (await p.page.evaluate(
-    ({ rootSelector, insetPx, nonScrolling }) => {
+    ({ rootSelector, insetPx, nonScrolling, scale }) => {
       const first = document.querySelector(rootSelector)
       if (!first) throw new Error(`root ${rootSelector} not found`)
       const htmlStyle = getComputedStyle(document.documentElement)
-      const TOL = 2 // the geometry tolerance floor, CSS px
+      const TOL = 2 * scale // the geometry tolerance floor (2 design px), in CSS px
       const out: Raw[] = []
       const drawn = new Map<Element, string>()
       const stack: { el: Element; selector: string }[] = [{ el: first, selector: rootSelector }]
@@ -108,10 +108,11 @@ export async function detectGeometry(p: OpenPage, cfg: GeometryConfig): Promise<
           continue
         }
 
-        // off-canvas, all edges in viewport coordinates (the page is measured at scroll 0,0).
-        // Left and top: anything at a negative coordinate is unreachable. Right and bottom: the
-        // limit is the viewport when the document cannot scroll on that axis (html or body clips
-        // it, or nothing overflows), else the document's scrollable extent, which scrolling reaches.
+        // off-canvas, in document coordinates (rect plus scroll offset, so a step that scrolled the
+        // page does not matter). Left and top: anything at a negative coordinate is unreachable.
+        // Right: always the viewport width, because horizontal page scroll is itself a defect.
+        // Bottom: the viewport height when the document cannot scroll vertically (html or body
+        // clips it, or nothing overflows); otherwise scrolling reaches it and it is not off-canvas.
         // Exempt only inside a real scroll container (overflow auto/scroll with content to scroll);
         // a clipping ancestor is not an exemption, and `clipped` has already had its say.
         let scrolls = false
@@ -127,11 +128,15 @@ export async function detectGeometry(p: OpenPage, cfg: GeometryConfig): Promise<
         if (!scrolls) {
           const de = document.documentElement
           const bodyStyle = getComputedStyle(document.body)
-          const clipsX = [htmlStyle.overflowX, bodyStyle.overflowX].some((v) => v === "hidden" || v === "clip")
           const clipsY = [htmlStyle.overflowY, bodyStyle.overflowY].some((v) => v === "hidden" || v === "clip")
-          const limitR = clipsX || de.scrollWidth <= de.clientWidth ? de.clientWidth : de.scrollWidth
-          const limitB = clipsY || de.scrollHeight <= de.clientHeight ? de.clientHeight : de.scrollHeight
-          const past = Math.max(-rect.left, -rect.top, rect.right - limitR, rect.bottom - limitB)
+          const bottomChecked = clipsY || de.scrollHeight <= de.clientHeight
+          const docBottom = rect.bottom + window.scrollY
+          const past = Math.max(
+            -(rect.left + window.scrollX),
+            -(rect.top + window.scrollY),
+            rect.right + window.scrollX - de.clientWidth,
+            bottomChecked ? docBottom - de.clientHeight : 0,
+          )
           if (past > TOL) {
             out.push({
               ...base,
@@ -226,7 +231,7 @@ export async function detectGeometry(p: OpenPage, cfg: GeometryConfig): Promise<
       }
       return out
     },
-    { rootSelector: p.rootSelector, insetPx: cfg.insetPx, nonScrolling: cfg.nonScrolling },
+    { rootSelector: p.rootSelector, insetPx: cfg.insetPx, nonScrolling: cfg.nonScrolling, scale: p.scale },
   )) as Raw[]
   return raw.map((r) => ({
     check: "geometry" as const,

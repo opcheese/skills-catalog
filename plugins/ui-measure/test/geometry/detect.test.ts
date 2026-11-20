@@ -23,9 +23,10 @@ async function run(
   name: string,
   cfg: Partial<GeometryConfig> = {},
   root = "#root",
+  extra: { designRootFontPx?: number; steps?: string } = {},
 ): Promise<{ findings: Finding[]; usable: boolean[] }> {
   const p = await openPage(
-    { adapter: { kind: "url", url: `${server.origin}/${name.replace("?", ".html?")}${name.includes("?") ? "" : ".html"}`, root }, viewport: [800, 600] },
+    { adapter: { kind: "url", url: `${server.origin}/${name.replace("?", ".html?")}${name.includes("?") ? "" : ".html"}`, root, ...(extra.steps ? { steps: extra.steps } : {}) }, viewport: [800, 600], ...(extra.designRootFontPx ? { designRootFontPx: extra.designRootFontPx } : {}) },
     { browser },
   )
   if ("notComparable" in p) throw new Error(p.notComparable)
@@ -80,8 +81,24 @@ describe("detectGeometry", () => {
   it("an overflow:hidden ancestor does not exempt a box outside the viewport", async () => {
     const bad = await run("geo-hiddenanc-bad")
     expect(bad.findings).toHaveLength(1)
-    expect(["clipped", "off-canvas"]).toContain(bad.findings[0].kind)
+    expect(bad.findings[0].kind).toBe("clipped")
     expect((await run("geo-hiddenanc-good")).findings).toEqual([])
+  })
+
+  it("right edge: overflow past the viewport width is off-canvas even on a vertically scrollable page", async () => {
+    expect((await run("geo-right-bad")).findings.map((f) => f.kind)).toEqual(["off-canvas"])
+    expect((await run("geo-right-good")).findings).toEqual([])
+  })
+
+  it("tolerance scales: at scale 0.5 the floor is 1px (1.5px fails, 0.8px passes)", async () => {
+    const half = { designRootFontPx: 32 }
+    expect((await run("geo-tol?clip=1.5", {}, "#root", half)).findings.map((f) => f.kind)).toEqual(["clipped"])
+    expect((await run("geo-tol?clip=0.8", {}, "#root", half)).findings).toEqual([])
+  })
+
+  it("a page scrolled by a step is not off-canvas", async () => {
+    const steps = fileURLToPath(new URL("../fixtures/modules/scroll-300.mjs", import.meta.url))
+    expect((await run("geo-scrolled", {}, "#root", { steps })).findings).toEqual([])
   })
 
   it("a real scroll container exempts its overflowing content", async () => {
