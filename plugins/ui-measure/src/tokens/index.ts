@@ -23,7 +23,7 @@ function normaliseColor(value: string): string {
 }
 
 function parseLength(value: string): number | undefined {
-  const m = /^\s*(-?\d+(?:\.\d+)?)\s*(?:px)?\s*$/i.exec(value);
+  const m = /^\s*(-?(?:\d+(?:\.\d+)?|\.\d+))\s*(?:px)?\s*$/i.exec(value);
   return m ? Number(m[1]) : undefined;
 }
 

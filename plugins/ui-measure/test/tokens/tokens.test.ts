@@ -64,3 +64,36 @@ describe("tokenFor", () => {
     expect(tokenFor(tokens, "radius", "16")).toBeUndefined();
   });
 });
+
+describe("dtcg typography classification", () => {
+  const { tokens, errors } = loadTokens(fx("dtcg.json"), "dtcg");
+  const get = (n: string) => tokens.find((t) => t.name === n);
+
+  it("classifies font sizes and line heights by path segment", () => {
+    expect(get("type.fontSize.body")?.property).toBe("fontSize");
+    expect(get("font.size.lg")?.property).toBe("fontSize");
+    expect(get("type.line-height.body")?.property).toBe("lineHeight");
+    expect(get("type.leading.tight")).toMatchObject({ property: "lineHeight", value: "1.25" });
+    expect(tokenFor(tokens, "fontSize", "16px")?.name).toBe("type.fontSize.body");
+  });
+
+  it("expands a typography composite into member tokens", () => {
+    expect(get("type.heading.fontFamily")).toMatchObject({ property: "fontFamily", value: "Inter" });
+    expect(get("type.heading.fontSize")).toMatchObject({ property: "fontSize", value: "32px" });
+    expect(get("type.heading.fontWeight")).toMatchObject({ property: "fontWeight", value: "700" });
+    expect(get("type.heading.lineHeight")).toMatchObject({ property: "lineHeight", value: "1.2" });
+    expect(errors.some((e) => e.includes("type.heading"))).toBe(false);
+  });
+
+  it("keeps plain dimensions as spacing", () => {
+    expect(get("space.md")?.property).toBe("spacing");
+  });
+});
+
+describe("tokenFor leading decimals", () => {
+  const t = [{ name: "half", property: "spacing" as const, value: "0.5px" }];
+  it("matches .5 and 0.5px", () => {
+    expect(tokenFor(t, "spacing", ".5")?.name).toBe("half");
+    expect(tokenFor([{ ...t[0], value: ".5" }], "spacing", "0.5px")?.name).toBe("half");
+  });
+});

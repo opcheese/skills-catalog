@@ -10,10 +10,21 @@ function isObject(v: unknown): v is Json {
 }
 
 function propertyFor(type: string, path: string): TokenProperty | undefined {
+  const segments = path.toLowerCase().split(".");
+  const has = (...names: string[]) => segments.some((s) => names.includes(s));
+  const isFontSize =
+    has("fontsize", "font-size", "font_size") ||
+    (has("font", "typography") && has("size"));
+  const isLineHeight = has("lineheight", "line-height", "line_height", "leading");
   switch (type) {
     case "color":
       return "color";
-    case "dimension": {
+    case "dimension":
+    case "number": {
+      // A unitless number is accepted only where the path says what it is.
+      if (isFontSize) return "fontSize";
+      if (isLineHeight) return "lineHeight";
+      if (type === "number") return undefined;
       const p = path.toLowerCase();
       if (p.includes("radius")) return "radius";
       if (p.includes("border")) return "borderWidth";
@@ -29,6 +40,13 @@ function propertyFor(type: string, path: string): TokenProperty | undefined {
       return undefined;
   }
 }
+
+const TYPOGRAPHY_MEMBERS: Record<string, TokenProperty> = {
+  fontFamily: "fontFamily",
+  fontSize: "fontSize",
+  fontWeight: "fontWeight",
+  lineHeight: "lineHeight",
+};
 
 function stringify(value: unknown): string | undefined {
   if (typeof value === "string") return value;
@@ -98,6 +116,19 @@ export function parseDtcg(text: string): { tokens: Token[]; errors: string[] } {
     }
     if (type === undefined) {
       errors.push(`token ${raw.path} has no $type and none to inherit`);
+      continue;
+    }
+    if (type === "typography") {
+      if (!isObject(value)) {
+        errors.push(`token ${raw.path} has a typography $value that is not an object`);
+        continue;
+      }
+      for (const [member, property] of Object.entries(TYPOGRAPHY_MEMBERS)) {
+        if (!(member in value)) continue;
+        const str = stringify(value[member]);
+        if (str === undefined) errors.push(`token ${raw.path}.${member} has an unusable value`);
+        else tokens.push({ name: `${raw.path}.${member}`, property, value: str });
+      }
       continue;
     }
     const property = propertyFor(type, raw.path);

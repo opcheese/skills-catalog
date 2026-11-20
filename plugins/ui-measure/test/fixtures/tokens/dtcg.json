@@ -1,21 +1,95 @@
 {
   "color": {
     "$type": "color",
-    "primary": { "$value": "#0A84FF" },
-    "accent": { "$value": "{color.primary}" },
-    "loop-a": { "$value": "{color.loop-b}" },
-    "loop-b": { "$value": "{color.loop-a}" },
-    "ghost": { "$value": "{color.missing}" }
+    "primary": {
+      "$value": "#0A84FF"
+    },
+    "accent": {
+      "$value": "{color.primary}"
+    },
+    "loop-a": {
+      "$value": "{color.loop-b}"
+    },
+    "loop-b": {
+      "$value": "{color.loop-a}"
+    },
+    "ghost": {
+      "$value": "{color.missing}"
+    }
   },
   "space": {
-    "md": { "$type": "dimension", "$value": "16px" },
-    "radius": { "md": { "$type": "dimension", "$value": "8px" } },
-    "border": { "thin": { "$type": "dimension", "$value": "1px" } }
+    "md": {
+      "$type": "dimension",
+      "$value": "16px"
+    },
+    "radius": {
+      "md": {
+        "$type": "dimension",
+        "$value": "8px"
+      }
+    },
+    "border": {
+      "thin": {
+        "$type": "dimension",
+        "$value": "1px"
+      }
+    }
   },
   "font": {
-    "body": { "$type": "fontFamily", "$value": "Inter" },
-    "bold": { "$type": "fontWeight", "$value": 700 }
+    "body": {
+      "$type": "fontFamily",
+      "$value": "Inter"
+    },
+    "bold": {
+      "$type": "fontWeight",
+      "$value": 700
+    },
+    "size": {
+      "lg": {
+        "$type": "dimension",
+        "$value": "20px"
+      }
+    }
   },
-  "elevation": { "card": { "$type": "shadow", "$value": "0 1px 2px #000" } },
-  "odd": { "duration": { "$type": "duration", "$value": "100ms" } }
+  "elevation": {
+    "card": {
+      "$type": "shadow",
+      "$value": "0 1px 2px #000"
+    }
+  },
+  "odd": {
+    "duration": {
+      "$type": "duration",
+      "$value": "100ms"
+    }
+  },
+  "type": {
+    "fontSize": {
+      "body": {
+        "$type": "dimension",
+        "$value": "16px"
+      }
+    },
+    "line-height": {
+      "body": {
+        "$type": "dimension",
+        "$value": "24px"
+      }
+    },
+    "leading": {
+      "tight": {
+        "$type": "number",
+        "$value": 1.25
+      }
+    },
+    "heading": {
+      "$type": "typography",
+      "$value": {
+        "fontFamily": "Inter",
+        "fontSize": "32px",
+        "fontWeight": 700,
+        "lineHeight": 1.2
+      }
+    }
+  }
 }
