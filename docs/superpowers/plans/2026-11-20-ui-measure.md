@@ -73,12 +73,13 @@ task is the only second reader before the branch review. Test-loop subagents run
 
 **Interfaces:**
 - Produces: `verifyMapping(proposal: Proposal, design: DesignTree, dom: DomTree, opts: { scale: number }): Verification`;
-  `normalise(box: Box, designRoot: Box, domRoot: Box, scale: number): Box` — translates by the roots'
-  origins and divides by `scale`; it no longer uses the roots' width ratio.
+  `normalise(box: Box, designRoot: Box, domRoot: Box, scale: number): Box` — maps a design box into the DOM
+  root's CSS space: translates by the roots' origins and multiplies by `scale` (CSS px per design px, the
+  spec's definition); it no longer uses the roots' width ratio.
 
 - [ ] **Step 1:** port the tests; replace each expectation that relied on the width ratio with `scale: 1`
   and equal-sized roots. Add `normalise ignores root width: design root 300 wide, dom root 600 wide,
-  scale 1 → a 100px box stays 100px`. Run; FAIL (module missing).
+  scale 1 → a 100px box stays 100px`; `design 200 wide at scale 0.5 matches DOM 100`. Run; FAIL (module missing).
 - [ ] **Step 2:** port `verify.ts`; apply the `scale` change. All ported tests PASS.
 - [ ] **Step 3:** commit `feat(ui-measure): port the correspondence verifier`.
 
