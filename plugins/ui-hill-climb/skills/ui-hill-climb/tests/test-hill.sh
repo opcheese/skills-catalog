@@ -13,6 +13,13 @@ FAIL=0
 WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
 
+# Hermetic: a real kimi-delegate must never be reachable. Cases that need the canned
+# stub override HILL_KIMI_DELEGATE themselves.
+NO_REAL_DELEGATE="$WORK/no-real-delegate"
+printf '#!/usr/bin/env bash\necho "real kimi-delegate must not be reached in tests" >&2\nexit 99\n' > "$NO_REAL_DELEGATE"
+chmod +x "$NO_REAL_DELEGATE"
+export HILL_KIMI_DELEGATE="$NO_REAL_DELEGATE"
+
 ok()   { PASS=$((PASS+1)); echo "  [ok]   $1"; }
 bad()  { FAIL=$((FAIL+1)); echo "  [FAIL] $1"; [ -n "${2:-}" ] && echo "         got: ${2:0:400}"; }
 check_contains() { case "$2" in *"$3"*) ok "$1" ;; *) bad "$1" "$2" ;; esac; }
@@ -88,6 +95,12 @@ check_contains "a missing or added element is always a deviation, even live-data
 OUT=$(judge --screen "$WORK/screen.png" --design "$WORK/design.png" --reference "$WORK/ref.png" --label d2 --out "$WORK/rd"); RC=$?
 check_eq "design and reference together are refused" "$RC" "2"
 
+echo "hill-judge: the real delegate is unreachable in tests"
+reset; echo "$GOOD" > "$WORK/ans"
+OUT=$(env -u HILL_KIMI_DELEGATE HILL_KIMI_DELEGATE="$NO_REAL_DELEGATE" "$JUDGE" --screen "$WORK/screen.png" --label g --runs 1 --out "$WORK/rg" 2>&1); RC=$?
+check_eq "the suite's default delegate fails loudly" "$RC" "99"
+check_contains "with its message" "$OUT" "real kimi-delegate must not be reached"
+
 echo "hill-judge: model override"
 reset; echo "$GOOD" > "$WORK/ans"
 HILL_JUDGE_MODEL=kimi-for-coding/k3.1-pro judge --screen "$WORK/screen.png" --label a --out "$WORK/r2" >/dev/null
@@ -145,13 +158,20 @@ check_contains "provenance names the explicit model" "$(cat "$WORK/rc/cm.run1.js
 reset; echo "$GOOD" > "$WORK/ans"; png "$WORK/design.png"
 HILL_RUNNER=codex rjudge --screen "$WORK/screen.png" --design "$WORK/design.png" --label cx --runs 1 --out "$WORK/rx" >/dev/null
 LOG="$(cat "$WORK/log")"
-check_contains "codex uses exec" "$LOG" $'ARG exec\n'
+check_contains "codex uses exec outside a git repo" "$LOG" $'ARG exec\nARG --skip-git-repo-check\n'
 check_contains "codex attaches the screenshot with -i" "$LOG" "work-cx/screen.png"
 check_contains "codex attaches the design with -i" "$LOG" "work-cx/design.png"
 check_eq "one -i per image" "$(grep -c '^ARG -i$' "$WORK/log")" "2"
 check_missing "codex gets no -m when HILL_JUDGE_MODEL is unset" "$LOG" "ARG -m"
 check_contains "codex gets the prompt on stdin" "$LOG" "approved design frame"
 check_contains "codex provenance" "$(cat "$WORK/rx/cx.run1.json")" "runner=codex model=default cmd=codex"
+reset; echo "$GOOD" > "$WORK/ans"
+HILL_RUNNER=claude HILL_JUDGE_MODEL= rjudge --screen "$WORK/screen.png" --label ck --runs 1 --out "$WORK/rc" >/dev/null
+check_missing "an empty HILL_JUDGE_MODEL is unset for claude" "$(cat "$WORK/log")" "--model"
+check_contains "and the provenance says default" "$(cat "$WORK/rc/ck.run1.json")" "runner=claude model=default"
+reset; echo "$GOOD" > "$WORK/ans"
+HILL_RUNNER=codex HILL_JUDGE_MODEL= rjudge --screen "$WORK/screen.png" --label cz --runs 1 --out "$WORK/rx" >/dev/null
+check_missing "an empty HILL_JUDGE_MODEL is unset for codex" "$(cat "$WORK/log")" "ARG -m"
 reset; echo "$GOOD" > "$WORK/ans"
 HILL_RUNNER=codex HILL_JUDGE_MODEL=codex-test-model rjudge --screen "$WORK/screen.png" --label cy --runs 1 --out "$WORK/rx" >/dev/null
 check_contains "an explicit model reaches codex" "$(cat "$WORK/log")" $'ARG -m\nARG codex-test-model'

@@ -11,6 +11,13 @@ FAIL=0
 WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
 
+# Hermetic: a real kimi-delegate must never be reachable. Cases that need the canned
+# stub override HILL_KIMI_DELEGATE themselves.
+NO_REAL_DELEGATE="$WORK/no-real-delegate"
+printf '#!/usr/bin/env bash\necho "real kimi-delegate must not be reached in tests" >&2\nexit 99\n' > "$NO_REAL_DELEGATE"
+chmod +x "$NO_REAL_DELEGATE"
+export HILL_KIMI_DELEGATE="$NO_REAL_DELEGATE"
+
 ok()   { PASS=$((PASS+1)); echo "  [ok]   $1"; }
 bad()  { FAIL=$((FAIL+1)); echo "  [FAIL] $1"; [ -n "${2:-}" ] && echo "         got: ${2:0:400}"; }
 check_contains() { case "$2" in *"$3"*) ok "$1" ;; *) bad "$1" "$2" ;; esac; }

@@ -66,13 +66,13 @@ def run_model(prompt: str, workdir: str, images: list[str], model: str) -> tuple
             sys.stderr.write(p.stderr)
         return p.returncode, p.stdout, prov
 
-    explicit = "HILL_JUDGE_MODEL" in os.environ  # DEFAULT_MODEL is a Kimi name: never pass it on
+    explicit = bool(os.environ.get("HILL_JUDGE_MODEL"))  # DEFAULT_MODEL is a Kimi name: never pass it on
     if runner == "claude":
         argv = ["claude", "-p", "--allowedTools", "Read", "--output-format", "text"]
         if explicit:
             argv += ["--model", model]
     elif runner == "codex":
-        argv = ["codex", "exec"]
+        argv = ["codex", "exec", "--skip-git-repo-check"]
         for image in images:
             argv += ["-i", os.path.abspath(image)]
         if explicit:
