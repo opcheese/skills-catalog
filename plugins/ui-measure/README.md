@@ -17,7 +17,7 @@ Figma comparison depends on how the design nodes are paired with page elements:
 - Builder pairs: the agent that builds the screen records `.ui-measure/pairs/<target>.json` with `"authoritative": true` while it builds. This removes the pairing guess that made proposer pairs fail on real screens (2 of 63 pairs accepted on one screen). A real-screen trial of this build-time workflow is still pending, so treat the numbers as measurements, not as a verdict.
 - Proposer pairs (a model or command proposes the pairing, code verifies it): experimental.
 
-Authoritative pairs skip the size and text plausibility checks, so size differences show as `box` fails. Each rejected pair is listed in `coverage.rejected` and reported as a `not_comparable` finding, so a run with a bad selector can never be clean.
+Authoritative pairs skip the size, text and reading-order plausibility checks, so size differences show as `box` fails. Each rejected pair is listed in `coverage.rejected` and reported as a `not_comparable` finding, so a run with a bad selector can never be clean.
 
 ## Known gaps
 

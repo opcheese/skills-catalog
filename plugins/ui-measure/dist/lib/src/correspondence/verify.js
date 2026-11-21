@@ -226,7 +226,7 @@ export function verifyMapping(proposal, design, dom, opts) {
     const nodesById = new Map(design.nodes.map((n) => [n.id, n]));
     const elementsBySelector = new Map(dom.elements.map((e) => [e.selector, e]));
     // Authoritative: pairs made by the builder, not guessed. The plausibility rules
-    // (size_plausible, its rescues, text_consistent) exist to catch a guess; here a size or text
+    // (size_plausible, its rescues, text_consistent, order_consistent) exist to catch a guess; here a size, text or order
     // difference is the finding, so those rules are skipped and the difference is measured.
     const authoritative = proposal.authoritative === true;
     const verdicts = proposal.pairs.map((p) => ({
@@ -360,7 +360,7 @@ export function verifyMapping(proposal, design, dom, opts) {
     }
     // Rule 3: order-consistent. Both sides are ranked in reading order and the
     // ranks must agree; pairs outside the longest agreeing run are rejected.
-    if (geometric.length > 1) {
+    if (!authoritative && geometric.length > 1) {
         const rank = (boxes) => {
             const out = new Map();
             const order = readingOrder(boxes);

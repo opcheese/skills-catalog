@@ -627,6 +627,20 @@ describe("mutating a known-good mapping", () => {
     expect(rulesUsed(r)).toContain("order_consistent")
   })
 
+  it("an authoritative proposal is not rejected for reading order; the same proposal without the flag is", () => {
+    const corrupted = clone(GOOD_MAPPING)
+    const icons = [1, 3, 5]
+    const selectors = icons.map((i) => corrupted.pairs[i].selector)
+    icons.forEach((pairIndex, k) => {
+      corrupted.pairs[pairIndex].selector = selectors[(k + 1) % icons.length]
+    })
+    const plain = verifyMapping(corrupted, designTree, domTree, ONE)
+    expect(rulesUsed(plain)).toContain("order_consistent")
+    const auth = verifyMapping({ ...corrupted, authoritative: true }, designTree, domTree, ONE)
+    expect(rulesUsed(auth)).not.toContain("order_consistent")
+    for (const i of icons) expect(verdict(auth, corrupted.pairs[i].nodeId).outcome).toBe("accepted")
+  })
+
   it("catches two nodes mapped to the same element", () => {
     const corrupted = clone(GOOD_MAPPING)
     corrupted.pairs[8].selector = corrupted.pairs[9].selector

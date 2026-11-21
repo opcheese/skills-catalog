@@ -519,7 +519,7 @@ function verifyMapping(proposal, design2, dom, opts) {
     }
     geometric.push({ v, design: normalised, dom: domBox });
   }
-  if (geometric.length > 1) {
+  if (!authoritative && geometric.length > 1) {
     const rank = (boxes) => {
       const out = /* @__PURE__ */ new Map();
       const order = readingOrder(boxes);

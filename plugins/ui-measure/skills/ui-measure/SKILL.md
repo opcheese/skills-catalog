@@ -43,4 +43,4 @@ Record the pairing while you build, so nothing has to be guessed afterwards.
 6. **Triage and fix** each fail. A real defect: fix the code. Design intent the measurement cannot know: leave it and say why. A measurement artefact: report it. Re-measure. A selector that matches nothing, several elements or is invalid shows in `coverage.rejected` and as a `not_comparable` finding: fix the selector. Never edit pairs or config to make a fail disappear; change a pair only when the code's structure changed.
 7. **Hand over** a table for the MR: pairs measured, fails fixed, fails left with reasons, anything not comparable. Never call a screen clean when the report says not comparable. For several rounds with an outside judge, hand off to `ui-hill-climb`, which reuses the same pairs.
 
-Authoritative pairs skip size and text plausibility: a size difference shows as a `box` fail. `coverage.authoritative` says which mode ran.
+Authoritative pairs skip size, text and reading-order plausibility: a size difference shows as a `box` fail. `coverage.authoritative` says which mode ran.
