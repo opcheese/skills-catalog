@@ -5,7 +5,7 @@ description: Use when building or changing UI from a Figma design, or when rende
 
 # UI measure
 
-Run **geometry** when no design is available or when checking clipping, collapsed text, off-canvas content, flush edges, and forbidden scrollbars. Run **spec** when a design node and a correspondence (recorded pairs, or a proposer) are available; it measures boxes, spacing, radii, borders, colour, typography, and effects.
+Run **geometry** when no design is available or when checking clipping, collapsed text, off-canvas content, flush edges, and scrollbars where the config forbids them. Run **spec** when a design node and a correspondence (recorded pairs, or a proposer) are available; it measures boxes, spacing, radii, borders, colour, typography, and effects.
 
 ```bash
 node dist/ui-measure.mjs geometry --config ui-measure.config.json --target card --json report.json
@@ -38,7 +38,7 @@ Record the pairing while you build, so nothing has to be guessed afterwards.
      "unmapped": { "design": ["1:9"], "impl": [] }, "unmappedReasons": { "1:9": "not built: out of scope" } }
    ```
    One pair per Figma node the code implements as its own element: layout frames, text, images and icons, anything with a fill or effect. Selector order: an existing id, test id or attribute such as `aria-label`; a short structural path only when nothing else exists. Any CSS the page can run works, but it must match exactly one element inside the root. Add no attributes to production code. List nodes the code does not implement in `unmapped.design`, with reasons in `unmappedReasons`.
-4. **Get the node JSON** two ways: `--figma NODE` when `FIGMA_TOKEN` is set; otherwise run `scripts/export-node.js` through the Figma MCP `use_figma` tool (read-only; replace `"__ID__"`), save to `.ui-measure/nodes/<node>.json`, and set the target's `node`. Neither available: run `geometry` only and say the design was not compared.
+4. **Get the node JSON** two ways: `--figma NODE` when `FIGMA_TOKEN` is set (and a file key, in the target's `figma.fileKey` or `FIGMA_FILE_KEY`); otherwise run `scripts/export-node.js` through the Figma MCP `use_figma` tool (read-only; replace `"__ID__"`), save to `.ui-measure/nodes/<node>.json`, and set the target's `node`. Neither available: run `geometry` only and say the design was not compared.
 5. **Measure** the running dev server with `geometry`, then `spec --target T` (it picks up the pairs file with no flags), both with `--json`. Dev server down or root missing (exit 2 or 3): report it and claim no measurement.
 6. **Triage and fix** each fail. A real defect: fix the code. Design intent the measurement cannot know: leave it and say why. A measurement artefact: report it. Re-measure. A selector that matches nothing, several elements or is invalid shows in `coverage.rejected` and as a `not_comparable` finding: fix the selector. Never edit pairs or config to make a fail disappear; change a pair only when the code's structure changed.
 7. **Hand over** a table for the MR: pairs measured, fails fixed, fails left with reasons, anything not comparable. Never call a screen clean when the report says not comparable. For several rounds with an outside judge, hand off to `ui-hill-climb`, which reuses the same pairs.

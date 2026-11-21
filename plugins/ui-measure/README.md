@@ -1,9 +1,10 @@
 # ui-measure
 
-Measures a rendered page in a real browser, with no model judging pixels. Two commands:
+Measures a rendered page in a real browser, with no model judging pixels. Three commands:
 
-- `geometry` finds clipped, zero-size and off-canvas elements, collapsed text, text flush to an edge and forbidden scrollbars. It needs no design.
+- `geometry` needs no design. It finds text that is zero-size or clipped (checked only on elements with their own non-whitespace text), elements off-canvas, own text flush against its container's edge, and a scrollbar on elements the config lists in `geometry.nonScrolling`.
 - `spec` compares the page with a Figma node: boxes, gaps, padding, radius, borders, colours, fonts and effects (CSS `filter: drop-shadow(...)` matches Figma DROP_SHADOW).
+- `baseline record|check` records the current findings as known and separates new defects from them.
 
 Outcomes: clean (exit 0), mismatches (1), not comparable (2), usage or setup failure (3).
 
