@@ -26,7 +26,7 @@ Authoritative pairs skip the size, text and reading-order plausibility checks, s
 - Overflow is not told apart from a drawn scrollbar.
 - Text content (the string itself) is not compared, only the type style.
 - A drop-shadow inside `backdrop-filter` is reported as unexpected.
-- `probe` measures edges, colours, padding to content and line pitch only. Font size, weight and family, corner radius and shadows are not measured; estimate them and say they are estimates. It reads 8-bit non-interlaced PNG. Text padding is measured to the ink, so it is larger than the CSS padding by the space above the glyphs in the line box.
+- `probe` measures edges, colours, padding to content and line pitch only. Font size, weight and family, line height, corner radius and shadows are not measured; estimate them and say they are estimates (in the evals, radius and line height were the estimates most often off). It reads 8-bit non-interlaced PNG. Text padding is measured to the ink, so it is larger than the CSS padding by the space above the glyphs in the line box.
 
 ## Files shipped
 

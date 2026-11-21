@@ -47,18 +47,18 @@ Authoritative pairs skip size, text and reading-order plausibility: a size diffe
 
 ## Building from a screenshot
 
-Only an image of the design (no Figma seat, no node JSON): first write down what Figma would have said, measured from the pixels, then build against that. The result is compared with your inferred spec, never with Figma, and the hand-over says so.
+Only an image of the design (no Figma seat, no node JSON): first write down what Figma would have said, measured from the pixels, then build against it. This path produces four files, none optional: `probe.json`, `.ui-measure/nodes/<target>.inferred.json`, `.ui-measure/pairs/<target>.json`, and the hand-over. The result is compared with your inferred spec and the image, never with Figma.
 
 1. **Fix the scale:** the frame's width in CSS pixels, from `FIGMA.md`, the config viewport or the developer. Pass `--frame-width W` to every probe. Prefer a 1x export; a resampled image blurs colours.
-2. **Write the layer tree** before any number: every visible element top to bottom, nested (screen > header > title), named, text transcribed.
-3. **Measure every element with `probe`**, all boxes in one call: a loose box around each element in image pixels, `--json` out. Never read a distance or colour off the image yourself.
+2. **Write the layer tree** before any number: every visible element top to bottom, nested (screen > card > title), named, text transcribed.
+3. **Measure every element with `probe`**, one box per element, all in one call, `--json probe.json`. Never read a distance or colour off the image yourself.
    ```bash
    node dist/ui-measure.mjs probe screen.png --frame-width 390 --box 40,180,700,330 --box 90,230,300,60 --json probe.json
    ```
    A `CLIPPED` side: enlarge that box. A mixed-surroundings warning: move the box onto one surface. Approximate ink: say the colour is approximate.
 4. **Derive the layout from the measured boxes:** stack direction, gaps between siblings, left and right padding (`insets`), alignment, fills, content colours. A shadow `rim` is outside the box; a `border` rim is inside it.
-5. **Estimate what probe does not measure** and mark it estimated: font size (from the line band height and the repo's type scale), weight, family, line height of a single line, top and bottom padding around text (probe measures to the glyphs, not the line box), radius, shadows. Snap every estimate to the repo's tokens.
-6. **Write the inferred node JSON** to `.ui-measure/nodes/<target>.inferred.json` in the shape of `templates/inferred-node.json`: `"source": "screenshot"` at the top and, on each node, `"estimated"` listing its estimated fields. Set it as the target's `node`. Show the developer a short table of the spec with the estimates flagged before building; if nobody can answer, carry on.
-7. **Build, record pairs, measure, triage and fix** as in *Building from Figma*, steps 2, 3, 5 and 6. A fail on an estimated field means the estimate or the code is off: check it against the image with `probe` on a screenshot of the build, and say which.
-8. **Hand over** as in step 7 above, headed "design inferred from a screenshot, not compared with Figma", with the estimated values listed as unverified.
-
+5. **Estimate what probe does not measure**, snapped to the repo's tokens or whole pixels, never a font's fractional default: font size (from the line band height and the type scale), weight, family, line height (a line pitch when there is one, else the type scale's), top and bottom padding around text (probe measures to the glyphs, not the line box), radius, shadows. An estimate stays an estimate: no image-diff sweeps or pixel scripts of your own to fit it.
+6. **Write the inferred node JSON** to `.ui-measure/nodes/<target>.inferred.json` in the shape of `templates/inferred-node.json`: one node per layer-tree element, `"source": "screenshot"` at the top, and on each node `"estimated"` listing its estimated fields. Write the config (step 1 of *Building from Figma*) with this file as the target's `node`. Show the developer the spec as a short table, estimates flagged, before building; if nobody can answer, carry on.
+7. **Build and record pairs** as in *Building from Figma*, steps 2 and 3, with the inferred node ids.
+8. **Measure twice.** `spec --target T` checks the code against the inferred spec. Then screenshot the build at the image's scale and `probe` it with the same boxes: every measured value must match the design's `probe.json`. A fail on an estimated field means the estimate or the code is off: let the round trip decide, and update the inferred node only for an estimate the round trip disproves. Triage the rest as in step 6 above.
+9. **Hand over** as in step 7 above, headed "design inferred from a screenshot, not compared with Figma": the round-trip table, the `spec` result, and the estimated values listed as unverified.
