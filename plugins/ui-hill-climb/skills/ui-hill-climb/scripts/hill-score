@@ -261,18 +261,19 @@ def main():
             x["m"] = measure_round(os.path.join(a.run, f"round-{x['n']}"), x["n"], screens_cfg)
             x["majors"] = sum(sum(1 for r in runs for f in r.get("findings", []) if f.get("severity") == "major") / len(runs)
                               for runs in x["raw"].values())  # mean majors per run, summed over screens
-        keys, guards = [], []
+        keys = []
         for i, x in enumerate(rounds):
             m = x["m"]
             guard = []
-            earlier = [y for y in rounds[:i] if y["m"]["comparable"]]
+            earlier = [j for j in range(i) if rounds[j]["m"]["comparable"] and rounds[j]["guard"] is None]
             if m["comparable"] and earlier:
-                top = max(earlier, key=lambda y: (y["m"]["accepted"], -y["n"]))
-                if m["accepted"] < top["m"]["accepted"]:
-                    drops = [f"{lb} {m['per_screen'][lb]['accepted']} < {top['m']['per_screen'][lb]['accepted']}"
-                             for lb in screens_cfg
-                             if (m["per_screen"][lb]["accepted"] or 0) < (top["m"]["per_screen"][lb]["accepted"] or 0)]
-                    guard.append(f"accepted pairs {m['accepted']} < {top['m']['accepted']} (round {top['n']}): " + ", ".join(drops))
+                ref = rounds[max(earlier, key=lambda j: (keys[j], -j))]
+                drops = [f"{lb} {m['per_screen'][lb]['accepted'] or 0} < {ref['m']['per_screen'][lb]['accepted'] or 0}"
+                         for lb in screens_cfg
+                         if m["per_screen"][lb]["accepted"] is not None
+                         and (m["per_screen"][lb]["accepted"] or 0) < (ref["m"]["per_screen"][lb]["accepted"] or 0)]
+                if drops:
+                    guard.append(f"accepted pairs fell against round {ref['n']}: " + ", ".join(drops))
             seen = set().union(*(y["fids"] for y in rounds[:i])) if i else set()
             for label, runs in x["raw"].items():
                 for r in runs:
@@ -285,8 +286,9 @@ def main():
             judge_key = (-x["majors"], x["s_mean"]) if design else x["rel"]
             x["key"] = (m["comparable"], x["guard"] is None, -m["fails"], judge_key)
             keys.append(x["key"])
-        best = max(range(k), key=lambda i: (keys[i], -i))
-        revert_to = rounds[best]["n"] if k > 1 and keys[-1] < keys[-2] else None
+        eligible = [i for i, x in enumerate(rounds) if x["m"]["comparable"] and x["guard"] is None]
+        best = max(eligible, key=lambda i: (keys[i], -i)) if eligible else None
+        revert_to = rounds[best]["n"] if best is not None and k > 1 and keys[-1] < keys[-2] else None
         cm = cur["m"]
         ncomp = f"round {cur['n']} not comparable: " + "; ".join(cm["problems"]) if not cm["comparable"] else None
 
@@ -309,6 +311,9 @@ def main():
         note = ncomp or (f"round {cur['n']} guard: {cur['guard']}" if cur["guard"] else None)
         if note:
             reason = f"{reason}; {note}" if stop else note
+        if best is None:
+            nobest = "no round is comparable and unguarded: fix measurement"
+            reason = f"{reason}; {nobest}" if reason != "continue" else nobest
         measured_out = {"fails": cm["fails"], "comparable": cm["comparable"], "accepted": cm["accepted"], "guard": cur["guard"]}
 
     found = {}
@@ -368,12 +373,12 @@ def main():
             lines += ["", f"- screens {x['s_mean']:.2f}" + (f", references {x['r_mean']:.2f}, relative {x['rel']:+.2f}" if x["r_mean"] is not None else ""),
                       f"- reference drift since round 1: {drift:+.2f}" if drift is not None else "- reference drift: no references"]
         lines += [f"- changes this round: {len(x['changes'])}", ""]
-    lines += ["## Round log", "", f"- best round: {rounds[best]['n']}" + (f"; revert to it (round {cur['n']} scored below round {rounds[-2]['n']})" if revert_to else ""),
+    lines += ["## Round log", "", f"- best round: {'none' if best is None else rounds[best]['n']}" + (f"; revert to it (round {cur['n']} scored below round {rounds[-2]['n']})" if revert_to else ""),
               f"- decision: {'stop' if stop else 'continue'} ({reason})", f"- open findings: {len(open_findings)}", ""]
     with open(os.path.join(a.run, "scores.md"), "w") as f:
         f.write("\n".join(lines))
 
-    out = {"round": cur["n"], "best_round": rounds[best]["n"], "revert_to": revert_to, "stop": stop,
+    out = {"round": cur["n"], "best_round": None if best is None else rounds[best]["n"], "revert_to": revert_to, "stop": stop,
            "reason": reason, "relative": round(cur["rel"], 3), "open_findings": open_findings}
     if measured_out is not None:
         out["measured"] = measured_out

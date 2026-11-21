@@ -62,6 +62,10 @@ def spec_args(screen, report_path, proposer):
 def fresh_spec(cli, screen, report_path, proposal_path):
     proposer = os.environ.get("HILL_PROPOSE", os.path.join(os.path.dirname(os.path.abspath(__file__)), "hill-propose"))
     args = spec_args(screen, report_path, ["--proposer", "command", "--", "python3", proposer])
+    try:
+        os.unlink(proposal_path + ".status")  # only this attempt's status counts
+    except FileNotFoundError:
+        pass
     code = run_ui(cli, args, proposal_path)
     if code == 3:
         status = proposer_status(proposal_path)

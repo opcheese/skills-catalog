@@ -244,6 +244,36 @@ bad_measure notjson '{"config":' "invalid JSON"
 bad_measure unknownkey '{"config":"c.json","screens":{},"extra":1}' "unknown key 'extra'"
 bad_measure both '{"config":"c.json","screens":{"card":{"target":"card","figma":"1:2","node":"n.json"}}}' "mutually exclusive"
 
+echo "hill-score measured: no eligible round, and the guard's reference round"
+R="$WORK/f"; mkmeasure "$R" card:spec
+judge "$R/round-1" card 8 "$NONE"; report "$R/round-1" card geometry 0 0; report "$R/round-1" card spec 0 3 not_comparable
+OUT=$(run "$R" --cap 5)
+check_eq "only round not comparable: best_round null" "$(jget "$OUT" 'j["best_round"]')" "None"
+check_eq "only round not comparable: revert_to null" "$(jget "$OUT" 'j["revert_to"]')" "None"
+check_contains "only round not comparable: reason says fix measurement" "$OUT" "fix measurement"
+check_eq "only round not comparable: no stop below the cap" "$(jget "$OUT" 'j["stop"]')" "False"
+OUT=$(run "$R" --cap 1)
+check_eq "no eligible round: the cap still stops" "$(jget "$OUT" 'j["stop"]')" "True"
+check_eq "no eligible round at the cap: best_round still null" "$(jget "$OUT" 'j["best_round"]')" "None"
+check_contains "scores.md says there is no best round" "$(cat "$R/scores.md")" "best round: none"
+
+R="$WORK/g"; mkmeasure "$R" card:spec
+card_round "$R" 1 5.0 1 2; card_round "$R" 2 5.0 10 5; card_round "$R" 3 5.0 0 3
+OUT=$(run "$R" --cap 9)
+check_eq "guard compares against the best earlier round, not the widest: no guard" "$(jget "$OUT" 'j["measured"]["guard"]')" "None"
+check_eq "so round 3 is best" "$(jget "$OUT" 'j["best_round"]')" "3"
+
+duo() { # duo RUN N JUDGE A_FAILS A_ACC B_FAILS B_ACC
+  for L in A B; do judge "$1/round-$2" $L "$3" "$NONE"; report "$1/round-$2" $L geometry 0 0; done
+  report "$1/round-$2" A spec "$4" "$5"; report "$1/round-$2" B spec "$6" "$7"
+}
+R="$WORK/h"; mkmeasure "$R" A:spec B:spec
+duo "$R" 1 5.0 0 3 0 3; duo "$R" 2 8.0 0 4 0 2
+OUT=$(run "$R" --cap 9)
+check_contains "per-screen guard trips on the screen that lost pairs" "$(jget "$OUT" 'j["measured"]["guard"]')" "B 2 < 3"
+check_missing "per-screen guard does not name the screen that gained" "$(jget "$OUT" 'j["measured"]["guard"]')" "A 4"
+check_eq "per-screen guard: round 1 stays best" "$(jget "$OUT" 'j["best_round"]')" "1"
+
 echo
 echo "$PASS passed, $FAIL failed"
 [ "$FAIL" -eq 0 ]

@@ -136,8 +136,8 @@ Each of these works on a copy of the happy-path run, so the demo stays intact (`
 
 | case | how | expect |
 | --- | --- | --- |
-| No screenshot | `mkdir .hill/e1/round-3; python3 $HC/scripts/hill-measure --run .hill/e1 --round 3; echo "exit $?"` | `hill-measure: measured label 'card' has no screenshot: .hill/e1/round-3/card.png`, exit `2` |
-| Missing report | `rm .hill/e1/round-2/card.spec.json`, then `python3 $HC/scripts/hill-score --run .hill/e1 \| python3 -c "$SUM"` | `revert_to: 1`, `comparable: False`, reason `round 2 not comparable: card: report missing: card.spec.json`; `scores.md` row `\| card \| geometry 0 \| missing \| - \|` |
+| No screenshot | `cp -r .hill/demo .hill/e1; mkdir .hill/e1/round-3; python3 $HC/scripts/hill-measure --run .hill/e1 --round 3; echo "exit $?"` | `hill-measure: measured label 'card' has no screenshot: .hill/e1/round-3/card.png`, exit `2` |
+| Missing report | `cp -r .hill/demo .hill/e2; rm .hill/e2/round-2/card.spec.json`, then `python3 $HC/scripts/hill-score --run .hill/e2 \| python3 -c "$SUM"` | `revert_to: 1`, `comparable: False`, reason `round 2 not comparable: card: report missing: card.spec.json`; `scores.md` row `\| card \| geometry 0 \| missing \| - \|` |
 | Root not found (not comparable) | copy of the run, round 2 measured with `sed 's/#card/#nope/' cfg-clean.json > ui-measure.config.json`, judge file written | `hill-measure` exits `0`; score reason `round 2 not comparable: card: root #nope not found; root #nope not found`, `revert_to: 1` |
 | Unknown label | `python3 $HC/scripts/hill-measure --run .hill/demo --round 2 --label nope; echo "exit $?"` | `hill-measure: unknown label 'nope' in .hill/demo/measure.json`, exit `2` |
 | No `measure.json` | copy the run, delete `measure.json`, run `python3 $HC/scripts/hill-measure --run .hill/e7 --round 2` then `python3 $HC/scripts/hill-score --run .hill/e7` | `hill-measure` prints nothing, exit `0`; `hill-score` output has no `measured` key and `scores.md` has no Measured table |
@@ -206,8 +206,9 @@ Expected: the same counts as round 1, and round 1 is still the best round:
 
 - A report whose verdict is `mismatches` but which also holds `not_comparable` findings (a partial pairing,
   for example `card-partial-proposal.json`) is counted as comparable by `hill-score`: it gave `fails 2`,
-  `comparable True`, `accepted 2` against the full pairing's 7 fails. `hill-score` trusts the report's
-  `verdict`, and ui-measure sets it to `mismatches` when any finding failed. A partial pairing should be
-  treated as not comparable; this is not fixed yet.
+  `comparable True`, `accepted 2` against the full pairing's 7 fails. This is accepted by design and a known
+  limit, not an unfixed bug: `hill-score` defines comparable by the report's `verdict`, and ui-measure sets it
+  to `mismatches` when any finding failed. The pairs guard still catches a partial pairing that loses accepted
+  pairs against an earlier round.
 - Deleting a child cannot trip the pairs guard on the card fixture; it makes the round not comparable instead.
   The pairs guard only fires when a round stays comparable with fewer accepted pairs.

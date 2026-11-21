@@ -82,7 +82,10 @@ UI high.
    With `measure.json` it also prints a `measured` block (`fails`, `comparable`, `accepted`, `guard`) and
    `scores.md` gets a Measured table. Rounds are ranked by: comparable, no guard tripped, fewer measured
    fails, then the judge. Stop needs zero measured fails. If the current round is not comparable the reason
-   is in the output: fix the setup and rerun step 2.
+   is in the output: fix the setup and rerun step 2. The guard compares each spec screen's accepted pairs
+   with the best earlier round that is comparable and unguarded, and trips when any screen has fewer.
+   `best_round` is `null` when no round is comparable and unguarded: there is no round to keep, so fix the
+   measurement (step 2) and hand over without naming a best round. The round cap still stops the run.
 5. **If `revert_to` is set,** the last round made things worse. Restore that round's code before doing anything else.
 6. **If `stop` is true,** go to *Handover*.
 7. **Otherwise fix.** Work from `open_findings`: measured findings (ids `M-xxxxxxxx`) come first, then the
@@ -95,8 +98,8 @@ UI high.
     "rationale": "one line", "categories": ["spacing"], "addresses": ["F-1a2b3c4d"]}
    ```
    `region` is in after-image pixels. `addresses` lists the finding IDs the change answers, and a finding
-   that's been addressed is never raised again (judge findings use `F-` ids; a measured finding clears
-   when its count drops, so it needs no `addresses`). Keep the same `id` if you revise a change in a later round.
+   that's been addressed is never raised again (judge findings use `F-` ids). Record `M-` ids in `addresses`
+   too, for traceability, but a measured finding stays open until the measurement passes. Keep the same `id` if you revise a change in a later round.
    Then go back to step 1.
 
 **Human-piloted:** after step 4, show the person the `scores.md` table and each before/after pair, then ask
