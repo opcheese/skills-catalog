@@ -101,7 +101,7 @@ describe("compareSpec", () => {
     for (const k of ["box", "gap", "padding", "radius", "border-width", "colour", "font-family", "font-size", "font-weight", "line-height", "effects", "root-size"]) {
       expect(kind(r, k, "pass").length, `no passing ${k} finding`).toBeGreaterThan(0)
     }
-    expect(r.coverage).toEqual({ pairsProposed: 3, pairsAccepted: 3, dropped: 0, authoritative: false })
+    expect(r.coverage).toEqual({ pairsProposed: 3, pairsAccepted: 3, dropped: 0, authoritative: false, rejected: [] })
   })
 
   it("card-padding (32 vs 24) fails padding by 8 and drops no pair", async () => {
@@ -164,7 +164,7 @@ describe("compareSpec", () => {
     expect(size[0].deltaPx).toBeCloseTo(40, 0)
     // Its text matches, so it is size_differs, which lets the verifier rescue the root too.
     expect(r.v.sizeDiffers.map((p) => p.nodeId).sort()).toEqual(["1:1", "1:3"])
-    expect(r.coverage).toEqual({ pairsProposed: 3, pairsAccepted: 3, dropped: 0, authoritative: false })
+    expect(r.coverage).toEqual({ pairsProposed: 3, pairsAccepted: 3, dropped: 0, authoritative: false, rejected: [] })
   })
 
   it("a size-differing pair that is also displaced reports a size fail and a position fail", async () => {
@@ -216,14 +216,22 @@ describe("compareSpec", () => {
       const partial: Proposal = { pairs: proposal.pairs.slice(0, 2), unmapped: { design: [], impl: [] } }
       const v = verifyMapping(partial, design, dom, { scale: 1 })
       const r = compareSpec(design, dom, v, { scale: 1 })
-      expect(r.coverage).toEqual({ pairsProposed: 2, pairsAccepted: 2, dropped: 0, authoritative: false })
+      expect(r.coverage).toEqual({ pairsProposed: 2, pairsAccepted: 2, dropped: 0, authoritative: false, rejected: [] })
       const gap = r.findings.filter((f) => f.kind === "gap")
       expect(gap).toHaveLength(1)
       expect(gap[0].status).toBe("not_comparable")
       expect(gap[0].reason).toMatch(/1:3/)
       const bogus: Proposal = { pairs: [...partial.pairs, { nodeId: "9:9", selector: "#nope" }], unmapped: { design: [], impl: [] } }
       const v2 = verifyMapping(bogus, design, dom, { scale: 1 })
-      expect(compareSpec(design, dom, v2, { scale: 1 }).coverage).toEqual({ pairsProposed: 3, pairsAccepted: 2, dropped: 1, authoritative: false })
+      expect(compareSpec(design, dom, v2, { scale: 1 }).coverage).toEqual({ pairsProposed: 3, pairsAccepted: 2, dropped: 1, authoritative: false, rejected: [{ nodeId: "9:9", selector: "#nope", rule: "resolvable", note: "no design node 9:9" }] })
+      // Rejected pairs are listed with the selector as proposed, and a note from resolution wins.
+      const noted = verifyMapping(
+        { pairs: [...partial.pairs, { nodeId: "1:3", selector: ".item" }], unmapped: { design: [], impl: [] } },
+        design, dom, { scale: 1, notes: { ".item": "ambiguous: 2 elements" } },
+      )
+      expect(compareSpec(design, dom, noted, { scale: 1 }).coverage.rejected).toEqual([
+        { nodeId: "1:3", selector: ".item", rule: "resolvable", note: "ambiguous: 2 elements" },
+      ])
     } finally {
       await p.close()
     }

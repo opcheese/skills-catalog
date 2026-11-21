@@ -551,6 +551,14 @@ export function compareSpec(design, dom, v, opts) {
     const proposed = v.pairs.length;
     return {
         findings,
-        coverage: { pairsProposed: proposed, pairsAccepted: kept.length, dropped: proposed - kept.length, authoritative: opts.authoritative === true },
+        coverage: {
+            pairsProposed: proposed,
+            pairsAccepted: kept.length,
+            dropped: proposed - kept.length,
+            authoritative: opts.authoritative === true,
+            rejected: v.pairs
+                .filter((p) => p.outcome === "not_comparable")
+                .map((p) => ({ nodeId: p.nodeId, selector: p.selector, rule: p.rule, ...(p.note ? { note: p.note } : {}) })),
+        },
     };
 }

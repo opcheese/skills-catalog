@@ -106,7 +106,7 @@ describe("ui-measure CLI", () => {
     ])
     expect(result.status, output(result)).toBe(1)
     const report = readReport(json)
-    expect(report.coverage).toEqual({ pairsProposed: 3, pairsAccepted: 3, dropped: 0, authoritative: false })
+    expect(report.coverage).toEqual({ pairsProposed: 3, pairsAccepted: 3, dropped: 0, authoritative: false, rejected: [] })
     expect(report.findings.some((f) => f.kind === "padding" && f.status === "fail" && f.deltaPx === 8)).toBe(true)
     expect(result.stdout.trim().split("\n").length).toBeLessThanOrEqual(20)
   })
@@ -136,10 +136,8 @@ describe("ui-measure CLI", () => {
       JSON.stringify({
         pairs: [
           { nodeId: "1:1", selector: "#card" },
-          { nodeId: "1:2", selector: "#card > :nth-child(1)" },
-          { nodeId: "1:3", selector: "#card > :nth-child(2)" },
-          { nodeId: "1:4", selector: "body" },
-          { nodeId: "1:5", selector: "h2[class=Back" },
+          { nodeId: "1:2", selector: "body" },
+          { nodeId: "1:3", selector: "h2[class=Back" },
         ],
         unmapped: { design: [], impl: [] },
       }),
@@ -156,9 +154,12 @@ describe("ui-measure CLI", () => {
     expect(result.status, output(result)).not.toBe(3)
     const report = readReport(json)
     // body is outside the root, the other has an unbalanced bracket: both are proposed and
-    // dropped, never accepted. (The notes themselves are asserted in resolve.test.ts and
-    // verify.test.ts; the report carries counts, not per-pair notes.)
-    expect(report.coverage).toMatchObject({ pairsProposed: 5, pairsAccepted: 3, dropped: 2 })
+    // dropped, never accepted.
+    expect(report.coverage).toMatchObject({ pairsProposed: 3, pairsAccepted: 1, dropped: 2 })
+    expect(report.coverage.rejected).toEqual([
+      { nodeId: "1:2", selector: "body", rule: "resolvable", note: "no element inside root" },
+      { nodeId: "1:3", selector: "h2[class=Back", rule: "resolvable", note: "invalid selector" },
+    ])
     expect(report.findings.every((f) => f.status !== "not_comparable" || f.kind !== "page")).toBe(true)
   })
 

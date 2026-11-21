@@ -105,7 +105,7 @@ function notComparable(target: Target, check: Finding["check"], reason: string):
     target,
     undefined,
     [{ check, kind: "page", status: "not_comparable", target: { selector: target.adapter.kind === "url" ? target.adapter.root : "root" }, reason }],
-    { pairsProposed: 0, pairsAccepted: 0, dropped: 0, authoritative: false },
+    { pairsProposed: 0, pairsAccepted: 0, dropped: 0, authoritative: false, rejected: [] },
     "not_comparable",
   )
 }
@@ -127,7 +127,7 @@ async function geometry(target: Target, config: Config): Promise<Report> {
   if ("notComparable" in opened) return notComparable(target, "geometry", opened.notComparable)
   try {
     const findings = await detectGeometry(opened, config.geometry ?? { insetPx: 4, nonScrolling: [] })
-    const coverage = { pairsProposed: 0, pairsAccepted: 0, dropped: 0, authoritative: false }
+    const coverage = { pairsProposed: 0, pairsAccepted: 0, dropped: 0, authoritative: false, rejected: [] }
     return report(target, opened, findings, coverage, verdict(findings, coverage))
   } finally {
     await opened.close()
@@ -188,7 +188,7 @@ async function spec(target: Target, config: Config, options: Options): Promise<R
         target,
         opened,
         [{ check: "spec", kind: "correspondence", status: "not_comparable", target: { selector: opened.rootSelector }, reason: "no correspondence proposer was selected" }],
-        { pairsProposed: 0, pairsAccepted: 0, dropped: 0, authoritative: false },
+        { pairsProposed: 0, pairsAccepted: 0, dropped: 0, authoritative: false, rejected: [] },
         "not_comparable",
       )
     }

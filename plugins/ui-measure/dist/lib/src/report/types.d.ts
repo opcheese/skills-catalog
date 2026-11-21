@@ -1,3 +1,4 @@
+import type { RejectionRule } from "../correspondence/types.js";
 export type Status = "pass" | "fail" | "not_comparable";
 export interface Finding {
     check: "geometry" | "spec";
@@ -31,6 +32,14 @@ export interface Report {
         pairsAccepted: number;
         dropped: number;
         authoritative: boolean;
+        /** Every proposed pair the verifier did not accept, with the selector as proposed and why.
+         *  Diagnostic only: the verdict does not read it. */
+        rejected: {
+            nodeId: string;
+            selector: string;
+            rule: RejectionRule;
+            note?: string;
+        }[];
     };
     verdict: "clean" | "mismatches" | "not_comparable";
 }
