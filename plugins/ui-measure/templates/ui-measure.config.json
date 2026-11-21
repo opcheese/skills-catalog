@@ -1,0 +1,15 @@
+{
+  "targets": {
+    "<target name>": {
+      "adapter": {
+        "kind": "url",
+        "url": "http://localhost:3000/<path>",
+        "root": "<css selector of the component's root element>",
+        "mock": ".ui-measure/mocks/<mock>.json",
+        "steps": ".ui-measure/steps/<steps>.json"
+      },
+      "viewport": [1280, 800],
+      "node": ".ui-measure/nodes/<node>.json"
+    }
+  }
+}
