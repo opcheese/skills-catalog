@@ -137,10 +137,10 @@ Each of these works on a copy of the happy-path run, so the demo stays intact (`
 | case | how | expect |
 | --- | --- | --- |
 | No screenshot | `mkdir .hill/e1/round-3; python3 $HC/scripts/hill-measure --run .hill/e1 --round 3; echo "exit $?"` | `hill-measure: measured label 'card' has no screenshot: .hill/e1/round-3/card.png`, exit `2` |
-| Missing report | `rm .hill/e1/round-2/card.spec.json`, then `hill-score --run .hill/e1 \| python3 -c "$SUM"` | `revert_to: 1`, `comparable: False`, reason `round 2 not comparable: card: report missing: card.spec.json`; `scores.md` row `\| card \| geometry 0 \| missing \| - \|` |
+| Missing report | `rm .hill/e1/round-2/card.spec.json`, then `python3 $HC/scripts/hill-score --run .hill/e1 \| python3 -c "$SUM"` | `revert_to: 1`, `comparable: False`, reason `round 2 not comparable: card: report missing: card.spec.json`; `scores.md` row `\| card \| geometry 0 \| missing \| - \|` |
 | Root not found (not comparable) | copy of the run, round 2 measured with `sed 's/#card/#nope/' cfg-clean.json > ui-measure.config.json`, judge file written | `hill-measure` exits `0`; score reason `round 2 not comparable: card: root #nope not found; root #nope not found`, `revert_to: 1` |
 | Unknown label | `python3 $HC/scripts/hill-measure --run .hill/demo --round 2 --label nope; echo "exit $?"` | `hill-measure: unknown label 'nope' in .hill/demo/measure.json`, exit `2` |
-| No `measure.json` | copy the run, delete `measure.json`, run `hill-measure --run .hill/e7 --round 2` then `hill-score` | `hill-measure` prints nothing, exit `0`; `hill-score` output has no `measured` key and `scores.md` has no Measured table |
+| No `measure.json` | copy the run, delete `measure.json`, run `python3 $HC/scripts/hill-measure --run .hill/e7 --round 2` then `python3 $HC/scripts/hill-score --run .hill/e7` | `hill-measure` prints nothing, exit `0`; `hill-score` output has no `measured` key and `scores.md` has no Measured table |
 
 Deleting a child from the page. Make `pages/card-guard.html` with `grep -v "<p>" pages/card-clean.html >
 pages/card-guard.html`, point a config at it (`sed 's/card-clean/card-guard/' cfg-clean.json`), measure it as
@@ -156,7 +156,7 @@ EOF2
 HILL_PROPOSE=$PWD/fake-propose.py python3 $HC/scripts/hill-measure --run .hill/e4 --round 2
 ```
 
-Expected: exit `0`, but the round is **not comparable** and not a guard trip, because the gap and the
+Expected: exit `0`, but the round is **not comparable**, not a guard trip, because the gap and the
 padding can no longer be measured to the removed element:
 
 ```
@@ -165,11 +165,13 @@ padding can no longer be measured to the removed element:
 ```
 
 Removing the heading instead (`grep -v "<h2>"`) gives `the top padding is measured to 1:2, which has no
-accepted pair`, pairs `1/3`. So an element cannot be deleted to make a count drop: the round falls out of the
-ranking.
+accepted pair`, pairs `1/3`. A round that is not comparable is never chosen as the best round, so deleting an
+element to make a count drop is still protected against: the round falls out of the ranking and the score says
+`revert_to`. No deletion on this fixture trips the accepted-pairs guard; that guard is pinned by
+`tests/test-score-measured.sh`.
 
 The guard itself trips when a comparable round has fewer accepted pairs than the best earlier round, or when
-the judge raises a new major hierarchy or consistency finding. Check the second path: in a copy of the happy
+the judge raises a new major hierarchy or consistency finding. The guard is shown here through the second path: in a copy of the happy
 path (`cp -r .hill/demo .hill/e6`), replace `round-2/card.run1.json` with one whose `findings` is
 `[{"category":"hierarchy","element":"Card title","problem":"title no longer leads","severity":"major","region":{"x":10,"y":20,"w":100,"h":40}}]`
 and score again. Expected:

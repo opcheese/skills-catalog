@@ -37,15 +37,19 @@ for _ in $(seq 1 50); do
 done
 
 cd "$WORK"
-config() { # config PAGE -> cfg.json whose target `card` loads PAGE
-  cat > cfg.json <<JSON
-{"targets":{"card":{"adapter":{"kind":"url","url":"http://127.0.0.1:$PORT/$1","root":"#card"},"viewport":[800,600],"designRootFontPx":16}},"baselineDir":"$WORK/baselines"}
+config() { # config NAME PAGE -> NAME.json, a ui-measure config whose target `card` loads PAGE
+  cat > "$1.json" <<JSON
+{"targets":{"card":{"adapter":{"kind":"url","url":"http://127.0.0.1:$PORT/$2","root":"#card"},"viewport":[800,600],"designRootFontPx":16}},"baselineDir":"$WORK/baselines"}
 JSON
 }
-cat > run-measure.json <<JSON
-{"config":"cfg.json","screens":{"card":{"target":"card","node":"$FIXTURES/figma/card.json","proposal":"$FIXTURES/card-proposal.json"}}}
+config cfg-padding card-padding.html
+config cfg-clean card-clean.html
+measure_json() { # measure_json CONFIG -> run/measure.json pointing at that config (the fixer's page change)
+  mkdir -p run
+  cat > run/measure.json <<JSON
+{"config":"$1.json","screens":{"card":{"target":"card","node":"$FIXTURES/figma/card.json","proposal":"$FIXTURES/card-proposal.json"}}}
 JSON
-mkdir -p run && cp run-measure.json run/measure.json
+}
 
 judge() { # judge ROUNDDIR: equal scores, no findings
   python3 - "$1/card.run1.json" <<'PY'
@@ -57,15 +61,17 @@ json.dump({"label":"card","mode":"design","image":"card.png","sha256":"ab"*32,"d
 PY
 }
 
-round() { # round N PAGE
+MEASURE_RC=0
+round() { # round N CONFIG: sets MEASURE_RC to hill-measure's own status, then writes the judge file
   mkdir -p "run/round-$1"; : > "run/round-$1/card.png"
-  config "$2"
+  measure_json "$2"
   python3 "$SCRIPTS/hill-measure" --run run --round "$1" 2>&1
+  MEASURE_RC=$?
   judge "run/round-$1"
 }
 
 echo "e2e: round 1 on the padded card"
-round 1 card-padding.html; check_eq "hill-measure exits 0" "$?" "0"
+round 1 cfg-padding; check_eq "hill-measure exits 0" "$MEASURE_RC" "0"
 OUT=$(python3 "$SCRIPTS/hill-score" --run run 2>/dev/null)
 check_eq "round 1 measured fails" "$(jget "$OUT" "j['measured']['fails']")" "7"
 check_eq "round 1 comparable" "$(jget "$OUT" "j['measured']['comparable']")" "True"
@@ -74,7 +80,7 @@ check_eq "round 1 continues" "$(jget "$OUT" "j['stop']")" "False"
 check_eq "round 1 is the best so far" "$(jget "$OUT" "j['best_round']")" "1"
 
 echo "e2e: round 2 on the clean card (reuses round 1's proposal)"
-round 2 card-clean.html; check_eq "hill-measure exits 0" "$?" "0"
+round 2 cfg-clean; check_eq "hill-measure exits 0" "$MEASURE_RC" "0"
 check_eq "round 2 reuses the saved proposal" "$(cmp -s run/round-1/card.proposal.json run/round-2/card.proposal.json && echo same)" "same"
 OUT=$(python3 "$SCRIPTS/hill-score" --run run 2>/dev/null)
 check_eq "round 2 measured fails" "$(jget "$OUT" "j['measured']['fails']")" "0"
