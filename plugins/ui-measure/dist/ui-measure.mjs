@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 
 // src/cli.ts
+import { existsSync as existsSync2 } from "node:fs";
 import { readFile as readFile2 } from "node:fs/promises";
-import { resolve as resolve2 } from "node:path";
+import { dirname as dirname3, join as join2, resolve as resolve2 } from "node:path";
 
 // src/baseline/baseline.ts
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -2167,6 +2168,7 @@ var USAGE = `Usage:
   ui-measure geometry --config C --target T [--json OUT]
   ui-measure spec --config C --target T [--node FILE | --figma NODE_ID]
     [--proposer recorded --proposal FILE | --proposer command -- ARGV...] [--json OUT]
+    (with no proposer, uses .ui-measure/pairs/TARGET.json beside the config when it exists)
   ui-measure baseline record|check --config C --target T [--mode geometry|spec]
     [--node FILE | --figma NODE_ID] [--proposer recorded --proposal FILE | --proposer command -- ARGV...]
     [--force] [--json OUT]`;
@@ -2252,7 +2254,10 @@ async function geometry(target, config) {
 }
 async function proposer(options) {
   const kind = options.proposer ?? (options.proposal ? "recorded" : options.command.length ? "command" : void 0);
-  if (kind === void 0) return void 0;
+  if (kind === void 0) {
+    const file = join2(dirname3(resolve2(options.config)), ".ui-measure", "pairs", `${options.target}.json`);
+    return existsSync2(file) ? { kind: "recorded", file } : void 0;
+  }
   if (kind === "recorded") {
     if (!options.proposal) throw new SetupError("recorded proposer needs --proposal FILE");
     return { kind, file: resolve2(options.proposal) };

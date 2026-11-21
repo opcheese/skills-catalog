@@ -1,6 +1,7 @@
 #!/usr/bin/env node
+import { existsSync } from "node:fs"
 import { readFile } from "node:fs/promises"
-import { resolve } from "node:path"
+import { dirname, join, resolve } from "node:path"
 import { classify, readBaseline, recordBaseline } from "./baseline/baseline.js"
 import { loadConfig, type Config, type Target } from "./config.js"
 import { propose, type Proposer } from "./correspondence/propose.js"
@@ -23,6 +24,7 @@ const USAGE = `Usage:
   ui-measure geometry --config C --target T [--json OUT]
   ui-measure spec --config C --target T [--node FILE | --figma NODE_ID]
     [--proposer recorded --proposal FILE | --proposer command -- ARGV...] [--json OUT]
+    (with no proposer, uses .ui-measure/pairs/TARGET.json beside the config when it exists)
   ui-measure baseline record|check --config C --target T [--mode geometry|spec]
     [--node FILE | --figma NODE_ID] [--proposer recorded --proposal FILE | --proposer command -- ARGV...]
     [--force] [--json OUT]`
@@ -136,7 +138,11 @@ async function geometry(target: Target, config: Config): Promise<Report> {
 
 async function proposer(options: Options): Promise<Proposer | undefined> {
   const kind = options.proposer ?? (options.proposal ? "recorded" : options.command.length ? "command" : undefined)
-  if (kind === undefined) return undefined
+  if (kind === undefined) {
+    // A recorded proposal at the conventional path goes through the same resolution as --proposal.
+    const file = join(dirname(resolve(options.config as string)), ".ui-measure", "pairs", `${options.target}.json`)
+    return existsSync(file) ? { kind: "recorded", file } : undefined
+  }
   if (kind === "recorded") {
     if (!options.proposal) throw new SetupError("recorded proposer needs --proposal FILE")
     return { kind, file: resolve(options.proposal) }

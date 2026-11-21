@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { afterAll, beforeAll, describe, expect, it } from "vitest"
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest"
 import { execFileSync, spawn } from "node:child_process"
 import {
   copyFileSync,
@@ -7,6 +7,7 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  rmSync,
   writeFileSync,
 } from "node:fs"
 import { tmpdir } from "node:os"
@@ -109,6 +110,53 @@ describe("ui-measure CLI", () => {
     expect(report.coverage).toEqual({ pairsProposed: 3, pairsAccepted: 3, dropped: 0, authoritative: false, rejected: [] })
     expect(report.findings.some((f) => f.kind === "padding" && f.status === "fail" && f.deltaPx === 8)).toBe(true)
     expect(result.stdout.trim().split("\n").length).toBeLessThanOrEqual(20)
+  })
+
+  describe("default pairs file", () => {
+    const pairsDir = join(scratch, ".ui-measure", "pairs")
+    const defaultFile = join(pairsDir, "card-padding.json")
+    const specArgs = (json: string, extra: string[] = []) => [
+      "spec", "--config", config, "--target", "card-padding", ...extra, "--json", json,
+    ]
+    afterEach(() => rmSync(pairsDir, { recursive: true, force: true }))
+
+    it("picks up the default pairs file", async () => {
+      mkdirSync(pairsDir, { recursive: true })
+      const recorded = JSON.parse(readFileSync(join(FIXTURES, "card-proposal.json"), "utf8"))
+      writeFileSync(defaultFile, JSON.stringify({ ...recorded, authoritative: true }))
+      const json = join(scratch, "default-pairs.json")
+      const result = await run(specArgs(json))
+      expect(result.status, output(result)).toBe(1)
+      const report = readReport(json)
+      expect(report.coverage).toEqual({ pairsProposed: 3, pairsAccepted: 3, dropped: 0, authoritative: true, rejected: [] })
+      expect(report.findings.some((f) => f.kind === "padding" && f.status === "fail" && f.deltaPx === 8)).toBe(true)
+    })
+
+    it("explicit --proposal wins over the default file", async () => {
+      mkdirSync(pairsDir, { recursive: true })
+      writeFileSync(defaultFile, "{ not json")
+      const json = join(scratch, "explicit-wins.json")
+      const result = await run(specArgs(json, ["--proposal", join(FIXTURES, "card-proposal.json")]))
+      expect(result.status, output(result)).toBe(1)
+      expect(readReport(json).coverage.pairsAccepted).toBe(3)
+    })
+
+    it("no file keeps today's error", async () => {
+      const json = join(scratch, "no-default.json")
+      const result = await run(specArgs(json))
+      expect(result.status, output(result)).toBe(2)
+      expect(readReport(json).findings).toEqual([
+        expect.objectContaining({ reason: "no correspondence proposer was selected" }),
+      ])
+    })
+
+    it("malformed default file is a setup error", async () => {
+      mkdirSync(pairsDir, { recursive: true })
+      writeFileSync(defaultFile, "{ not json")
+      const result = await run(specArgs(join(scratch, "malformed.json")))
+      expect(result.status, output(result)).toBe(3)
+      expect(output(result)).toContain(defaultFile)
+    })
   })
 
   it("a missing root is not comparable and exits 2", async () => {
