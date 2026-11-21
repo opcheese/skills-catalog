@@ -1,6 +1,7 @@
 ---
-status: draft
-last-verified: 2026-11-20
+status: superseded
+last-verified: 2026-11-21
+superseded-by: 2026-11-21-ui-measure-0.2-design.md
 ---
 
 # Building from Figma: a day-to-day skill

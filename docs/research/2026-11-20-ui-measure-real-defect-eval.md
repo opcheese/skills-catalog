@@ -44,7 +44,7 @@ two of them.
 - **The plausibility gate swallows real defects.** A pair whose size differs by more than the tolerance is dropped
   as "a different thing", so a 121 px icon where the design says 74 px is never reported.
 - **A build-time pairing removes the guess.** The agent that writes the code knows which element implements which
-  node. This is the basis of the building-from-figma design (specs/2026-11-20-building-from-figma-design.md).
+  node. This is the basis of the ui-measure 0.2 design (specs/2026-11-21-ui-measure-0.2-design.md).
 - Real screens are noisy (one CMS screen had 46 unrelated fails, identical on both builds); baseline first.
 
 ## ui-measure 0.2 backlog (each from an observed failure)
@@ -59,5 +59,5 @@ two of them.
 
 ui-hill-climb 0.2 (PR #2) ranks rounds on these measured counts. Its code is reviewed and tested, but on real
 screens its spec measurement is only as good as the pairing, so measured climbing stays experimental until items 1
-and 5 land and one real loop has run. The building-from-figma skill uses the same measurement with builder pairs,
-and its fixes (items 1 and 2) make the hill-climb's measured rounds better too.
+and 5 land and one real loop has run. ui-measure 0.2's build-time workflow uses the same measurement with builder pairs,
+and its fixes (items 1 and 2) feed hill-climb 0.3, which picks up the builder's pairs.
