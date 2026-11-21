@@ -239,12 +239,14 @@ export function verifyMapping(proposal, design, dom, opts) {
     };
     // Rule 0: both ends exist. A pair naming something that is not in either tree
     // cannot be checked by any later rule, and must not reach arithmetic.
+    // `opts.notes[selector]`, when present, says why a recorded selector could not be
+    // resolved (ambiguous, outside the root, invalid) and replaces the generic note.
     for (const v of verdicts) {
         if (!nodesById.has(v.nodeId)) {
             reject(v, "resolvable", `no design node ${v.nodeId}`);
         }
         else if (!elementsBySelector.has(v.selector)) {
-            reject(v, "resolvable", `no element matching ${v.selector}`);
+            reject(v, "resolvable", opts.notes?.[v.selector] ?? `no element matching ${v.selector}`);
         }
     }
     // Rule 1: injective, in both directions. When two pairs claim the same end,

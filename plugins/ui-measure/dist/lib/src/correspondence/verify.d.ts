@@ -72,4 +72,5 @@ export declare function readingOrder(boxes: Box[]): number[];
 export declare function comparableBox(node: DesignNode, el: DomElement): Box;
 export declare function verifyMapping(proposal: Proposal, design: DesignTree, dom: DomTree, opts: {
     scale: number;
+    notes?: Record<string, string>;
 }): Verification;

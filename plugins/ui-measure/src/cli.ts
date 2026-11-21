@@ -7,6 +7,7 @@ import { propose, type Proposer } from "./correspondence/propose.js"
 import { verifyMapping } from "./correspondence/verify.js"
 import { adapterTarget } from "./dom/adapters.js"
 import { openPage, type OpenPage } from "./dom/open.js"
+import { resolveProposal } from "./dom/resolve.js"
 import { domTree } from "./dom/tree.js"
 import { SetupError, PartialRunError, NotComparableError } from "./errors.js"
 import { fetchNode } from "./figma/fetch.js"
@@ -192,8 +193,12 @@ async function spec(target: Target, config: Config, options: Options): Promise<R
       )
     }
     const dom = await domTree(opened)
-    const proposal = await propose(mappingProposer, designTree, dom)
-    const verification = verifyMapping(proposal, designTree, dom, { scale: opened.scale })
+    let proposal = await propose(mappingProposer, designTree, dom)
+    let notes: Record<string, string> | undefined
+    if (mappingProposer.kind === "recorded") {
+      ;({ proposal, notes } = await resolveProposal(opened, dom, proposal))
+    }
+    const verification = verifyMapping(proposal, designTree, dom, { scale: opened.scale, notes })
     const compared = compareSpec(designTree, dom, verification, {
       scale: opened.scale,
       tokens,

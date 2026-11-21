@@ -253,7 +253,7 @@ export function verifyMapping(
   proposal: Proposal,
   design: DesignTree,
   dom: DomTree,
-  opts: { scale: number },
+  opts: { scale: number; notes?: Record<string, string> },
 ): Verification {
   const nodesById = new Map(design.nodes.map((n) => [n.id, n]))
   const elementsBySelector = new Map(dom.elements.map((e) => [e.selector, e]))
@@ -273,11 +273,17 @@ export function verifyMapping(
 
   // Rule 0: both ends exist. A pair naming something that is not in either tree
   // cannot be checked by any later rule, and must not reach arithmetic.
+  // `opts.notes[selector]`, when present, says why a recorded selector could not be
+  // resolved (ambiguous, outside the root, invalid) and replaces the generic note.
   for (const v of verdicts) {
     if (!nodesById.has(v.nodeId)) {
       reject(v, "resolvable", `no design node ${v.nodeId}`)
     } else if (!elementsBySelector.has(v.selector)) {
-      reject(v, "resolvable", `no element matching ${v.selector}`)
+      reject(
+        v,
+        "resolvable",
+        opts.notes?.[v.selector] ?? `no element matching ${v.selector}`,
+      )
     }
   }
 

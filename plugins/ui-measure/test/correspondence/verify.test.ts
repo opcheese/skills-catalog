@@ -465,6 +465,14 @@ describe("verifyMapping, one rule at a time", () => {
     expect(r.pairs[0].rule).toBe("resolvable")
   })
 
+  it("uses the resolution note as the resolvable rejection note", () => {
+    const p = clone(GOOD_MAPPING)
+    p.pairs[0].selector = ".item"
+    const r = verifyMapping(p, designTree, domTree, { ...ONE, notes: { ".item": "ambiguous: 2 elements" } })
+    expect(r.pairs[0].rule).toBe("resolvable")
+    expect(r.pairs[0].note).toBe("ambiguous: 2 elements")
+  })
+
   it("rejects a mapping that claims one element for two nodes", () => {
     const p = clone(GOOD_MAPPING)
     p.pairs[4].selector = p.pairs[6].selector

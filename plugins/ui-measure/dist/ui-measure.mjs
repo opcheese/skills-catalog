@@ -420,7 +420,11 @@ function verifyMapping(proposal, design2, dom, opts) {
     if (!nodesById.has(v.nodeId)) {
       reject(v, "resolvable", `no design node ${v.nodeId}`);
     } else if (!elementsBySelector.has(v.selector)) {
-      reject(v, "resolvable", `no element matching ${v.selector}`);
+      reject(
+        v,
+        "resolvable",
+        opts.notes?.[v.selector] ?? `no element matching ${v.selector}`
+      );
     }
   }
   const nodeUses = /* @__PURE__ */ new Map();
@@ -774,6 +778,50 @@ async function rootIsHidden(page, selector) {
     }
     return false;
   }, selector);
+}
+
+// src/dom/resolve.ts
+async function resolveProposal(p, dom, proposal) {
+  const known = new Set(dom.elements.map((e) => e.selector));
+  const wanted = [...new Set(proposal.pairs.map((x) => x.selector).filter((s) => !known.has(s)))];
+  const resolved = /* @__PURE__ */ new Map();
+  if (wanted.length > 0) {
+    const results = await p.page.evaluate(
+      ({ rootSelector, selectors }) => {
+        const root = document.querySelector(rootSelector);
+        return selectors.map((sel) => {
+          let matches;
+          try {
+            matches = Array.from(document.querySelectorAll(sel));
+          } catch {
+            return { note: "invalid selector" };
+          }
+          if (matches.length === 0) return { note: "no element" };
+          const inside = matches.filter((el) => root !== null && (root === el || root.contains(el)));
+          if (inside.length === 0) return { note: "no element inside root" };
+          if (inside.length > 1) return { note: `ambiguous: ${inside.length} elements` };
+          const steps = [];
+          let node = inside[0];
+          while (root !== null && node !== root && node.parentElement) {
+            steps.unshift(Array.from(node.parentElement.children).indexOf(node) + 1);
+            node = node.parentElement;
+          }
+          return { path: rootSelector + steps.map((i) => ` > :nth-child(${i})`).join("") };
+        });
+      },
+      { rootSelector: p.rootSelector, selectors: wanted }
+    );
+    wanted.forEach((sel, i) => resolved.set(sel, results[i]));
+  }
+  const notes = {};
+  const pairs = proposal.pairs.map((pair) => {
+    const r = resolved.get(pair.selector);
+    if (r === void 0) return pair;
+    if ("path" in r) return { ...pair, selector: r.path };
+    notes[pair.selector] = r.note;
+    return pair;
+  });
+  return { proposal: { ...proposal, pairs }, notes };
 }
 
 // src/dom/tree.ts
@@ -2186,8 +2234,13 @@ async function spec(target, config, options) {
       );
     }
     const dom = await domTree(opened);
-    const proposal = await propose(mappingProposer, designTree, dom);
-    const verification = verifyMapping(proposal, designTree, dom, { scale: opened.scale });
+    let proposal = await propose(mappingProposer, designTree, dom);
+    let notes;
+    if (mappingProposer.kind === "recorded") {
+      ;
+      ({ proposal, notes } = await resolveProposal(opened, dom, proposal));
+    }
+    const verification = verifyMapping(proposal, designTree, dom, { scale: opened.scale, notes });
     const compared = compareSpec(designTree, dom, verification, {
       scale: opened.scale,
       tokens,

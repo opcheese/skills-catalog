@@ -7,6 +7,7 @@ import { propose } from "./correspondence/propose.js";
 import { verifyMapping } from "./correspondence/verify.js";
 import { adapterTarget } from "./dom/adapters.js";
 import { openPage } from "./dom/open.js";
+import { resolveProposal } from "./dom/resolve.js";
 import { domTree } from "./dom/tree.js";
 import { SetupError, PartialRunError, NotComparableError } from "./errors.js";
 import { fetchNode } from "./figma/fetch.js";
@@ -166,8 +167,13 @@ async function spec(target, config, options) {
             return report(target, opened, [{ check: "spec", kind: "correspondence", status: "not_comparable", target: { selector: opened.rootSelector }, reason: "no correspondence proposer was selected" }], { pairsProposed: 0, pairsAccepted: 0, dropped: 0, authoritative: false }, "not_comparable");
         }
         const dom = await domTree(opened);
-        const proposal = await propose(mappingProposer, designTree, dom);
-        const verification = verifyMapping(proposal, designTree, dom, { scale: opened.scale });
+        let proposal = await propose(mappingProposer, designTree, dom);
+        let notes;
+        if (mappingProposer.kind === "recorded") {
+            ;
+            ({ proposal, notes } = await resolveProposal(opened, dom, proposal));
+        }
+        const verification = verifyMapping(proposal, designTree, dom, { scale: opened.scale, notes });
         const compared = compareSpec(designTree, dom, verification, {
             scale: opened.scale,
             tokens,
