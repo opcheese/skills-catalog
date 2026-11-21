@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+STUB_NAME=codex exec "$(dirname "$0")/stub-runner" "$@"

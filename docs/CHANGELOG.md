@@ -8,6 +8,16 @@ audience: developers
 
 Notable changes to the catalog: what devs install, and what the docs tell them.
 
+## 2026-11-21: ui-hill-climb 0.3.0, any model
+
+`hill-judge` and `hill-propose` now send prompts through one runner seam. `HILL_RUNNER` is `kimi` (default; the
+kimi-delegation call is unchanged, including exit 75 on quota), `claude` (`claude -p`, read-only tools), `codex`
+(`codex exec`, screenshots attached with `-i`) or `command` (`HILL_RUNNER_CMD`, prompt on stdin). `HILL_JUDGE_MODEL`
+is passed to `claude` and `codex` only when set. Judgements record `runner=<name> model=<model or default>
+cmd=<program>` as provenance; any non-Kimi runner failure is exit 1, never 75. The skill no longer requires
+kimi-delegation and says that the judge must run on a different model from the builder. Spec
+`docs/superpowers/specs/2026-11-21-ui-measure-0.2-design.md`.
+
 ## 2026-11-21: ui-measure 0.2.0, building from Figma
 
 The ui-measure skill now teaches a build-time workflow: the agent records authoritative pairs

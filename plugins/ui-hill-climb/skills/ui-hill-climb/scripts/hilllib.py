@@ -1,12 +1,15 @@
-"""Shared helpers for hill-climb's Kimi-backed scripts."""
+"""Shared helpers for hill-climb's model-backed scripts."""
 import glob
 import json
 import os
 import re
+import shlex
+import subprocess
 import sys
 from collections.abc import Callable
 
 DEFAULT_MODEL = "kimi-code/k3.1-pro"
+RUNNERS = ("kimi", "claude", "codex", "command")
 
 
 def die(code, msg):
@@ -30,6 +33,68 @@ def find_delegate() -> str:
                 die(2, f"{root}: kimi-delegation's read-only agent can't view images; update to >= 1.3.2")
             return script
     die(2, "kimi-delegation is not installed (or set HILL_KIMI_DELEGATE)")
+
+
+def runner_name() -> str:
+    name = os.environ.get("HILL_RUNNER") or "kimi"
+    if name not in RUNNERS:
+        die(2, f"unknown HILL_RUNNER {name!r}: use one of " + ", ".join(RUNNERS))
+    return name
+
+
+def requested_model() -> str:
+    """The model name recorded with a judgement: Kimi's default only on the kimi runner."""
+    explicit = os.environ.get("HILL_JUDGE_MODEL")
+    if explicit:
+        return explicit
+    return DEFAULT_MODEL if runner_name() == "kimi" else "default"
+
+
+def run_model(prompt: str, workdir: str, images: list[str], model: str) -> tuple[int, str, str]:
+    """Send one prompt to the model chosen by HILL_RUNNER.
+
+    Returns (exit code, stdout, provenance line). On a nonzero exit the runner's stderr has
+    been copied to ours. Only the kimi runner can return 75 (quota): any other failure is 1.
+    """
+    runner = runner_name()
+    if runner == "kimi":
+        delegate = find_delegate()
+        p = subprocess.run([delegate, "--via", "kimi", "--final-only", "--cwd", workdir, "--", prompt],
+                           capture_output=True, text=True, env=dict(os.environ, KIMI_DELEGATE_MODEL=model))
+        prov = next((l for l in p.stderr.splitlines() if l.startswith("kimi-delegate:")), "")
+        if p.returncode != 0:
+            sys.stderr.write(p.stderr)
+        return p.returncode, p.stdout, prov
+
+    explicit = "HILL_JUDGE_MODEL" in os.environ  # DEFAULT_MODEL is a Kimi name: never pass it on
+    if runner == "claude":
+        argv = ["claude", "-p", "--allowedTools", "Read", "--output-format", "text"]
+        if explicit:
+            argv += ["--model", model]
+    elif runner == "codex":
+        argv = ["codex", "exec"]
+        for image in images:
+            argv += ["-i", os.path.abspath(image)]
+        if explicit:
+            argv += ["-m", model]
+    else:
+        cmd = os.environ.get("HILL_RUNNER_CMD", "")
+        try:
+            argv = shlex.split(cmd)
+        except ValueError as e:
+            die(2, f"HILL_RUNNER_CMD: {e}")
+        if not argv:
+            die(2, "HILL_RUNNER=command needs HILL_RUNNER_CMD (an argv that reads the prompt on stdin)")
+    prov = f"runner={runner} model={model if explicit else 'default'} cmd={argv[0]}"
+    try:
+        p = subprocess.run(argv, input=prompt, capture_output=True, text=True, cwd=workdir)
+    except OSError as e:
+        sys.stderr.write(f"could not launch {argv[0]!r}: {e}\n")
+        return 1, "", prov
+    if p.returncode != 0:
+        sys.stderr.write(p.stderr)
+        return 1, p.stdout, prov
+    return 0, p.stdout, prov
 
 
 def first_json(text: str, accept: Callable[[dict], bool]) -> dict | None:
