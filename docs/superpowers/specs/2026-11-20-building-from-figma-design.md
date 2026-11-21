@@ -97,6 +97,17 @@ The workflow it teaches:
 2. **CSS filter shadows.** `filter: drop-shadow(x y blur colour)` matches a DROP_SHADOW with the same values; only
    a filter with no matching design effect is "unexpected".
 
+3. **Recorded-selector resolution.** Today a pair's selector must equal the DOM walker's own path
+   (`root > :nth-child(i) ...`, `src/dom/tree.ts`), looked up by exact string (`src/correspondence/verify.ts`
+   Rule 0), so an id, test-id or role selector is "no element matching". For a recorded proposal, ui-measure runs
+   each selector in the page (`querySelectorAll` inside the root), requires exactly one match, and maps it to the
+   walker's path for that element before verification. Zero matches → not comparable `resolvable` ("no element");
+   more than one → not comparable `resolvable` ("ambiguous: N elements"). Role-plus-name selectors are written as
+   CSS the page can run (for example `button[aria-label="Back"]`); no Playwright locator syntax.
+   Ruling (builder check, 2026-11-20): resolve in ui-measure rather than make the skill write walker paths —
+   walker paths break on any added wrapper, which defeats pairs that survive small edits. Cost if wrong: one
+   more engine change to maintain.
+
 Not required for this skill (backlog from the spike): flush reported per side; overflow vs drawn scrollbar.
 
 ## Error handling
@@ -133,3 +144,8 @@ writes to Figma.
   screen until it matches, this skill serves the first build. The authoritative-pairs change benefits both, since
   a hill-climb run can seed its proposal from a builder's pairs file.
 - Evidence and backlog: docs/research/2026-11-20-ui-measure-real-defect-eval.md.
+
+## Builder check
+
+Run 2026-11-20 on Kimi K3.1 Pro (local record `.superpowers/building-from-figma/builder-check.kimi.md`). One
+question: recorded selectors could not resolve against the walker's exact paths. Settled as ui-measure change 3.
