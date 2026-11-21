@@ -225,6 +225,10 @@ export function comparableBox(node, el) {
 export function verifyMapping(proposal, design, dom, opts) {
     const nodesById = new Map(design.nodes.map((n) => [n.id, n]));
     const elementsBySelector = new Map(dom.elements.map((e) => [e.selector, e]));
+    // Authoritative: pairs made by the builder, not guessed. The plausibility rules
+    // (size_plausible, its rescues, text_consistent) exist to catch a guess; here a size or text
+    // difference is the finding, so those rules are skipped and the difference is measured.
+    const authoritative = proposal.authoritative === true;
     const verdicts = proposal.pairs.map((p) => ({
         nodeId: p.nodeId,
         selector: p.selector,
@@ -299,7 +303,9 @@ export function verifyMapping(proposal, design, dom, opts) {
         textOwners.set(t, [...(textOwners.get(t) ?? []), v.selector]);
     }
     for (const v of verdicts) {
-        if (v.outcome === "not_comparable")
+        // An authoritative pair is the builder's own claim; a swap is a finding to compare, not a
+        // reason to drop it.
+        if (authoritative || v.outcome === "not_comparable")
             continue;
         const node = nodesById.get(v.nodeId);
         const el = elementsBySelector.get(v.selector);
@@ -381,7 +387,7 @@ export function verifyMapping(proposal, design, dom, opts) {
     // measurement the caller is about to take, and a rule that discarded the
     // pair for it would be answering the question with itself.
     for (const g of geometric) {
-        if (g.v.outcome === "not_comparable")
+        if (authoritative || g.v.outcome === "not_comparable")
             continue;
         const dw = Math.abs(g.design.width - g.dom.width);
         const dh = Math.abs(g.design.height - g.dom.height);

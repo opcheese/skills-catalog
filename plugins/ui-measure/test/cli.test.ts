@@ -163,6 +163,22 @@ describe("ui-measure CLI", () => {
     expect(report.findings.every((f) => f.status !== "not_comparable" || f.kind !== "page")).toBe(true)
   })
 
+  it("empty authoritative proposal is not comparable", async () => {
+    const proposal = join(scratch, "empty-authoritative.json")
+    writeFileSync(proposal, JSON.stringify({ pairs: [], unmapped: { design: [], impl: [] }, authoritative: true }))
+    const json = join(scratch, "spec-empty-authoritative.json")
+    const result = await run([
+      "spec",
+      "--config", config,
+      "--target", "card-clean",
+      "--proposer", "recorded",
+      "--proposal", proposal,
+      "--json", json,
+    ])
+    expect(result.status, output(result)).toBe(2)
+    expect(readReport(json).verdict).toBe("not_comparable")
+  })
+
   it("a partial proposal is not_comparable and exits 2 even without mismatches", async () => {
     const json = join(scratch, "spec-partial.json")
     const result = await run([

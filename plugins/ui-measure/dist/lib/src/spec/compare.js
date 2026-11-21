@@ -549,6 +549,30 @@ export function compareSpec(design, dom, v, opts) {
         }
     }
     const proposed = v.pairs.length;
+    // An authoritative proposal is the builder's complete claim, so a pair that could not be
+    // checked must keep the screen from reading clean.
+    if (opts.authoritative === true) {
+        if (proposed === 0) {
+            findings.push({
+                check: "spec",
+                kind: "correspondence",
+                status: "not_comparable",
+                target: { selector: dom.root.selector, designNode: design.root.id },
+                reason: "authoritative proposal has no pairs",
+            });
+        }
+        for (const p of v.pairs) {
+            if (p.outcome !== "not_comparable")
+                continue;
+            findings.push({
+                check: "spec",
+                kind: "correspondence",
+                status: "not_comparable",
+                target: { selector: p.selector, designNode: p.nodeId },
+                reason: `${p.rule}: ${p.note ?? p.rule}`,
+            });
+        }
+    }
     return {
         findings,
         coverage: {

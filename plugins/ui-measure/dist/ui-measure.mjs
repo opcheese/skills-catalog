@@ -405,6 +405,7 @@ function comparableBox(node, el) {
 function verifyMapping(proposal, design2, dom, opts) {
   const nodesById = new Map(design2.nodes.map((n) => [n.id, n]));
   const elementsBySelector = new Map(dom.elements.map((e) => [e.selector, e]));
+  const authoritative = proposal.authoritative === true;
   const verdicts = proposal.pairs.map((p) => ({
     nodeId: p.nodeId,
     selector: p.selector,
@@ -465,7 +466,7 @@ function verifyMapping(proposal, design2, dom, opts) {
     textOwners.set(t, [...textOwners.get(t) ?? [], v.selector]);
   }
   for (const v of verdicts) {
-    if (v.outcome === "not_comparable") continue;
+    if (authoritative || v.outcome === "not_comparable") continue;
     const node = nodesById.get(v.nodeId);
     const el = elementsBySelector.get(v.selector);
     const wanted = (node?.text ?? "").trim();
@@ -542,7 +543,7 @@ function verifyMapping(proposal, design2, dom, opts) {
     }
   }
   for (const g of geometric) {
-    if (g.v.outcome === "not_comparable") continue;
+    if (authoritative || g.v.outcome === "not_comparable") continue;
     const dw = Math.abs(g.design.width - g.dom.width);
     const dh = Math.abs(g.design.height - g.dom.height);
     const worst = Math.max(dw, dh);
@@ -2062,6 +2063,27 @@ function compareSpec(design2, dom, v, opts) {
     }
   }
   const proposed = v.pairs.length;
+  if (opts.authoritative === true) {
+    if (proposed === 0) {
+      findings.push({
+        check: "spec",
+        kind: "correspondence",
+        status: "not_comparable",
+        target: { selector: dom.root.selector, designNode: design2.root.id },
+        reason: "authoritative proposal has no pairs"
+      });
+    }
+    for (const p of v.pairs) {
+      if (p.outcome !== "not_comparable") continue;
+      findings.push({
+        check: "spec",
+        kind: "correspondence",
+        status: "not_comparable",
+        target: { selector: p.selector, designNode: p.nodeId },
+        reason: `${p.rule}: ${p.note ?? p.rule}`
+      });
+    }
+  }
   return {
     findings,
     coverage: {

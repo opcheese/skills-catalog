@@ -447,3 +447,62 @@ describe("compareSpec", () => {
     })
   })
 })
+
+describe("authoritative correspondence findings", () => {
+  const design: DesignTree = {
+    root: { id: "r", type: "FRAME", box: { x: 0, y: 0, width: 300, height: 200 } },
+    nodes: [
+      { id: "r", type: "FRAME", box: { x: 0, y: 0, width: 300, height: 200 } },
+      { id: "i", type: "VECTOR", parentId: "r", box: { x: 0, y: 0, width: 74, height: 74 } },
+      { id: "g", type: "VECTOR", parentId: "r", box: { x: 100, y: 0, width: 10, height: 10 } },
+    ],
+  }
+  const root: DomElement = { selector: "#r", tag: "div", box: { x: 0, y: 0, width: 300, height: 200 }, style: STYLE }
+  const icon: DomElement = { selector: "#r > svg", tag: "svg", box: { x: 0, y: 0, width: 121, height: 121 }, style: STYLE }
+  const dom: DomTree = { root, elements: [root, icon] }
+  const pairs = (authoritative: boolean): Proposal => ({
+    pairs: [
+      { nodeId: "r", selector: "#r" },
+      { nodeId: "i", selector: "#r > svg" },
+      { nodeId: "g", selector: "#r > gone" },
+    ],
+    unmapped: { design: [], impl: [] },
+    ...(authoritative ? { authoritative: true } : {}),
+  })
+  const compare = (authoritative: boolean) =>
+    compareSpec(design, dom, verifyMapping(pairs(authoritative), design, dom, { scale: 1 }), { scale: 1, authoritative })
+
+  it("reports a size mismatch", () => {
+    const out = compare(true)
+    const box = out.findings.filter((f) => f.kind === "box" && f.target?.designNode === "i")
+    expect(box).toHaveLength(1)
+    expect(box[0].status).toBe("fail")
+    expect(box[0].expected).toContain("74x74")
+    expect(box[0].actual).toContain("121x121")
+  })
+
+  it("an authoritative rejected pair becomes a not_comparable correspondence finding", () => {
+    const f = compare(true).findings.filter((x) => x.kind === "correspondence")
+    expect(f).toEqual([
+      {
+        check: "spec",
+        kind: "correspondence",
+        status: "not_comparable",
+        target: { selector: "#r > gone", designNode: "g" },
+        reason: "resolvable: no element matching #r > gone",
+      },
+    ])
+  })
+
+  it("the same proposal without the flag adds no correspondence finding", () => {
+    expect(compare(false).findings.filter((x) => x.kind === "correspondence")).toEqual([])
+  })
+
+  it("an authoritative proposal with no pairs is not comparable", () => {
+    const empty: Proposal = { pairs: [], unmapped: { design: [], impl: [] }, authoritative: true }
+    const out = compareSpec(design, dom, verifyMapping(empty, design, dom, { scale: 1 }), { scale: 1, authoritative: true })
+    expect(out.findings.filter((x) => x.kind === "correspondence")).toEqual([
+      expect.objectContaining({ status: "not_comparable", reason: "authoritative proposal has no pairs" }),
+    ])
+  })
+})
