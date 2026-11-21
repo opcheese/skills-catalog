@@ -37,10 +37,10 @@ UI high.
    ```json
    {"config": "ui-measure.config.json",
     "screens": {"home": {"target": "home"},
-                "device-card": {"target": "device-card", "figma": "<figma node URL>"}}}
+                "device-card": {"target": "device-card", "figma": "12:34"}}}
    ```
    Keys under `screens` are the screen labels you screenshot. Per screen, `target` (the config's target)
-   is required; `figma` (a node URL) or `node` (a saved design-node JSON file) is optional and mutually
+   is required; `figma` (a Figma node ID such as `12:34`) or `node` (a saved design-node JSON file) is optional and mutually
    exclusive, and adds the spec check against the design; `proposal` (optional, a saved pairs file) skips
    the model's design-to-DOM pairing. A screen without `figma`/`node` gets the geometry check only. Any other
    key is an error. Paths are relative to where you run the scripts.
@@ -57,11 +57,13 @@ UI high.
    python3 "$HC/scripts/hill-measure" --run .hill/<run> --round N --label home   # one screen
    ```
    It writes `round-N/<label>.geometry.json` and, for screens with a design, `<label>.spec.json` and
-   `<label>.proposal.json`. Later rounds reuse the saved pairing, so the same elements are compared every
-   round. Exit 0: written. Exit 2: bad input (a malformed `measure.json`, an unknown `--label`, a missing
+   `<label>.proposal.json`. Later rounds reuse the latest saved proposal; if it drops more pairs than the
+   round it came from, `hill-measure` proposes once more and keeps whichever result drops fewer. Exit 0: written. Exit 2: bad input (a malformed `measure.json`, an unknown `--label`, a missing
    screenshot, or ui-measure not installed): fix it and rerun. Exit 3: setup problem (the app isn't
-   running, the config or target is wrong, the browser won't launch): fix the setup, don't judge. A round
-   without its reports is not comparable and `hill-score` says so. Exit 75: the Kimi quota ran out: stop
+   running, the config or target is wrong, the browser won't launch): fix the setup, don't judge. If Kimi's
+   pairing answer is unusable twice, `hill-measure` still exits 0 but writes no `<label>.spec.json`, so
+   `hill-score` marks the round not comparable: measure again (or give the screen a `proposal` in
+   `measure.json`) rather than judge. A round without its reports is never comparable. Exit 75: the Kimi quota ran out: stop
    and report.
    Then, if `npx impeccable detect <url> --json` runs, fix what it reports. Judges can't overrule it.
 3. **Judge.** For each screen, and for each reference every round (the references are the drift control):
