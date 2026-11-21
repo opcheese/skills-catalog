@@ -59,8 +59,8 @@
     },
     {
       "name": "ui-hill-climb",
-      "description": "Screenshot, judge, fix loop for app UI: an outside judge scores fresh screenshots against reference screens, the agent fixes, the best round is kept. v0: Kimi judge only. Needs kimi-delegation >= 1.3.2",
-      "version": "0.1.3",
+      "description": "Screenshot, judge, fix loop for app UI: an outside judge scores fresh screenshots against reference screens, the agent fixes, the best round is kept. Kimi judge; optionally climbs on ui-measure counts. Needs kimi-delegation >= 1.3.2",
+      "version": "0.2.0",
       "source": "./plugins/ui-hill-climb"
     },
     {

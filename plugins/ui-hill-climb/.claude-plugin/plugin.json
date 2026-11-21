@@ -1,7 +1,7 @@
 {
   "name": "ui-hill-climb",
-  "description": "Improve an app's UI in a screenshot, judge, fix loop: an outside judge (Kimi via kimi-delegation) scores fresh screenshots against reference screens per category, the agent fixes, and the best round is kept. Human-piloted or unattended. Needs kimi-delegation >= 1.3.2",
-  "version": "0.1.3",
+  "description": "Improve an app's UI in a screenshot, judge, fix loop: an outside judge (Kimi via kimi-delegation) scores fresh screenshots against reference screens per category, the agent fixes, and the best round is kept. Human-piloted or unattended. Optionally climbs on exact ui-measure counts. Needs kimi-delegation >= 1.3.2",
+  "version": "0.2.0",
   "author": {
     "name": "opcheese"
   },

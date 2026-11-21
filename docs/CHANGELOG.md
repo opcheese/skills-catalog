@@ -8,6 +8,16 @@ audience: developers
 
 Notable changes to the catalog: what devs install, and what the docs tell them.
 
+## 2026-11-20: ui-hill-climb 0.2.0, climbing on measured counts
+
+With an optional `measure.json`, the loop now runs ui-measure on each round's screens and ranks rounds on
+its exact counts (clipped or off-canvas elements, boxes, spacing, colours and fonts against the design)
+before the judge's scores. New `hill-measure` runs the measurements and a Kimi pair proposer
+(`hill-propose`) pairs design nodes with DOM elements once, then later rounds reuse the pairing.
+`hill-score` lists measured findings first and adds a Measured table to `scores.md`. Without `measure.json`
+nothing changes. The ui-measure skill now points at `hill-propose` as its Kimi proposer. Spec
+`docs/superpowers/specs/2026-11-20-ui-hill-climb-measured-design.md`.
+
 ## 2026-11-20: ui-measure 0.1.0, model-free UI measurement
 
 A new plugin. `ui-measure` measures a rendered page in a real browser, with no model: `geometry` finds

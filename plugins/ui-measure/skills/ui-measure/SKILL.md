@@ -17,11 +17,11 @@ Outcomes are **clean** (exit 0), **mismatches** (exit 1), and **not_comparable**
 
 For a model-proposed mapping, select a `command` proposer. The command receives `{design, dom}` JSON on stdin and must print only a `Proposal` JSON object. Code verifies every proposed pair before measuring it.
 
-To use Kimi through **kimi-delegation**, write a small wrapper that reads stdin and invokes `skills/delegating-to-kimi/scripts/kimi-delegate --via kimi --final-only --` with the trees and instructions to return only Proposal JSON. The wrapper prints the delegate's stdout, then configure:
+To use Kimi through **kimi-delegation**, use the `ui-hill-climb` skill's proposer, `scripts/hill-propose`: it reads the `{design, dom}` JSON on stdin and prints only a Proposal JSON object. Invoke it as `python3 <ui-hill-climb skill dir>/scripts/hill-propose`:
 
 ```bash
 node dist/ui-measure.mjs spec --config ui-measure.config.json --target card \
-  --node design.json --proposer command -- node scripts/kimi-proposer.mjs
+  --node design.json --proposer command -- python3 <ui-hill-climb skill dir>/scripts/hill-propose
 ```
 
 Keep credentials in the delegation environment, never in config or command arguments.
