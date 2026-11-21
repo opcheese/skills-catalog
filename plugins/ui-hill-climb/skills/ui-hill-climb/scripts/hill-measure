@@ -71,7 +71,7 @@ def fresh_spec(cli, screen, report_path, proposal_path):
             if os.path.exists(report_path):
                 os.remove(report_path)
             return 0
-    return code
+    return 0 if code in (0, 1, 2) else code
 
 
 def latest_proposal(run, label, current_round):

@@ -135,6 +135,10 @@ if [ "$n" -gt 1 ]; then
 fi
 if [ -n "${!report_var:-}" ]; then cp "${!report_var}" "$json"; fi
 exit_var="STUB_EXIT_$check"
+if [ "$n" -gt 1 ]; then
+  later_exit="${exit_var}_$n"
+  if [ -n "${!later_exit:-}" ]; then exit_var=$later_exit; fi
+fi
 if [ "${!exit_var:-0}" = "3" ]; then echo "stub ui-measure setup failure" >&2; fi
 exit "${!exit_var:-0}"
 EOF
@@ -162,7 +166,7 @@ reset_um() {
   export STUB_REPORT_geometry="$UM_WORK/geometry.json"
   export STUB_REPORT_spec="$UM_WORK/spec.json"
   export STUB_PROPOSAL="$UM_WORK/fresh-proposal.json"
-  unset STUB_REPORT_spec_2 STUB_EXIT_geometry STUB_EXIT_spec STUB_PROPOSER_STATUS
+  unset STUB_REPORT_spec_2 STUB_EXIT_geometry STUB_EXIT_spec STUB_EXIT_spec_2 STUB_PROPOSER_STATUS
   printf '%s\n' '{"coverage":{"dropped":0},"marker":"geometry"}' > "$STUB_REPORT_geometry"
   printf '%s\n' '{"coverage":{"dropped":0},"marker":"spec"}' > "$STUB_REPORT_spec"
   printf '%s\n' '{"proposal":"fresh"}' > "$STUB_PROPOSAL"
@@ -283,6 +287,27 @@ for ORDER in better worse; do
   check_contains "$ORDER retry keeps the winning report" "$(cat "$RUN/round-2/card.spec.json")" "\"marker\":\"$WANT_MARKER\""
   check_eq "$ORDER retry keeps the winning proposal" "$(cat "$RUN/round-2/card.proposal.json")" "{\"proposal\":\"$WANT_PROPOSAL\"}"
 done
+
+echo "hill-measure: spec exits 1 and 2 are data"
+for STATUS in 1 2; do
+  new_spec_run; export STUB_EXIT_spec=$STATUS
+  OUT=$(measure --run "$RUN" --round 1 2>&1); RC=$?
+  check_eq "fresh spec exit $STATUS becomes 0" "$RC" "0"
+  check_contains "fresh spec exit $STATUS still writes the report" "$(cat "$RUN/round-1/card.spec.json" 2>/dev/null)" '"marker":"spec"'
+
+  new_spec_run
+  printf '%s\n' '{"proposal":"old"}' > "$RUN/round-1/card.proposal.json"
+  printf '%s\n' '{"coverage":{"dropped":0},"marker":"old"}' > "$RUN/round-1/card.spec.json"
+  mkdir -p "$RUN/round-2"; printf '%s\n' 'fake png' > "$RUN/round-2/card.png"
+  printf '%s\n' '{"coverage":{"dropped":2},"marker":"reused"}' > "$STUB_REPORT_spec"
+  export STUB_REPORT_spec_2="$UM_WORK/retry.json" STUB_EXIT_spec_2=$STATUS
+  printf '%s\n' '{"coverage":{"dropped":0},"marker":"fresh"}' > "$STUB_REPORT_spec_2"
+  OUT=$(measure --run "$RUN" --round 2 2>&1); RC=$?
+  check_eq "retry spec exit $STATUS becomes 0" "$RC" "0"
+  check_contains "retry spec exit $STATUS keeps the better retry report" "$(cat "$RUN/round-2/card.spec.json")" '"marker":"fresh"'
+  check_eq "retry spec exit $STATUS leaves no retry files" "$(ls "$RUN/round-2" | grep -c retry)" "0"
+done
+unset STUB_EXIT_spec STUB_EXIT_spec_2
 
 echo "hill-measure: proposer unusable"
 new_spec_run; export STUB_PROPOSER_STATUS=3
