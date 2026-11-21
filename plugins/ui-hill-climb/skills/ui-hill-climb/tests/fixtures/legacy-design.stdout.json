@@ -1,0 +1,25 @@
+{
+ "round": 1,
+ "best_round": 1,
+ "revert_to": null,
+ "stop": false,
+ "reason": "continue",
+ "relative": 8.0,
+ "open_findings": [
+  {
+   "id": "F-99e5d45d",
+   "screen": "login",
+   "category": "colour",
+   "element": "Primary button",
+   "problem": "flat fill, design has a gradient",
+   "severity": "major",
+   "region": {
+    "x": 224,
+    "y": 1314,
+    "w": 632,
+    "h": 52
+   },
+   "seen": 1
+  }
+ ]
+}

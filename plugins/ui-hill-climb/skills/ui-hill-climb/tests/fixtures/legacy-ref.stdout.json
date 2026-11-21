@@ -1,0 +1,9 @@
+{
+ "round": 3,
+ "best_round": 2,
+ "revert_to": 2,
+ "stop": true,
+ "reason": "gain over two rounds +0.30 is under 0.3",
+ "relative": -1.7,
+ "open_findings": []
+}

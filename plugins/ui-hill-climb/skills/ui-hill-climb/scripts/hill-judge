@@ -15,10 +15,13 @@ Exit codes: 0 ok, 2 bad input (no call spent), 3 the judge's answer was
 unusable twice, 75 quota exhausted (from kimi-delegate), other: delegate error.
 Env: HILL_JUDGE_MODEL (default kimi-code/k3.1-pro), HILL_KIMI_DELEGATE (path).
 """
-import argparse, glob, hashlib, json, os, re, shutil, subprocess, sys
+import argparse, hashlib, json, os, re, shutil, subprocess, sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+from hilllib import DEFAULT_MODEL, find_delegate, first_json
 
 CATEGORIES = ["hierarchy", "typography", "colour", "spacing", "consistency", "originality"]
-DEFAULT_MODEL = "kimi-code/k3.1-pro"
 
 PROMPT = """You are judging the visual design of one app screen. You are a separate reviewer: you did not
 build it, and nothing rides on liking it.
@@ -89,40 +92,16 @@ def image_kind(path):
     return None
 
 
-def find_delegate():
-    explicit = os.environ.get("HILL_KIMI_DELEGATE")
-    if explicit:
-        return explicit
-    roots = [os.environ.get("KIMI_DELEGATION_ROOT")] if os.environ.get("KIMI_DELEGATION_ROOT") else []
-    roots += sorted(glob.glob(os.path.expanduser("~/.claude/plugins/cache/*/kimi-delegation/*")),
-                    key=lambda p: [int(x) if x.isdigit() else 0 for x in re.split(r"[.]", os.path.basename(p))])[::-1]
-    for root in roots:
-        skill = os.path.join(root, "skills", "delegating-to-kimi")
-        script = os.path.join(skill, "scripts", "kimi-delegate")
-        agent = os.path.join(skill, "agents", "delegate-readonly.md")
-        if os.path.isfile(script):
-            if "ReadMediaFile" not in open(agent).read():
-                die(2, f"{root}: kimi-delegation's read-only agent can't view images; update to >= 1.3.2")
-            return script
-    die(2, "kimi-delegation is not installed (or set HILL_KIMI_DELEGATE)")
-
-
 def parse_answer(text):
     """The first JSON object in the answer that has scores for every category."""
-    dec = json.JSONDecoder()
-    for m in re.finditer(r"\{", text):
-        try:
-            obj, _ = dec.raw_decode(text[m.start():])
-        except ValueError:
-            continue
-        if not isinstance(obj, dict) or not isinstance(obj.get("scores"), dict):
-            continue
-        scores = obj["scores"]
-        if not all(isinstance(scores.get(c), (int, float)) for c in CATEGORIES):
-            return None, "scores JSON is missing categories: " + ", ".join(c for c in CATEGORIES if c not in scores)
-        findings = [f for f in obj.get("findings", []) if isinstance(f, dict) and f.get("element")]
-        return {"scores": {c: float(scores[c]) for c in CATEGORIES}, "findings": findings}, None
-    return None, "no scores JSON in the answer"
+    obj = first_json(text, lambda obj: isinstance(obj.get("scores"), dict))
+    if obj is None:
+        return None, "no scores JSON in the answer"
+    scores = obj["scores"]
+    if not all(isinstance(scores.get(c), (int, float)) for c in CATEGORIES):
+        return None, "scores JSON is missing categories: " + ", ".join(c for c in CATEGORIES if c not in scores)
+    findings = [f for f in obj.get("findings", []) if isinstance(f, dict) and f.get("element")]
+    return {"scores": {c: float(scores[c]) for c in CATEGORIES}, "findings": findings}, None
 
 
 def main():

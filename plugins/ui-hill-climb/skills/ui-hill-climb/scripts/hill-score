@@ -8,9 +8,16 @@ for screens and ref-NAME.run<i>.json for reference screens, plus changes.json fr
 the fixer (from round 2 on). Writes DIR/scores.md and DIR/references.json, and
 prints the decision as JSON: round, best_round, revert_to, stop, reason, open_findings.
 
+With DIR/measure.json, rounds are ranked on ui-measure's counts first (see measure_round and
+the ranking key in main) and the output gains a "measured" block; without it the run behaves
+exactly as 0.1 did.
+
 Exit codes: 0 ok, 2 bad input (no rounds, or a malformed changes.json).
 """
 import argparse, glob, hashlib, json, os, re, statistics, sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import hilllib
 
 CATEGORIES = ["hierarchy", "typography", "colour", "spacing", "consistency", "originality"]
 CHANGE_FIELDS = ["id", "screen", "before", "after", "after_size", "region", "rationale", "categories"]
@@ -68,6 +75,70 @@ class Registry:
         return fid
 
 
+GUARD_CATEGORIES = ("hierarchy", "consistency")
+VERDICT_ORDER = {"not_comparable": 2, "mismatches": 1, "clean": 0}
+
+
+def measured_id(f):
+    t = f.get("target") or {}
+    key = f"{f.get('check', '')}|{f.get('kind', '')}|{t.get('selector', '')}|{t.get('designNode') or ''}"
+    return "M-" + hashlib.sha1(key.encode()).hexdigest()[:8]
+
+
+def measure_round(round_dir, n, screens):
+    """What ui-measure found in one round, over the screens named in measure.json.
+    A screen with a figma or node entry also needs its spec report. A missing, unreadable or
+    not_comparable report makes the round not comparable."""
+    out = {"fails": 0, "accepted": 0, "problems": [], "findings": [], "per_screen": {}}
+    for label, cfg in screens.items():
+        checks = ["geometry"] + (["spec"] if "figma" in cfg or "node" in cfg else [])
+        row = {"fails": {}, "verdict": "clean", "accepted": None, "proposed": None}
+        problems = []
+        for check in checks:
+            name = f"{label}.{check}.json"
+            path = os.path.join(round_dir, name)
+            if not os.path.exists(path):
+                problems.append(f"report missing: {name}")
+                row["verdict"] = "missing"
+                continue
+            try:
+                rep = json.load(open(path))
+                findings = rep.get("findings", [])
+                verdict = rep.get("verdict", "clean")
+                if not isinstance(findings, list):
+                    raise ValueError("findings is not a list")
+            except (ValueError, AttributeError, OSError) as e:
+                problems.append(f"unreadable report {name}: {e}")
+                row["verdict"] = "unreadable"
+                continue
+            fails = [f for f in findings if f.get("status") == "fail"]
+            row["fails"][check] = len(fails)
+            out["fails"] += len(fails)
+            for f in fails:
+                t = f.get("target") or {}
+                out["findings"].append({"id": measured_id(f), "screen": label, "check": f.get("check", check),
+                                        "kind": f.get("kind"), "selector": t.get("selector"),
+                                        "designNode": t.get("designNode"), "expected": f.get("expected"),
+                                        "actual": f.get("actual"), "deltaPx": f.get("deltaPx"), "severity": "major"})
+            if verdict == "not_comparable":
+                why = next((f.get("reason") for f in findings if f.get("status") == "not_comparable" and f.get("reason")),
+                           rep.get("reason") or "verdict not_comparable")
+                problems.append(why)
+            if row["verdict"] not in ("missing", "unreadable") and VERDICT_ORDER.get(verdict, 0) > VERDICT_ORDER.get(row["verdict"], 0):
+                row["verdict"] = verdict
+            if check == "spec":
+                cov = rep.get("coverage") or {}
+                row["accepted"] = int(cov.get("pairsAccepted", 0))
+                row["proposed"] = int(cov.get("pairsProposed", 0))
+                out["accepted"] += row["accepted"]
+        if problems:
+            out["problems"].append(f"{label}: " + "; ".join(problems))
+        out["per_screen"][label] = row
+    out["comparable"] = not out["problems"]
+    out["findings"].sort(key=lambda e: list(screens).index(e["screen"]))
+    return out
+
+
 def load_round(d):
     screens, refs = {}, {}
     for p in sorted(glob.glob(os.path.join(d, "*.run*.json"))):
@@ -103,6 +174,26 @@ def summarise(group):
     return out
 
 
+def measured_table(x, screens):
+    """scores.md lines for one round's measured results, then the ranking key and guard."""
+    m = x["m"]
+    lines = ["Measured (ui-measure counts; they rank rounds before the judge does):", "",
+             "| screen | fails | verdict | pairs |", "| --- | --- | --- | --- |"]
+    for label, row in m["per_screen"].items():
+        fails = ", ".join(f"{c} {n}" for c, n in row["fails"].items()) or "-"
+        pairs = f"{row['accepted']}/{row['proposed']}" if row["accepted"] is not None else "-"
+        lines.append(f"| {label} | {fails} | {row['verdict']} | {pairs} |")
+    for label in list(x["screens"]):
+        if label not in screens:
+            lines.append(f"| {label} | - | judge only | - |")
+    judge_key = f"{x['key'][3][0]:.2f} majors, {x['key'][3][1]:.2f}" if isinstance(x["key"][3], tuple) else f"{x['key'][3]:+.2f}"
+    lines += ["", f"- ranking key: comparable {'yes' if m['comparable'] else 'no'}, "
+              f"guard {'clear' if x['guard'] is None else 'tripped'}, fails {m['fails']}, judge {judge_key}",
+              f"- guard: {x['guard'] or 'not tripped'}"]
+    lines += [f"- not comparable: {p}" for p in m["problems"]]
+    return lines
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--run", required=True)
@@ -110,6 +201,7 @@ def main():
     ap.add_argument("--gain", type=float, default=0.3)
     a = ap.parse_args()
 
+    measure = hilllib.load_measure(a.run)
     dirs = sorted(glob.glob(os.path.join(a.run, "round-*")), key=lambda p: int(re.sub(r"\D", "", os.path.basename(p)) or 0))
     if not dirs:
         die(f"no round-N directories in {a.run}")
@@ -139,6 +231,16 @@ def main():
         best = max(range(k), key=lambda i: (rels[i], -i))
         revert_to = rounds[best]["n"] if k > 1 and rels[-1] < rels[-2] else None
 
+    addressed = {fid for x in rounds for c in x["changes"] for fid in c.get("addresses", [])}
+    reg = Registry()
+    for x in rounds:  # earlier rounds first, so IDs stay what the fixer saw
+        x["fids"] = set()
+        for label, runs in x["raw"].items():
+            for r in runs:
+                for f in r.get("findings", []):
+                    f["_fid"] = reg.id_for(label, f, x["n"])
+                    x["fids"].add(f["_fid"])
+
     stop, reason = False, "continue"
     if design:
         if not any(f.get("severity") == "major" for runs in cur["raw"].values() for r in runs for f in r.get("findings", [])):
@@ -152,18 +254,73 @@ def main():
     if not stop and k >= a.cap:
         stop, reason = True, f"round cap {a.cap} reached"
 
-    addressed = {fid for x in rounds for c in x["changes"] for fid in c.get("addresses", [])}
-    reg = Registry()
-    for x in rounds[:-1]:  # earlier rounds first, so IDs stay what the fixer saw
-        for label, runs in x["raw"].items():
-            for r in runs:
-                for f in r.get("findings", []):
-                    reg.id_for(label, f, x["n"])
+    measured_out = None
+    if measure is not None:
+        screens_cfg = measure["screens"]
+        for x in rounds:
+            x["m"] = measure_round(os.path.join(a.run, f"round-{x['n']}"), x["n"], screens_cfg)
+            x["majors"] = sum(sum(1 for r in runs for f in r.get("findings", []) if f.get("severity") == "major") / len(runs)
+                              for runs in x["raw"].values())  # mean majors per run, summed over screens
+        keys = []
+        for i, x in enumerate(rounds):
+            m = x["m"]
+            guard = []
+            earlier = [j for j in range(i) if rounds[j]["m"]["comparable"] and rounds[j]["guard"] is None]
+            if m["comparable"] and earlier:
+                ref = rounds[max(earlier, key=lambda j: (keys[j], -j))]
+                drops = [f"{lb} {m['per_screen'][lb]['accepted'] or 0} < {ref['m']['per_screen'][lb]['accepted'] or 0}"
+                         for lb in screens_cfg
+                         if m["per_screen"][lb]["accepted"] is not None
+                         and (m["per_screen"][lb]["accepted"] or 0) < (ref["m"]["per_screen"][lb]["accepted"] or 0)]
+                if drops:
+                    guard.append(f"accepted pairs fell against round {ref['n']}: " + ", ".join(drops))
+            seen = set().union(*(y["fids"] for y in rounds[:i])) if i else set()
+            for label, runs in x["raw"].items():
+                for r in runs:
+                    for f in r.get("findings", []):
+                        if (i and f.get("severity") == "major" and f.get("category") in GUARD_CATEGORIES
+                                and f["_fid"] not in seen):
+                            seen.add(f["_fid"])
+                            guard.append(f"new major {f['category']} finding: {f.get('element')} ({label})")
+            x["guard"] = "; ".join(guard) or None
+            judge_key = (-x["majors"], x["s_mean"]) if design else x["rel"]
+            x["key"] = (m["comparable"], x["guard"] is None, -m["fails"], judge_key)
+            keys.append(x["key"])
+        eligible = [i for i, x in enumerate(rounds) if x["m"]["comparable"] and x["guard"] is None]
+        best = max(eligible, key=lambda i: (keys[i], -i)) if eligible else None
+        revert_to = rounds[best]["n"] if best is not None and k > 1 and keys[-1] < keys[-2] else None
+        cm = cur["m"]
+        ncomp = f"round {cur['n']} not comparable: " + "; ".join(cm["problems"]) if not cm["comparable"] else None
+
+        stop, reason = False, "continue"
+        if cm["comparable"] and cur["guard"] is None and cm["fails"] == 0:
+            if design:
+                if not any(f.get("severity") == "major" for runs in cur["raw"].values() for r in runs for f in r.get("findings", [])):
+                    stop, reason = True, "no measured failures and no major deviations from the design"
+            elif cur["refs"]:
+                ref_cats = {c: statistics.mean(v["cats"][c] for v in cur["refs"].values()) for c in CATEGORIES}
+                if all(v["cats"][c] > ref_cats[c] for v in cur["screens"].values() for c in CATEGORIES):
+                    stop, reason = True, "no measured failures and every screen beats the references in every category"
+        if not stop and k >= 3 and all(x["m"]["comparable"] for x in rounds[-3:]):
+            gain = rels[-1] - rels[-3]
+            if cm["fails"] >= rounds[-3]["m"]["fails"] and gain < a.gain:
+                stop, reason = True, (f"fails did not drop over two rounds ({rounds[-3]['m']['fails']} -> {cm['fails']}) "
+                                      f"and judge gain {gain:+.2f} is under {a.gain}")
+        if not stop and k >= a.cap:
+            stop, reason = True, f"round cap {a.cap} reached"
+        note = ncomp or (f"round {cur['n']} guard: {cur['guard']}" if cur["guard"] else None)
+        if note:
+            reason = f"{reason}; {note}" if stop else note
+        if best is None:
+            nobest = "no round is comparable and unguarded: fix measurement"
+            reason = f"{reason}; {nobest}" if reason != "continue" else nobest
+        measured_out = {"fails": cm["fails"], "comparable": cm["comparable"], "accepted": cm["accepted"], "guard": cur["guard"]}
+
     found = {}
     for label, runs in cur["raw"].items():
         for r in runs:
             for f in r.get("findings", []):
-                fid = reg.id_for(label, f, cur["n"])
+                fid = f["_fid"]
                 if fid in addressed:
                     continue
                 e = found.setdefault(fid, {"id": fid, "screen": label, "category": f.get("category"),
@@ -171,6 +328,8 @@ def main():
                                            "severity": f.get("severity", "minor"), "region": f.get("region"), "seen": 0})
                 e["seen"] += 1
     open_findings = sorted(found.values(), key=lambda e: (e["severity"] != "major", -e["seen"], e["id"]))
+    if measure is not None:
+        open_findings = cur["m"]["findings"] + open_findings
 
     # references.json: written once per run, from the first round that has references.
     rj = os.path.join(a.run, "references.json")
@@ -198,8 +357,10 @@ def main():
                     "*Spread* is the gap between a screen's best and worst run: a change smaller than it is noise. "
                     "A ref-* row is the design judged against itself: the noise floor, the most a perfect build can score.")
     for x in rounds:
-        lines += [f"## Round {x['n']}", "",
-                  "| screen | " + " | ".join(CATEGORIES) + " | mean | spread | runs | judge (requested) | served |",
+        lines += [f"## Round {x['n']}", ""]
+        if measure is not None:
+            lines += measured_table(x, measure["screens"]) + [""]
+        lines += ["| screen | " + " | ".join(CATEGORIES) + " | mean | spread | runs | judge (requested) | served |",
                   "| --- | " + " | ".join("---" for _ in CATEGORIES) + " | --- | --- | --- | --- | --- |"]
         for group in (x["screens"], x["refs"]):
             for label, v in group.items():
@@ -212,14 +373,16 @@ def main():
             lines += ["", f"- screens {x['s_mean']:.2f}" + (f", references {x['r_mean']:.2f}, relative {x['rel']:+.2f}" if x["r_mean"] is not None else ""),
                       f"- reference drift since round 1: {drift:+.2f}" if drift is not None else "- reference drift: no references"]
         lines += [f"- changes this round: {len(x['changes'])}", ""]
-    lines += ["## Round log", "", f"- best round: {rounds[best]['n']}" + (f"; revert to it (round {cur['n']} scored below round {rounds[-2]['n']})" if revert_to else ""),
+    lines += ["## Round log", "", f"- best round: {'none' if best is None else rounds[best]['n']}" + (f"; revert to it (round {cur['n']} scored below round {rounds[-2]['n']})" if revert_to else ""),
               f"- decision: {'stop' if stop else 'continue'} ({reason})", f"- open findings: {len(open_findings)}", ""]
     with open(os.path.join(a.run, "scores.md"), "w") as f:
         f.write("\n".join(lines))
 
-    print(json.dumps({"round": cur["n"], "best_round": rounds[best]["n"], "revert_to": revert_to, "stop": stop,
-                      "reason": reason, "relative": round(cur["rel"], 3), "open_findings": open_findings},
-                     indent=1, ensure_ascii=False))
+    out = {"round": cur["n"], "best_round": None if best is None else rounds[best]["n"], "revert_to": revert_to, "stop": stop,
+           "reason": reason, "relative": round(cur["rel"], 3), "open_findings": open_findings}
+    if measured_out is not None:
+        out["measured"] = measured_out
+    print(json.dumps(out, indent=1, ensure_ascii=False))
 
 
 if __name__ == "__main__":
