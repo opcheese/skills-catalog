@@ -17,6 +17,8 @@ Env: HILL_JUDGE_MODEL (default kimi-code/k3.1-pro), HILL_KIMI_DELEGATE (path).
 """
 import argparse, hashlib, json, os, re, shutil, subprocess, sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 from hilllib import DEFAULT_MODEL, find_delegate, first_json
 
 CATEGORIES = ["hierarchy", "typography", "colour", "spacing", "consistency", "originality"]

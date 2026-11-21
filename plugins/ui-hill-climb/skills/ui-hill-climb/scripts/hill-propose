@@ -6,6 +6,8 @@ import subprocess
 import sys
 import tempfile
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 from hilllib import DEFAULT_MODEL, find_delegate, first_json
 
 PROMPT = """Files in the current directory:
@@ -58,8 +60,12 @@ def run():
             json.dump(data["dom"], f, ensure_ascii=False)
 
         for _ in (1, 2):
-            p = subprocess.run([delegate, "--via", "kimi", "--final-only", "--cwd", work, "--", PROMPT],
-                               capture_output=True, text=True, env=env)
+            try:
+                p = subprocess.run([delegate, "--via", "kimi", "--final-only", "--cwd", work, "--", PROMPT],
+                                   capture_output=True, text=True, env=env)
+            except OSError as e:
+                print(f"hill-propose: could not launch delegate {delegate!r}: {e}", file=sys.stderr)
+                return 3
             if p.returncode != 0:
                 sys.stderr.write(p.stderr)
                 return p.returncode

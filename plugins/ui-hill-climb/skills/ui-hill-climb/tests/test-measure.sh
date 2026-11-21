@@ -39,6 +39,22 @@ GOOD='Here is the proposal.
 EXPECTED='{"pairs":[{"nodeId":"1:1","selector":"#card"},{"nodeId":"1:2","selector":"#card > :nth-child(1)"}],"unmapped":{"design":["1:3"],"impl":["#footer"]}}'
 canonical() { python3 -c 'import json,sys; print(json.dumps(json.loads(sys.argv[1]),sort_keys=True,separators=(",",":")))' "$1"; }
 
+echo "scripts: shared-library import bootstrap"
+for SCRIPT in "$DIR/hill-judge" "$PROPOSE"; do
+  BOOTSTRAP=$(python3 - "$SCRIPT" <<'PY'
+import sys
+source = open(sys.argv[1]).read()
+insert = "sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))"
+try:
+    present = source.index(insert) < source.index("from hilllib import ")
+except ValueError:
+    present = False
+print("yes" if present else "no")
+PY
+)
+  check_eq "$(basename "$SCRIPT") inserts its script directory before hilllib" "$BOOTSTRAP" "yes"
+done
+
 echo "hill-propose: a good answer"
 reset; echo "$GOOD" > "$WORK/ans"
 OUT=$(printf '%s' "$INPUT" | propose); RC=$?
@@ -69,6 +85,14 @@ reset; echo "" > "$WORK/ans"; echo 75 > "$WORK/ans.exit"
 OUT=$(printf '%s' "$INPUT" | HILL_PROPOSAL_OUT="$WORK/quota.json" propose); RC=$?
 check_eq "exit 75 propagates" "$RC" "75"
 check_eq "saved status is 75" "$(cat "$WORK/quota.json.status")" "75"
+
+echo "hill-propose: nonexistent delegate"
+reset
+OUT=$(printf '%s' "$INPUT" | HILL_KIMI_DELEGATE="$WORK/no-such-delegate" HILL_PROPOSAL_OUT="$WORK/missing.json" "$PROPOSE" 2>"$WORK/stderr"); RC=$?
+check_eq "launch failure exits 3" "$RC" "3"
+check_eq "launch failure saves status 3" "$(cat "$WORK/missing.json.status" 2>/dev/null)" "3"
+check_contains "launch failure is reported" "$(cat "$WORK/stderr")" "hill-propose:"
+check_missing "launch failure has no traceback" "$(cat "$WORK/stderr")" "Traceback"
 
 echo "hill-propose: bad stdin"
 for BAD in 'not JSON' '{"dom":{}}' '{"design":{}}'; do
