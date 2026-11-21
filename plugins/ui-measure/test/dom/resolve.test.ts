@@ -72,10 +72,21 @@ describe("resolveProposal", () => {
     expect((await resolveOne(".menu")).notes[".menu"]).toBe("no element inside root")
   })
   it("invalid selector", async () => {
-    // Browsers forgive a bracket left open at the end (`[aria-label=Back` still matches), so the
-    // selector here is cut off before its value, which they do reject.
-    const sel = "button[aria-label="
-    expect((await resolveOne(sel)).notes[sel]).toBe("invalid selector")
+    // Chromium forgives a bracket left open at the end, so this one is caught before the page.
+    const sel = "button[aria-label=Back"
+    const r = await resolveOne(sel)
+    expect(r.notes[sel]).toBe("invalid selector")
+    expect(r.selector).toBe(sel)
+  })
+  it.each(["button[aria-label=", 'button[aria-label="Back', "button:not(.a", "a]b", "a)b"])(
+    "invalid selector: %s",
+    async (sel) => {
+      expect((await resolveOne(sel)).notes[sel]).toBe("invalid selector")
+    },
+  )
+  it("brackets inside quotes do not count", async () => {
+    const r = await resolveOne('button[aria-label="Back"]:not([aria-label="x)"])')
+    expect(r.selector).toBe("#root > :nth-child(1)")
   })
   it("the root itself resolves", async () => {
     const r = await resolveOne("#root")

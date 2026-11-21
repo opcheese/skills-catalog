@@ -129,6 +129,39 @@ describe("ui-measure CLI", () => {
     ])
   })
 
+  it("a recorded proposal with unresolvable selectors completes and drops those pairs", async () => {
+    const proposal = join(scratch, "unresolvable-proposal.json")
+    writeFileSync(
+      proposal,
+      JSON.stringify({
+        pairs: [
+          { nodeId: "1:1", selector: "#card" },
+          { nodeId: "1:2", selector: "#card > :nth-child(1)" },
+          { nodeId: "1:3", selector: "#card > :nth-child(2)" },
+          { nodeId: "1:4", selector: "body" },
+          { nodeId: "1:5", selector: "h2[class=Back" },
+        ],
+        unmapped: { design: [], impl: [] },
+      }),
+    )
+    const json = join(scratch, "spec-unresolvable.json")
+    const result = await run([
+      "spec",
+      "--config", config,
+      "--target", "card-clean",
+      "--proposer", "recorded",
+      "--proposal", proposal,
+      "--json", json,
+    ])
+    expect(result.status, output(result)).not.toBe(3)
+    const report = readReport(json)
+    // body is outside the root, the other has an unbalanced bracket: both are proposed and
+    // dropped, never accepted. (The notes themselves are asserted in resolve.test.ts and
+    // verify.test.ts; the report carries counts, not per-pair notes.)
+    expect(report.coverage).toMatchObject({ pairsProposed: 5, pairsAccepted: 3, dropped: 2 })
+    expect(report.findings.every((f) => f.status !== "not_comparable" || f.kind !== "page")).toBe(true)
+  })
+
   it("a partial proposal is not_comparable and exits 2 even without mismatches", async () => {
     const json = join(scratch, "spec-partial.json")
     const result = await run([

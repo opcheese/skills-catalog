@@ -781,10 +781,34 @@ async function rootIsHidden(page, selector) {
 }
 
 // src/dom/resolve.ts
+function isUnbalanced(selector) {
+  const open = [];
+  let quote = null;
+  for (let i = 0; i < selector.length; i++) {
+    const c = selector[i];
+    if (c === "\\") {
+      i++;
+    } else if (quote !== null) {
+      if (c === quote) quote = null;
+    } else if (c === '"' || c === "'") {
+      quote = c;
+    } else if (c === "[" || c === "(") {
+      open.push(c === "[" ? "]" : ")");
+    } else if (c === "]" || c === ")") {
+      if (open.pop() !== c) return true;
+    }
+  }
+  return quote !== null || open.length > 0;
+}
 async function resolveProposal(p, dom, proposal) {
   const known = new Set(dom.elements.map((e) => e.selector));
-  const wanted = [...new Set(proposal.pairs.map((x) => x.selector).filter((s) => !known.has(s)))];
+  const unknown = [...new Set(proposal.pairs.map((x) => x.selector).filter((s) => !known.has(s)))];
   const resolved = /* @__PURE__ */ new Map();
+  const wanted = [];
+  for (const sel of unknown) {
+    if (isUnbalanced(sel)) resolved.set(sel, { note: "invalid selector" });
+    else wanted.push(sel);
+  }
   if (wanted.length > 0) {
     const results = await p.page.evaluate(
       ({ rootSelector, selectors }) => {
