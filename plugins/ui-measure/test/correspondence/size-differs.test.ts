@@ -312,3 +312,23 @@ describe("authoritative pairs skip the plausibility rules", () => {
     expect(auth.pairs.map((p) => p.outcome)).toEqual(["accepted", "accepted"])
   })
 })
+
+describe("authoritative pairs still need measurable boxes", () => {
+  it.each([
+    ["x", { x: Number.NaN, y: 0, width: 10, height: 10 }],
+    ["width", { x: 0, y: 0, width: Number.POSITIVE_INFINITY, height: 10 }],
+  ])("a non-finite DOM %s is not_comparable by measurable", (_name, box) => {
+    const design = designOf([
+      { id: "r", type: "FRAME", box: bb(0, 0, 100, 100) },
+      { id: "i", type: "VECTOR", box: bb(0, 0, 10, 10), parentId: "r" },
+    ])
+    const dom = domOf([
+      { selector: "root", tag: "div", box: bb(0, 0, 100, 100) },
+      { selector: "root > svg", tag: "svg", box },
+    ])
+    const p: Proposal = { pairs: [{ nodeId: "i", selector: "root > svg" }], unmapped: { design: [], impl: [] }, authoritative: true }
+    const v = verifyMapping(p, design, dom, ONE).pairs[0]
+    expect(v.outcome).toBe("not_comparable")
+    expect(v.rule).toBe("measurable")
+  })
+})

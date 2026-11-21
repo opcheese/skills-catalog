@@ -543,7 +543,7 @@ function verifyMapping(proposal, design2, dom, opts) {
     }
   }
   for (const g of geometric) {
-    if (authoritative || g.v.outcome === "not_comparable") continue;
+    if (g.v.outcome === "not_comparable") continue;
     const dw = Math.abs(g.design.width - g.dom.width);
     const dh = Math.abs(g.design.height - g.dom.height);
     const worst = Math.max(dw, dh);
@@ -551,6 +551,7 @@ function verifyMapping(proposal, design2, dom, opts) {
       reject(g.v, "measurable", "a box carries a non-finite coordinate");
       continue;
     }
+    if (authoritative) continue;
     const tolerance = SIZE_TOLERANCE_PX * opts.scale;
     if (worst > tolerance) {
       reject(

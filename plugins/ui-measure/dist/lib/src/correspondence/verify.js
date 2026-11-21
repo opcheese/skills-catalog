@@ -387,7 +387,7 @@ export function verifyMapping(proposal, design, dom, opts) {
     // measurement the caller is about to take, and a rule that discarded the
     // pair for it would be answering the question with itself.
     for (const g of geometric) {
-        if (authoritative || g.v.outcome === "not_comparable")
+        if (g.v.outcome === "not_comparable")
             continue;
         const dw = Math.abs(g.design.width - g.dom.width);
         const dh = Math.abs(g.design.height - g.dom.height);
@@ -396,6 +396,9 @@ export function verifyMapping(proposal, design, dom, opts) {
             reject(g.v, "measurable", "a box carries a non-finite coordinate");
             continue;
         }
+        // Authoritative pairs are measured, not judged for plausibility.
+        if (authoritative)
+            continue;
         const tolerance = SIZE_TOLERANCE_PX * opts.scale;
         if (worst > tolerance) {
             reject(g.v, "size_plausible", `sizes differ by ${worst.toFixed(2)}px after normalisation, over the ` +

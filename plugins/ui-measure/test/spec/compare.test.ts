@@ -505,4 +505,24 @@ describe("authoritative correspondence findings", () => {
       expect.objectContaining({ status: "not_comparable", reason: "authoritative proposal has no pairs" }),
     ])
   })
+
+  it("swapped text on authoritative pairs reaches the type-style comparison", () => {
+    const text = (id: string, t: string, y: number): DesignNode => ({ id, type: "TEXT", text: t, font: { family: "serif", size: 20, weight: 400 }, parentId: "r", box: { x: 0, y, width: 100, height: 20 } })
+    const d: DesignTree = { root: design.root, nodes: [design.root, text("a", "Alpha", 0), text("b", "Beta", 30)] }
+    const el = (sel: string, t: string, y: number): DomElement => ({ selector: sel, tag: "p", text: t, box: { x: 0, y, width: 100, height: 20 }, style: STYLE })
+    const e1 = el("#r > p:nth-child(1)", "Beta", 0)
+    const e2 = el("#r > p:nth-child(2)", "Alpha", 30)
+    const dm: DomTree = { root, elements: [root, e1, e2] }
+    const prop: Proposal = {
+      pairs: [{ nodeId: "a", selector: e1.selector }, { nodeId: "b", selector: e2.selector }],
+      unmapped: { design: [], impl: [] },
+      authoritative: true,
+    }
+    const out = compareSpec(d, dm, verifyMapping(prop, d, dm, { scale: 1 }), { scale: 1, authoritative: true })
+    // compareSpec compares type style, not the string; the swapped pairs must still be measured.
+    const sizes = out.findings.filter((f) => f.kind === "font-size")
+    expect(sizes.map((f) => f.target?.designNode).sort()).toEqual(["a", "b"])
+    expect(sizes.every((f) => f.status === "fail")).toBe(true)
+    expect(out.findings.some((f) => f.kind === "correspondence")).toBe(false)
+  })
 })
