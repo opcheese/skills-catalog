@@ -1,0 +1,12 @@
+{
+  "nodes": {
+    "1:1": {
+      "document": {
+        "id": "1:1",
+        "type": "FRAME",
+        "visible": false,
+        "absoluteBoundingBox": { "x": 0, "y": 0, "width": 320, "height": 160 }
+      }
+    }
+  }
+}

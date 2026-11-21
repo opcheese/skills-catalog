@@ -1,0 +1,21 @@
+<!doctype html>
+<meta charset="utf-8">
+<style>
+  /* Matches test/fixtures/figma/card.json, except root: 22.5rem. All lengths are rem so the page scales with the root font size. */
+  @font-face { font-family: Inter; src: url(card-font.ttf); font-weight: 100 900 }
+  body { margin: 0; font-family: Inter, sans-serif }
+  #card { box-sizing: border-box; width: 22.5rem; height: 10rem; padding: calc(1.5rem - 1px); border: 1px solid #e6e6e6;
+    border-radius: 1rem; background: #ffffff; box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.1);
+    display: flex; flex-direction: column; gap: 0.75rem; margin: 6.25rem 0 0 6.25rem }
+  #card h2 { margin: 0; font: 600 1.25rem/1.75rem Inter, sans-serif; color: #1a334d }
+  #card p { margin: 0; white-space: nowrap; font: 400 0.875rem/1.25rem Inter, sans-serif; color: rgba(0, 0, 0, 0.5) }
+</style>
+<script>
+  // ?root=8 sets the root font size to 8px; absent keeps the browser default of 16px.
+  var root = new URLSearchParams(location.search).get("root")
+  if (root) document.documentElement.style.fontSize = root + "px"
+</script>
+<div id="card">
+  <h2>Plan overview</h2>
+  <p>Everything you need in one place.</p>
+</div>

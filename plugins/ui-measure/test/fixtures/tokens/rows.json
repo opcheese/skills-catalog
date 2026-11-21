@@ -1,0 +1,11 @@
+{
+  "tokens": [
+    { "figma": "base/primary", "value": "#0A84FF", "code": "--color-primary" },
+    { "figma": "spacing/4", "value": "16", "code": "p-4" },
+    { "figma": null, "value": "8", "code": "rounded-lg", "property": "radius" },
+    { "figma": "brand/size", "value": "14", "code": null, "property": "sparkle" },
+    null,
+    { "figma": "font/weight/bold", "value": "700", "code": "font-bold" },
+    { "figma": "scale/mystery", "value": "3", "code": null }
+  ]
+}

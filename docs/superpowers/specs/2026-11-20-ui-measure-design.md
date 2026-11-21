@@ -97,7 +97,8 @@ Each unit has one job and is usable alone.
 - **spec** compares accepted pairs: box geometry, radius, token-bound properties, and **gaps and padding**
   from auto-layout. Gaps are compared between accepted siblings and padding between a parent and its first
   and last child, so a spacing change that resizes an element is reported as a spacing mismatch instead of
-  dropping the pair (the gap Galatea's survey found). Tolerance floor 2px (Figma stroke vs CSS border).
+  dropping the pair (the gap Galatea's survey found). Tolerance floor 2px (Figma stroke vs CSS border) for geometry; font size and line height use 0.5px,
+  since a 2px floor would pass 14px text for 16px.
   Values compared are resolved values only (my call): box geometry, gaps, padding, radius and border width
   from the node; fill colour, font family, size, weight and line height from fills and text style; effects
   from `effects`. Token identity is not checked, because computed style does not say which variable produced

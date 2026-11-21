@@ -26,7 +26,7 @@ task is the only second reader before the branch review. Test-loop subagents run
   number or a person is rewritten generically.
 - No model client in the package. A model may only propose pairs, through the `command` proposer.
 - Every finding status is `pass | fail | not_comparable`; `not_comparable` always carries `reason`.
-- Tolerance floor 2px; size plausibility 8px (Galatea's `SIZE_TOLERANCE_PX`); both scaled by `scale`.
+- Tolerance floor 2px for geometry (font size and line height 0.5px — spec amended); size plausibility 8px (Galatea's `SIZE_TOLERANCE_PX`); both scaled by `scale`. A property present on one side and absent on the other (border, radius, shadow) is a presence fact, compared with zero tolerance.
 - Exit codes: 0 clean, 1 mismatches, 2 not comparable, 3 usage or setup error.
 - Playwright is a peer dependency, never bundled; missing Playwright exits 3 with an install hint.
 - Conventional commits with the session trailer. No numbered markdown headings.
@@ -73,12 +73,13 @@ task is the only second reader before the branch review. Test-loop subagents run
 
 **Interfaces:**
 - Produces: `verifyMapping(proposal: Proposal, design: DesignTree, dom: DomTree, opts: { scale: number }): Verification`;
-  `normalise(box: Box, designRoot: Box, domRoot: Box, scale: number): Box` — translates by the roots'
-  origins and divides by `scale`; it no longer uses the roots' width ratio.
+  `normalise(box: Box, designRoot: Box, domRoot: Box, scale: number): Box` — maps a design box into the DOM
+  root's CSS space: translates by the roots' origins and multiplies by `scale` (CSS px per design px, the
+  spec's definition); it no longer uses the roots' width ratio.
 
 - [ ] **Step 1:** port the tests; replace each expectation that relied on the width ratio with `scale: 1`
   and equal-sized roots. Add `normalise ignores root width: design root 300 wide, dom root 600 wide,
-  scale 1 → a 100px box stays 100px`. Run; FAIL (module missing).
+  scale 1 → a 100px box stays 100px`; `design 200 wide at scale 0.5 matches DOM 100`. Run; FAIL (module missing).
 - [ ] **Step 2:** port `verify.ts`; apply the `scale` change. All ported tests PASS.
 - [ ] **Step 3:** commit `feat(ui-measure): port the correspondence verifier`.
 

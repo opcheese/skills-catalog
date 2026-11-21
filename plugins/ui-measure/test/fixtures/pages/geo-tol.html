@@ -1,0 +1,14 @@
+<!doctype html>
+<meta charset="utf-8">
+<style>body { margin: 0 } p { margin: 0 }</style>
+<div id="root">
+  <p>Anchor</p>
+  <div id="box" style="overflow:hidden;height:20px"><p id="t" style="height:20px">Text</p></div>
+  <p id="o" style="position:absolute;top:40px;left:0">Off</p>
+</div>
+<script>
+  // ?clip=N makes the text N px taller than its clipping box; ?off=N moves a text box N px past the left edge.
+  var q = new URLSearchParams(location.search)
+  document.getElementById("t").style.height = 20 + Number(q.get("clip") || 0) + "px"
+  document.getElementById("o").style.left = -Number(q.get("off") || 0) + "px"
+</script>
