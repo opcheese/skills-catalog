@@ -26,7 +26,7 @@ over a table; `ui-hill-climb` reuses the same pairs. Selectors may be any CSS th
 inside the root; rejected pairs appear in `coverage.rejected` and as `not_comparable` findings. CSS
 `filter: drop-shadow(...)` now matches Figma DROP_SHADOW. New shipped files: `scripts/export-node.js`,
 `templates/FIGMA.md`, `templates/ui-measure.config.json`, `templates/gitignore-snippet.txt`, and a plugin README
-with known gaps. A real-screen trial of the workflow is pending. Spec
+with known gaps. An initial trial on a private replay of a real screen ran with builder pairs (the CSS-filter glow that previously failed as a control now passes, the missing glow is still caught); a team trial on a new screen is pending. Spec
 `docs/superpowers/specs/2026-11-21-ui-measure-0.2-design.md`.
 
 ## 2026-11-20: ui-hill-climb 0.2.0, climbing on measured counts
