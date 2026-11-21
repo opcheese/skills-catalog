@@ -42,3 +42,66 @@ def first_json(text: str, accept: Callable[[dict], bool]) -> dict | None:
         if isinstance(obj, dict) and accept(obj):
             return obj
     return None
+
+
+def load_measure(run_dir: str) -> dict | None:
+    path = os.path.join(run_dir, "measure.json")
+    if not os.path.exists(path):
+        return None
+    try:
+        with open(path) as f:
+            data = json.load(f)
+    except json.JSONDecodeError as e:
+        print(f"{path}: invalid JSON: {e.msg}", file=sys.stderr)
+        sys.exit(2)
+    except OSError as e:
+        print(f"{path}: {e}", file=sys.stderr)
+        sys.exit(2)
+    if not isinstance(data, dict):
+        print(f"{path}: must contain a JSON object", file=sys.stderr)
+        sys.exit(2)
+    unknown = set(data) - {"config", "screens"}
+    if unknown:
+        print(f"{path}: unknown key {sorted(unknown)[0]!r}", file=sys.stderr)
+        sys.exit(2)
+    if not isinstance(data.get("config"), str) or not data["config"]:
+        print(f"{path}: config must be a non-empty string", file=sys.stderr)
+        sys.exit(2)
+    screens = data.get("screens")
+    if not isinstance(screens, dict):
+        print(f"{path}: screens must be an object", file=sys.stderr)
+        sys.exit(2)
+    for label, screen in screens.items():
+        if not isinstance(screen, dict):
+            print(f"{path}: screen {label!r} must be an object", file=sys.stderr)
+            sys.exit(2)
+        unknown = set(screen) - {"target", "figma", "node", "proposal"}
+        if unknown:
+            print(f"{path}: screen {label!r} has unknown key {sorted(unknown)[0]!r}", file=sys.stderr)
+            sys.exit(2)
+        if not isinstance(screen.get("target"), str) or not screen["target"]:
+            print(f"{path}: screen {label!r} target must be a non-empty string", file=sys.stderr)
+            sys.exit(2)
+        if "figma" in screen and "node" in screen:
+            print(f"{path}: screen {label!r} gives both figma and node; they are mutually exclusive", file=sys.stderr)
+            sys.exit(2)
+        for key in ("figma", "node", "proposal"):
+            if key in screen and (not isinstance(screen[key], str) or not screen[key]):
+                print(f"{path}: screen {label!r} {key} must be a non-empty string", file=sys.stderr)
+                sys.exit(2)
+    return data
+
+
+def find_ui_measure() -> str:
+    explicit = os.environ.get("HILL_UI_MEASURE")
+    if explicit:
+        return explicit
+    paths = glob.glob(os.path.expanduser("~/.claude/plugins/cache/*/ui-measure/*/dist/ui-measure.mjs"))
+
+    def version_key(path):
+        version = os.path.basename(os.path.dirname(os.path.dirname(path)))
+        return [int(x) if x.isdigit() else 0 for x in re.split(r"[.]", version)]
+
+    if paths:
+        return sorted(paths, key=version_key)[-1]
+    die(2, "install the ui-measure plugin, or set HILL_UI_MEASURE")

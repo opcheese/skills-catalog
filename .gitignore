@@ -2,3 +2,4 @@
 .superpowers/
 .env
 .env.*
+__pycache__/

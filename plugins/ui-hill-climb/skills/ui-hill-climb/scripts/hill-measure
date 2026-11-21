@@ -1,0 +1,175 @@
+#!/usr/bin/env python3
+"""Run ui-measure for each measured screen in one hill-climb round."""
+import argparse
+import json
+import os
+import shutil
+import subprocess
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+from hilllib import find_ui_measure, load_measure
+
+
+def die(code, msg):
+    print(f"hill-measure: {msg}", file=sys.stderr)
+    sys.exit(code)
+
+
+def ui_command(cli, args):
+    return (["node", cli] if cli.endswith(".mjs") else [cli]) + args
+
+
+def run_ui(cli, args, proposal_out=None):
+    env = dict(os.environ)
+    if proposal_out:
+        env["HILL_PROPOSAL_OUT"] = proposal_out
+    try:
+        p = subprocess.run(ui_command(cli, args), capture_output=True, text=True,
+                           cwd=os.getcwd(), env=env)
+    except OSError as e:
+        die(3, f"could not launch ui-measure {cli!r}: {e}")
+    if p.returncode not in (0, 1, 2):
+        sys.stderr.write(p.stderr)
+    return p.returncode
+
+
+def proposer_status(proposal_out):
+    try:
+        with open(proposal_out + ".status") as f:
+            return int(f.read().strip())
+    except (OSError, ValueError):
+        return None
+
+
+def dropped(report_path):
+    try:
+        with open(report_path) as f:
+            report = json.load(f)
+        value = report["coverage"]["dropped"]
+        return value if isinstance(value, int) and not isinstance(value, bool) else None
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+
+
+def spec_args(screen, report_path, proposer):
+    design = ["--figma", screen["figma"]] if "figma" in screen else ["--node", screen["node"]]
+    return ["spec", "--config", screen["config"], "--target", screen["target"],
+            *design, "--json", report_path, *proposer]
+
+
+def fresh_spec(cli, screen, report_path, proposal_path):
+    proposer = os.environ.get("HILL_PROPOSE", os.path.join(os.path.dirname(os.path.abspath(__file__)), "hill-propose"))
+    args = spec_args(screen, report_path, ["--proposer", "command", "--", "python3", proposer])
+    code = run_ui(cli, args, proposal_path)
+    if code == 3:
+        status = proposer_status(proposal_path)
+        if status == 75:
+            return 75
+        if status == 3:
+            if os.path.exists(report_path):
+                os.remove(report_path)
+            return 0
+    return code
+
+
+def latest_proposal(run, label, current_round):
+    for number in range(current_round - 1, 0, -1):
+        round_dir = os.path.join(run, f"round-{number}")
+        path = os.path.join(round_dir, f"{label}.proposal.json")
+        if os.path.isfile(path):
+            return number, path, os.path.join(round_dir, f"{label}.spec.json")
+    return None
+
+
+def measure_spec(cli, run, label, number, screen):
+    round_dir = os.path.join(run, f"round-{number}")
+    report_path = os.path.join(round_dir, f"{label}.spec.json")
+    proposal_path = os.path.join(round_dir, f"{label}.proposal.json")
+    earlier = latest_proposal(run, label, number)
+
+    if earlier:
+        source_round, source_proposal, source_report = earlier
+        try:
+            shutil.copyfile(source_proposal, proposal_path)
+        except OSError as e:
+            die(2, f"could not reuse proposal {source_proposal}: {e}")
+        proposer = ["--proposer", "recorded", "--proposal", source_proposal]
+        code = run_ui(cli, spec_args(screen, report_path, proposer))
+        if code not in (0, 1, 2):
+            return code
+        old_drops = dropped(source_report)
+        reused_drops = dropped(report_path)
+        if old_drops is None or reused_drops is None or reused_drops <= old_drops:
+            return 0
+
+        retry_report = report_path + ".retry"
+        retry_proposal = proposal_path + ".retry"
+        code = fresh_spec(cli, screen, retry_report, retry_proposal)
+        if code != 0:
+            for path in (retry_report, retry_proposal, retry_proposal + ".status"):
+                if os.path.exists(path):
+                    os.remove(path)
+            return code
+        retry_drops = dropped(retry_report)
+        if retry_drops is not None and retry_drops < reused_drops:
+            os.replace(retry_report, report_path)
+            os.replace(retry_proposal, proposal_path)
+        for path in (retry_report, retry_proposal, retry_proposal + ".status"):
+            if os.path.exists(path):
+                os.remove(path)
+        return 0
+
+    if "proposal" in screen:
+        try:
+            shutil.copyfile(screen["proposal"], proposal_path)
+        except OSError as e:
+            die(2, f"could not use proposal {screen['proposal']}: {e}")
+        proposer = ["--proposer", "recorded", "--proposal", screen["proposal"]]
+        code = run_ui(cli, spec_args(screen, report_path, proposer))
+        return 0 if code in (0, 1, 2) else code
+
+    return fresh_spec(cli, screen, report_path, proposal_path)
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--run", required=True)
+    ap.add_argument("--round", required=True, type=int)
+    ap.add_argument("--label")
+    args = ap.parse_args()
+    if args.round < 1:
+        die(2, "--round must be at least 1")
+
+    manifest = load_measure(args.run)
+    if manifest is None:
+        return 0
+    if args.label is not None and args.label not in manifest["screens"]:
+        die(2, f"unknown label {args.label!r} in {os.path.join(args.run, 'measure.json')}")
+    labels = [args.label] if args.label is not None else list(manifest["screens"])
+    round_dir = os.path.join(args.run, f"round-{args.round}")
+    for label in labels:
+        screenshot = os.path.join(round_dir, f"{label}.png")
+        if not os.path.isfile(screenshot):
+            die(2, f"measured label {label!r} has no screenshot: {screenshot}")
+
+    cli = find_ui_measure()
+    os.makedirs(round_dir, exist_ok=True)
+    for label in labels:
+        configured = manifest["screens"][label]
+        screen = dict(configured, config=manifest["config"])
+        report_path = os.path.join(round_dir, f"{label}.geometry.json")
+        code = run_ui(cli, ["geometry", "--config", screen["config"], "--target", screen["target"],
+                            "--json", report_path])
+        if code not in (0, 1, 2):
+            return code
+        if "figma" in screen or "node" in screen:
+            code = measure_spec(cli, args.run, label, args.round, screen)
+            if code != 0:
+                return code
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
