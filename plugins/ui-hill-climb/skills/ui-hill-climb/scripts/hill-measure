@@ -53,6 +53,20 @@ def dropped(report_path):
         return None
 
 
+def is_authoritative(proposal_path):
+    try:
+        with open(proposal_path) as f:
+            return json.load(f).get("authoritative") is True
+    except (OSError, ValueError, AttributeError):
+        return False
+
+
+def default_pairs(screen):
+    path = os.path.join(os.path.dirname(os.path.abspath(screen["config"])), ".ui-measure", "pairs",
+                        screen["target"] + ".json")
+    return path if os.path.isfile(path) else None
+
+
 def spec_args(screen, report_path, proposer):
     design = ["--figma", screen["figma"]] if "figma" in screen else ["--node", screen["node"]]
     return ["spec", "--config", screen["config"], "--target", screen["target"],
@@ -107,6 +121,10 @@ def measure_spec(cli, run, label, number, screen):
         reused_drops = dropped(report_path)
         if old_drops is None or reused_drops is None or reused_drops <= old_drops:
             return 0
+        if is_authoritative(source_proposal):
+            print(f"hill-measure: {label}: dropped pairs rose from {old_drops} to {reused_drops} "
+                  "with an authoritative proposal; keeping it", file=sys.stderr)
+            return 0
 
         retry_report = report_path + ".retry"
         retry_proposal = proposal_path + ".retry"
@@ -125,12 +143,13 @@ def measure_spec(cli, run, label, number, screen):
                 os.remove(path)
         return 0
 
-    if "proposal" in screen:
+    chosen = screen.get("proposal") or default_pairs(screen)
+    if chosen:
         try:
-            shutil.copyfile(screen["proposal"], proposal_path)
+            shutil.copyfile(chosen, proposal_path)
         except OSError as e:
-            die(2, f"could not use proposal {screen['proposal']}: {e}")
-        proposer = ["--proposer", "recorded", "--proposal", screen["proposal"]]
+            die(2, f"could not use proposal {chosen}: {e}")
+        proposer = ["--proposer", "recorded", "--proposal", chosen]
         code = run_ui(cli, spec_args(screen, report_path, proposer))
         return 0 if code in (0, 1, 2) else code
 

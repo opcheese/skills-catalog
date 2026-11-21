@@ -289,6 +289,73 @@ for ORDER in better worse; do
   check_eq "$ORDER retry keeps the winning proposal" "$(cat "$RUN/round-2/card.proposal.json")" "{\"proposal\":\"$WANT_PROPOSAL\"}"
 done
 
+add_pairs_file() {  # $1 = JSON body of <config dir>/.ui-measure/pairs/card.json
+  mkdir -p "$UM_WORK/.ui-measure/pairs"
+  printf '%s\n' "$1" > "$UM_WORK/.ui-measure/pairs/card.json"
+}
+
+echo "hill-measure: round 1 uses the default pairs file"
+new_spec_run
+add_pairs_file '{"pairs":[{"nodeId":"1:1","selector":"#card"}],"marker":"pairs"}'
+OUT=$(measure --run "$RUN" --round 1 2>&1); RC=$?
+LOG=$(cat "$STUB_STATE.log" 2>/dev/null)
+check_eq "pairs file exits 0" "$RC" "0"
+check_contains "uses the recorded proposer" "$LOG" $'ARG --proposer\nARG recorded'
+check_contains "passes the pairs file" "$LOG" "ARG $UM_WORK/.ui-measure/pairs/card.json"
+check_missing "does not use a command proposer" "$LOG" $'ARG --proposer\nARG command'
+check_eq "saved round proposal equals the pairs file" "$(cat "$RUN/round-1/card.proposal.json")" "$(cat "$UM_WORK/.ui-measure/pairs/card.json")"
+check_eq "pairs file makes no hill-propose call" "$(grep -c 'stub-propose' "$STUB_STATE.log")" "0"
+
+echo "hill-measure: manifest proposal beats the pairs file"
+new_spec_run
+add_pairs_file '{"pairs":[],"marker":"pairs"}'
+python3 - "$RUN/measure.json" "$UM_WORK/manifest-proposal.json" <<'PY'
+import json, sys
+p=sys.argv[1]; data=json.load(open(p)); data["screens"]["card"]["proposal"]=sys.argv[2]
+json.dump(data, open(p, "w"))
+PY
+OUT=$(measure --run "$RUN" --round 1 2>&1); RC=$?
+LOG=$(cat "$STUB_STATE.log" 2>/dev/null)
+check_eq "manifest over pairs exits 0" "$RC" "0"
+check_contains "uses the manifest proposal" "$LOG" "ARG $UM_WORK/manifest-proposal.json"
+check_missing "does not use the pairs file" "$LOG" "ARG $UM_WORK/.ui-measure/pairs/card.json"
+
+echo "hill-measure: earlier round beats the pairs file"
+new_spec_run
+add_pairs_file '{"pairs":[],"marker":"pairs"}'
+printf '%s\n' '{"proposal":"old"}' > "$RUN/round-1/card.proposal.json"
+printf '%s\n' '{"coverage":{"dropped":0},"marker":"old"}' > "$RUN/round-1/card.spec.json"
+mkdir -p "$RUN/round-2"; printf '%s\n' 'fake png' > "$RUN/round-2/card.png"
+OUT=$(measure --run "$RUN" --round 2 2>&1); RC=$?
+LOG=$(cat "$STUB_STATE.log" 2>/dev/null)
+check_contains "uses the earlier proposal" "$LOG" "ARG $RUN/round-1/card.proposal.json"
+check_missing "does not use the pairs file" "$LOG" "ARG $UM_WORK/.ui-measure/pairs/card.json"
+
+echo "hill-measure: authoritative proposal is not re-proposed when drops rise"
+for SOURCE in pairs earlier; do
+  new_spec_run
+  mkdir -p "$RUN/round-2"; printf '%s\n' 'fake png' > "$RUN/round-2/card.png"
+  printf '%s\n' '{"coverage":{"dropped":2},"marker":"reused"}' > "$STUB_REPORT_spec"
+  if [ "$SOURCE" = pairs ]; then
+    add_pairs_file '{"pairs":[],"authoritative":true}'
+    ROUND=1
+  else
+    printf '%s\n' '{"pairs":[],"authoritative":true}' > "$RUN/round-1/card.proposal.json"
+    printf '%s\n' '{"coverage":{"dropped":0},"marker":"old"}' > "$RUN/round-1/card.spec.json"
+    ROUND=2
+  fi
+  OUT=$(measure --run "$RUN" --round $ROUND 2>&1); RC=$?
+  check_eq "$SOURCE: authoritative exits 0" "$RC" "0"
+  check_eq "$SOURCE: authoritative makes one spec call" "$(grep -c '^CALL .* spec' "$STUB_STATE.log")" "1"
+  check_missing "$SOURCE: authoritative never calls hill-propose" "$(cat "$STUB_STATE.log")" "stub-propose"
+  if [ "$SOURCE" = earlier ]; then check_contains "earlier: the drop is reported" "$OUT" "authoritative"; fi
+done
+
+echo "hill-measure: a non-authoritative pairs file still follows the 0.2 path with no file"
+new_spec_run
+OUT=$(measure --run "$RUN" --round 1 2>&1); RC=$?
+check_contains "no pairs file proposes fresh" "$(cat "$STUB_STATE.log")" $'ARG --proposer\nARG command'
+
 echo "hill-measure: spec exits 1 and 2 are data"
 for STATUS in 1 2; do
   new_spec_run; export STUB_EXIT_spec=$STATUS
