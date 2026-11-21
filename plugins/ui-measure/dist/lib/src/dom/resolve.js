@@ -84,7 +84,7 @@ export async function resolveProposal(p, dom, proposal) {
         if (r === undefined)
             return pair;
         if ("path" in r)
-            return { ...pair, selector: r.path };
+            return { ...pair, selector: r.path, ...(r.path !== pair.selector ? { proposed: pair.selector } : {}) };
         notes[pair.selector] = r.note;
         return pair;
     });

@@ -118,7 +118,13 @@ export interface DomTree {
 }
 
 export interface Proposal {
-  pairs: { nodeId: string; selector: string }[]
+  pairs: {
+    nodeId: string
+    selector: string
+    /** The selector as recorded, set only when resolution rewrote `selector` to a walker path.
+     *  Diagnostics report this one; verification runs on `selector`. */
+    proposed?: string
+  }[]
   /** What the proposer says has no counterpart. Carried through untouched:
    *  an unmapped node is not a finding, it is an absence of one. */
   unmapped: { design: string[]; impl: string[] }
@@ -143,6 +149,8 @@ export type RejectionRule =
 export interface PairVerdict {
   nodeId: string
   selector: string
+  /** The selector as recorded, when `selector` is its resolved walker path. */
+  proposed?: string
   /** `size_differs`: the only rule that failed is `size_plausible`, and the
    *  pair is kept anyway because other evidence says it is the same thing
    *  (see verify.ts). It is not in `Verification.accepted`. */

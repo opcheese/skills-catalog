@@ -410,6 +410,7 @@ function verifyMapping(proposal, design2, dom, opts) {
   const verdicts = proposal.pairs.map((p) => ({
     nodeId: p.nodeId,
     selector: p.selector,
+    ...p.proposed !== void 0 ? { proposed: p.proposed } : {},
     outcome: "accepted"
   }));
   const reject = (v, rule, note) => {
@@ -844,7 +845,7 @@ async function resolveProposal(p, dom, proposal) {
   const pairs = proposal.pairs.map((pair) => {
     const r = resolved.get(pair.selector);
     if (r === void 0) return pair;
-    if ("path" in r) return { ...pair, selector: r.path };
+    if ("path" in r) return { ...pair, selector: r.path, ...r.path !== pair.selector ? { proposed: pair.selector } : {} };
     notes[pair.selector] = r.note;
     return pair;
   });
@@ -2102,7 +2103,7 @@ function compareSpec(design2, dom, v, opts) {
         check: "spec",
         kind: "correspondence",
         status: "not_comparable",
-        target: { selector: p.selector, designNode: p.nodeId },
+        target: { selector: p.proposed ?? p.selector, designNode: p.nodeId },
         reason: `${p.rule}: ${p.note ?? p.rule}`
       });
     }
@@ -2114,7 +2115,7 @@ function compareSpec(design2, dom, v, opts) {
       pairsAccepted: kept.length,
       dropped: proposed - kept.length,
       authoritative: opts.authoritative === true,
-      rejected: v.pairs.filter((p) => p.outcome === "not_comparable").map((p) => ({ nodeId: p.nodeId, selector: p.selector, rule: p.rule, ...p.note ? { note: p.note } : {} }))
+      rejected: v.pairs.filter((p) => p.outcome === "not_comparable").map((p) => ({ nodeId: p.nodeId, selector: p.proposed ?? p.selector, rule: p.rule, ...p.note ? { note: p.note } : {} }))
     }
   };
 }

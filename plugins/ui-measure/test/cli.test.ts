@@ -211,6 +211,34 @@ describe("ui-measure CLI", () => {
     expect(report.findings.every((f) => f.status !== "not_comparable" || f.kind !== "page")).toBe(true)
   })
 
+  it("a rejected pair keeps the selector as recorded, not the resolved walker path", async () => {
+    const proposal = join(scratch, "alias-proposal.json")
+    writeFileSync(
+      proposal,
+      JSON.stringify({
+        pairs: [
+          { nodeId: "1:1", selector: "#card" },
+          { nodeId: "1:2", selector: "[id=card]" },
+        ],
+        unmapped: { design: [], impl: [] },
+      }),
+    )
+    const json = join(scratch, "spec-alias.json")
+    const result = await run([
+      "spec",
+      "--config", config,
+      "--target", "card-clean",
+      "--proposer", "recorded",
+      "--proposal", proposal,
+      "--json", json,
+    ])
+    expect(result.status, output(result)).not.toBe(3)
+    const report = readReport(json)
+    const rejected = report.coverage.rejected.filter((r) => r.rule === "injective")
+    expect(rejected.map((r) => r.selector).sort()).toContain("[id=card]")
+    expect(rejected.every((r) => r.selector === "#card" || r.selector === "[id=card]")).toBe(true)
+  })
+
   it("empty authoritative proposal is not comparable", async () => {
     const proposal = join(scratch, "empty-authoritative.json")
     writeFileSync(proposal, JSON.stringify({ pairs: [], unmapped: { design: [], impl: [] }, authoritative: true }))

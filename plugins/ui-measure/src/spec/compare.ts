@@ -638,7 +638,7 @@ export function compareSpec(
         check: "spec",
         kind: "correspondence",
         status: "not_comparable",
-        target: { selector: p.selector, designNode: p.nodeId },
+        target: { selector: p.proposed ?? p.selector, designNode: p.nodeId },
         reason: `${p.rule}: ${p.note ?? p.rule}`,
       })
     }
@@ -652,7 +652,7 @@ export function compareSpec(
       authoritative: opts.authoritative === true,
       rejected: v.pairs
         .filter((p) => p.outcome === "not_comparable")
-        .map((p) => ({ nodeId: p.nodeId, selector: p.selector, rule: p.rule as RejectionRule, ...(p.note ? { note: p.note } : {}) })),
+        .map((p) => ({ nodeId: p.nodeId, selector: p.proposed ?? p.selector, rule: p.rule as RejectionRule, ...(p.note ? { note: p.note } : {}) })),
     },
   }
 }

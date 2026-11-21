@@ -232,6 +232,7 @@ export function verifyMapping(proposal, design, dom, opts) {
     const verdicts = proposal.pairs.map((p) => ({
         nodeId: p.nodeId,
         selector: p.selector,
+        ...(p.proposed !== undefined ? { proposed: p.proposed } : {}),
         outcome: "accepted",
     }));
     const reject = (v, rule, note) => {

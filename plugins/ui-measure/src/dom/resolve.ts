@@ -83,7 +83,7 @@ export async function resolveProposal(
   const pairs = proposal.pairs.map((pair) => {
     const r = resolved.get(pair.selector)
     if (r === undefined) return pair
-    if ("path" in r) return { ...pair, selector: r.path }
+    if ("path" in r) return { ...pair, selector: r.path, ...(r.path !== pair.selector ? { proposed: pair.selector } : {}) }
     notes[pair.selector] = r.note
     return pair
   })
