@@ -8,6 +8,31 @@ audience: developers
 
 Notable changes to the catalog: what devs install, and what the docs tell them.
 
+## 2026-11-21: ui-measure, building from a screenshot
+
+ui-measure's `SKILL.md` gains *Building from a screenshot*, for a developer with only an image of the design: write
+the layer tree, measure every element with `probe`, estimate what probe cannot measure (type, line height, radius,
+shadow) and mark it, write an inferred node JSON (`templates/inferred-node.json`, `"source": "screenshot"`), then
+build, record pairs and check twice (`spec` against the inferred node, and `probe` on a screenshot of the build).
+The hand-over says the design was inferred from a screenshot and lists the estimates. The description now triggers
+on screenshots and PNG exports. Evaluated on Claude Code with Haiku on a fixture export with known values: the
+published skill and the first draft did not load at all (the description named only Figma); after four rounds of
+fixes, both runs of the last round met all six registered criteria. Earlier Figma-path evals were rerun with no
+regression. Corner radius and line height remain estimates and vary between runs.
+
+## 2026-11-21: ui-measure probe, measuring a screenshot
+
+New command `ui-measure probe IMAGE.png --box X,Y,W,H [--box ...] [--scale S | --frame-width W] [--json OUT]` for
+building from an image when there is no Figma access (no paid seat, so no MCP). From a rough box it snaps to the
+element's exact edges and reports background, fill, content colour, padding to content and text line pitch in CSS
+pixels. No new dependency: PNG is decoded with node's zlib. Checked against a real Chromium render at 2x, where it
+recovers the browser's own boxes, fills, text colours and a 24px line height, and on a real design export, where
+at 1x it recovered the cards' boxes, fills and text colours exactly. Drop shadows are kept out of the box and
+reported as a rim, even borders stay in it; a resampled image's colours are flagged approximate. Reviewed by Kimi
+K3.1 Pro: decoding is bounded (50 megapixels), RGB and grey tRNS transparency is applied, content touching an
+element's edge stays content, and the image's own edge is not reported as a clipped box. Prior art one-shot-ui was read and not
+adopted: it snaps boxes to an 8px grid and estimates type from fixed ratios.
+
 ## 2026-11-21: ui-hill-climb 0.3.0, any model
 
 `hill-judge` and `hill-propose` now send prompts through one runner seam. `HILL_RUNNER` is `kimi` (default; the

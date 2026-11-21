@@ -116,3 +116,17 @@ describe("flatten", () => {
     expect(out.toLowerCase()).not.toContain("filekey")
   })
 })
+
+describe("inferred node template", () => {
+  it("reads like a REST node: the screenshot provenance fields are ignored by the engine", () => {
+    const file = path.join(__dirname, "../../templates/inferred-node.json")
+    const tree = flatten(readNode(JSON.parse(readFileSync(file, "utf8"))))
+    const card = tree.nodes.find((n) => n.id === "inferred:1")!
+    expect(card.box).toEqual({ x: 24, y: 24, width: 320, height: 160 })
+    expect(card.layout).toMatchObject({ gap: 12, padding: [24, 24, 24, 24] })
+    expect(card.radius).toBe(16)
+    const heading = tree.nodes.find((n) => n.id === "inferred:2")!
+    expect(heading.text).toBe("Plan overview")
+    expect(heading.font).toMatchObject({ size: 20, weight: 600, lineHeight: 28 })
+  })
+})

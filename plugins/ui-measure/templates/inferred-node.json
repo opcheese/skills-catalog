@@ -1,0 +1,32 @@
+{
+  "id": "inferred:1",
+  "name": "Card (inferred from screenshot)",
+  "type": "FRAME",
+  "source": "screenshot",
+  "image": "design/card.png",
+  "layoutMode": "VERTICAL",
+  "itemSpacing": 12,
+  "paddingTop": 24,
+  "paddingRight": 24,
+  "paddingBottom": 24,
+  "paddingLeft": 24,
+  "cornerRadius": 16,
+  "estimated": ["paddingTop", "paddingBottom", "itemSpacing", "cornerRadius", "effects"],
+  "fills": [{ "type": "SOLID", "color": { "r": 1, "g": 1, "b": 1, "a": 1 } }],
+  "effects": [
+    { "type": "DROP_SHADOW", "visible": true, "color": { "r": 0, "g": 0, "b": 0, "a": 0.1 }, "offset": { "x": 0, "y": 4 }, "radius": 8 }
+  ],
+  "absoluteBoundingBox": { "x": 24, "y": 24, "width": 320, "height": 160 },
+  "children": [
+    {
+      "id": "inferred:2",
+      "name": "Heading",
+      "type": "TEXT",
+      "characters": "Plan overview",
+      "estimated": ["style.fontSize", "style.fontWeight", "style.fontFamily", "style.lineHeightPx", "absoluteBoundingBox.y", "absoluteBoundingBox.height"],
+      "fills": [{ "type": "SOLID", "color": { "r": 0.1, "g": 0.2, "b": 0.3, "a": 1 } }],
+      "style": { "fontFamily": "Inter", "fontSize": 20, "fontWeight": 600, "lineHeightPx": 28 },
+      "absoluteBoundingBox": { "x": 48, "y": 48, "width": 140, "height": 28 }
+    }
+  ]
+}

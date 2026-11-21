@@ -14,6 +14,7 @@ import { SetupError, PartialRunError, NotComparableError } from "./errors.js";
 import { fetchNode } from "./figma/fetch.js";
 import { flatten, readNode } from "./figma/read.js";
 import { detectGeometry } from "./geometry/detect.js";
+import { PROBE_USAGE, probeCommand } from "./image/command.js";
 import { reportSummary, writeReport } from "./report/write.js";
 import { compareSpec } from "./spec/compare.js";
 import { loadTokens } from "./tokens/index.js";
@@ -25,7 +26,8 @@ const USAGE = `Usage:
     (with no proposer, uses .ui-measure/pairs/TARGET.json beside the config when it exists)
   ui-measure baseline record|check --config C --target T [--mode geometry|spec]
     [--node FILE | --figma NODE_ID] [--proposer recorded --proposal FILE | --proposer command -- ARGV...]
-    [--force] [--json OUT]`;
+    [--force] [--json OUT]
+${PROBE_USAGE}`;
 function parseOptions(args) {
     const out = { command: [] };
     for (let i = 0; i < args.length; i++) {
@@ -201,6 +203,8 @@ export async function main(argv = process.argv.slice(2)) {
             console.log(USAGE);
             return command ? 0 : 3;
         }
+        if (command === "probe")
+            return await probeCommand(argv.slice(1));
         const isBaseline = command === "baseline";
         const action = isBaseline ? argv[1] : undefined;
         if (!["geometry", "spec", "baseline"].includes(command) || (isBaseline && action !== "record" && action !== "check")) {
