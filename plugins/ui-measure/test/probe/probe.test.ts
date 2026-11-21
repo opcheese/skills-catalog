@@ -165,4 +165,54 @@ describe("probe", () => {
     expect(r.fill).toBeNull()
     expect(r.ink?.hex).toBe("#18181b")
   })
+
+  it("falls back to the image's edge for the background when the box leaves no room around it", () => {
+    // The card covers most of the frame, so the card colour is the most common colour in the image.
+    const frame = decodePng(new Canvas(200, 120, "#f4f4f5").rect(12, 12, 176, 96, "#ffffff").png())
+    const r = probe(frame, { x: 2, y: 2, width: 196, height: 116 })
+    expect(r.background).toBe("#f4f4f5")
+    expect(r.boundsPx).toEqual({ x: 12, y: 12, width: 176, height: 96 })
+    expect(r.clipped).toEqual([])
+  })
+
+  it("keeps content that touches the element's edge (zero padding) as ink", () => {
+    const canvas = new Canvas(200, 100, "#ffffff").rect(40, 20, 100, 60, "#f2f4f7").rect(40, 40, 20, 10, "#18181b")
+    const r = probe(decodePng(canvas.png()), { x: 30, y: 10, width: 120, height: 80 })
+    expect(r.boundsPx).toEqual({ x: 40, y: 20, width: 100, height: 60 })
+    expect(r.ink?.hex).toBe("#18181b")
+    expect(r.insets).toEqual({ top: 20, right: 80, bottom: 30, left: 0 })
+  })
+
+  it("keeps a thick even border in the box", () => {
+    const canvas = new Canvas(300, 200, "#ffffff").rect(40, 50, 160, 80, "#e4e4e7").rect(45, 55, 150, 70, "#ffffff")
+    const r = probe(decodePng(canvas.png()), { x: 30, y: 40, width: 180, height: 100 })
+    expect(r.boundsPx).toEqual({ x: 40, y: 50, width: 160, height: 80 })
+    expect(r.rim?.left).toEqual({ width: 5, kind: "border", hex: "#e4e4e7" })
+  })
+
+  it("warns that an uneven one-colour rim is ambiguous (uneven border or offset shadow)", () => {
+    const canvas = new Canvas(300, 200, "#ffffff").rect(39, 49, 162, 83, "#e8e8e8").rect(40, 50, 160, 80, "#ffffff")
+    const r = probe(decodePng(canvas.png()), { x: 30, y: 40, width: 180, height: 100 })
+    expect(r.warnings.join(" ")).toMatch(/uneven border or an offset shadow/)
+  })
+
+  it("keeps ink coverage within 0..1 when faint content is dropped from the box", () => {
+    const canvas = new Canvas(200, 200, "#ffffff").rect(20, 100, 160, 1, "#f7f7f7").rect(100, 100, 2, 2, "#18181b")
+    const r = probe(decodePng(canvas.png()), { x: 10, y: 10, width: 180, height: 180 })
+    expect(r.ink!.coverage).toBeGreaterThan(0)
+    expect(r.ink!.coverage).toBeLessThanOrEqual(1)
+  })
+
+  it("does not call a side clipped where the element meets the image's own edge", () => {
+    const edge = decodePng(new Canvas(100, 60, "#ffffff").rect(0, 10, 30, 20, "#f2f4f7").png())
+    const r = probe(edge, { x: 0, y: 4, width: 40, height: 32 })
+    expect(r.clipped).toEqual([])
+    expect(r.warnings.join(" ")).toMatch(/image edge: left/)
+  })
+
+  it("reads a solid shape with no inner detail as a fill with no ink", () => {
+    const r = probe(decodePng(new Canvas(100, 100, "#ffffff").rect(40, 40, 16, 16, "#18181b").png()), { x: 30, y: 30, width: 36, height: 36 })
+    expect(r.fill?.hex).toBe("#18181b")
+    expect(r.ink).toBeNull()
+  })
 })

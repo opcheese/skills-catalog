@@ -1311,6 +1311,7 @@ var VERSION = package_default.version;
 import { inflateSync } from "node:zlib";
 var SIGNATURE = [137, 80, 78, 71, 13, 10, 26, 10];
 var CHANNELS = { 0: 1, 2: 3, 3: 1, 4: 2, 6: 4 };
+var MAX_PIXELS = 5e7;
 function paeth(a, b, c) {
   const p = a + b - c;
   const pa = Math.abs(p - a);
@@ -1327,12 +1328,15 @@ function decodePng(buf) {
   let palette;
   let paletteAlpha;
   const idat = [];
-  while (offset + 8 <= buf.length) {
+  while (offset < buf.length) {
+    if (offset + 8 > buf.length) throw new SetupError("PNG is truncated inside a chunk header");
     const length2 = buf.readUInt32BE(offset);
     const type = buf.toString("ascii", offset + 4, offset + 8);
+    if (offset + 12 + length2 > buf.length) throw new SetupError(`PNG is truncated inside the ${type} chunk`);
     const data2 = buf.subarray(offset + 8, offset + 8 + length2);
     offset += 12 + length2;
     if (type === "IHDR") {
+      if (length2 !== 13) throw new SetupError("PNG IHDR chunk has the wrong length");
       width = data2.readUInt32BE(0);
       height = data2.readUInt32BE(4);
       const bitDepth = data2[8];
@@ -1347,13 +1351,17 @@ function decodePng(buf) {
   }
   if (!width || !height || idat.length === 0) throw new SetupError("PNG has no image data");
   if (colorType === 3 && !palette) throw new SetupError("palette PNG has no palette");
+  if (width * height > MAX_PIXELS) {
+    throw new SetupError(`PNG is too large: ${width}x${height}, at most ${MAX_PIXELS} pixels; crop or export a smaller frame`);
+  }
   const channels = CHANNELS[colorType];
   const stride = width * channels;
   let raw;
   try {
-    raw = inflateSync(Buffer.concat(idat));
-  } catch {
-    throw new SetupError("PNG image data is corrupt");
+    raw = inflateSync(Buffer.concat(idat), { maxOutputLength: height * (stride + 1) });
+  } catch (error) {
+    if (error.code === "ERR_BUFFER_TOO_LARGE") raw = Buffer.alloc(0);
+    else throw new SetupError("PNG image data is corrupt");
   }
   if (raw.length < height * (stride + 1)) throw new SetupError("PNG image data is truncated");
   const pixels2 = new Uint8Array(height * stride);
@@ -1370,14 +1378,20 @@ function decodePng(buf) {
       pixels2[row + i] = raw[src + i] + predictor & 255;
     }
   }
+  const transparentKey = paletteAlpha && (colorType === 0 || colorType === 2) ? Array.from({ length: colorType === 0 ? 1 : 3 }, (_, k) => paletteAlpha.readUInt16BE(k * 2) & 255) : void 0;
   const data = new Uint8Array(width * height * 4);
   for (let p = 0; p < width * height; p++) {
     const s = p * channels;
     let r, g, b, alpha = 255;
     if (colorType === 6) [r, g, b, alpha] = [pixels2[s], pixels2[s + 1], pixels2[s + 2], pixels2[s + 3]];
-    else if (colorType === 2) [r, g, b] = [pixels2[s], pixels2[s + 1], pixels2[s + 2]];
-    else if (colorType === 0) r = g = b = pixels2[s];
-    else if (colorType === 4) {
+    else if (colorType === 2) {
+      ;
+      [r, g, b] = [pixels2[s], pixels2[s + 1], pixels2[s + 2]];
+      if (transparentKey && r === transparentKey[0] && g === transparentKey[1] && b === transparentKey[2]) alpha = 0;
+    } else if (colorType === 0) {
+      r = g = b = pixels2[s];
+      if (transparentKey && r === transparentKey[0]) alpha = 0;
+    } else if (colorType === 4) {
       r = g = b = pixels2[s];
       alpha = pixels2[s + 1];
     } else {
@@ -1397,12 +1411,24 @@ function decodePng(buf) {
 var FILLED_SHARE = 0.75;
 var FILL_RUN_SHARE = 0.25;
 var BORDER_SAME_SHARE = 0.8;
-var BORDER_MAX = 4;
+var EDGE_ZONE = 2;
+var CORNER_SHARE = 0.25;
 var STRONG_SHARE = 0.25;
 var CORE_SHARE = 0.5;
 var EXACT_SHARE = 0.2;
 var RING_SAME_SHARE = 0.7;
 var HOLE_SHARE = 0.25;
+var MIN_RING = 64;
+function* edgePixels(image) {
+  for (let x = 0; x < image.width; x++) {
+    yield x * 4;
+    yield ((image.height - 1) * image.width + x) * 4;
+  }
+  for (let y = 1; y < image.height - 1; y++) {
+    yield y * image.width * 4;
+    yield (y * image.width + image.width - 1) * 4;
+  }
+}
 function flood(w, h, passable) {
   const seen = new Uint8Array(w * h);
   const queue = [];
@@ -1476,12 +1502,12 @@ function probe(image, box, options = {}) {
   const given = clip(box, image);
   if (!given) return { ...empty, status: "nothing", reason: "the box is outside the image" };
   const d = image.data;
-  const m = Math.max(4, Math.round(0.1 * Math.min(given.width, given.height)));
+  const m = Math.min(24, Math.max(4, Math.round(0.05 * Math.min(given.width, given.height))));
   const search = clip(grow(given, m), image);
   const ringOuter = clip(grow(given, 2 * m), image);
-  const ring = [...pixels(image, ringOuter, search)];
-  let bg = dominant(d, ring);
-  bg ??= dominant(d, pixels(image, { x: 0, y: 0, width: image.width, height: image.height }));
+  let ring = [...pixels(image, ringOuter, search)];
+  if (ring.length < MIN_RING) ring = [...edgePixels(image)];
+  const bg = dominant(d, ring);
   const warnings = [];
   if (ring.length && ring.filter((o) => distance(d, o, bg) <= tol).length / ring.length < RING_SAME_SHARE) {
     warnings.push("the surrounding colour is mixed (the box sits across a boundary); the background guess may be wrong, move or resize the box");
@@ -1535,10 +1561,17 @@ function probe(image, box, options = {}) {
     return { ...empty, warnings, status: "nothing", background: hex2(bg), reason: "nothing in the box differs from the surrounding colour" };
   }
   const clipped = [];
-  if (y0 === 0) clipped.push("top");
-  if (x1 === sw - 1) clipped.push("right");
-  if (y1 === search.height - 1) clipped.push("bottom");
-  if (x0 === 0) clipped.push("left");
+  const imageEdge = [];
+  const reach = (side, atSearchEdge, atImageEdge) => {
+    if (!atSearchEdge) return;
+    if (atImageEdge) imageEdge.push(side);
+    else clipped.push(side);
+  };
+  reach("top", y0 === 0, search.y === 0);
+  reach("right", x1 === sw - 1, search.x + sw === image.width);
+  reach("bottom", y1 === search.height - 1, search.y + search.height === image.height);
+  reach("left", x0 === 0, search.x === 0);
+  if (imageEdge.length) warnings.push(`the element touches the image edge: ${imageEdge.join(", ")}; it may continue beyond the image`);
   const outer = { x: search.x + x0, y: search.y + y0, width: x1 - x0 + 1, height: y1 - y0 + 1 };
   const at = (x, y) => (y - search.y) * sw + (x - search.x);
   const off = (x, y) => (y * image.width + x) * 4;
@@ -1569,6 +1602,7 @@ function probe(image, box, options = {}) {
     for (let x = outer.x; x < outer.x + outer.width; x++) if (isElement(x, y)) solid++;
   }
   let bounds = outer;
+  let borderBand = { top: 0, right: 0, bottom: 0, left: 0 };
   let fill = null;
   let rim = null;
   let ref = bg;
@@ -1616,7 +1650,7 @@ function probe(image, box, options = {}) {
       const offsets = [...pixels(image, b)];
       const colour2 = dominant(d, offsets);
       const same = offsets.filter((o) => distance(d, o, colour2) <= tol).length / offsets.length;
-      const border = same >= BORDER_SAME_SHARE && width / scale <= BORDER_MAX;
+      const border = same >= BORDER_SAME_SHARE;
       keep[side] = border;
       rim[side] = border ? { width: css(width), kind: "border", hex: hex2(colour2) } : { width: css(width), kind: "shadow" };
     }
@@ -1624,6 +1658,9 @@ function probe(image, box, options = {}) {
     const nonEmpty = ["top", "right", "bottom", "left"].filter((side) => rim[side].kind !== "none");
     const first = borders[0] && hexRgb(rim[borders[0]].hex);
     const consistent = borders.length === nonEmpty.length && borders.every((side) => colourDistance(hexRgb(rim[side].hex), first) <= tol && rim[side].width === rim[borders[0]].width);
+    if (!consistent && borders.length === nonEmpty.length) {
+      warnings.push("the rim is one colour per side but uneven: an uneven border or an offset shadow; it is left out of the box, check it");
+    }
     if (!consistent) {
       for (const side of borders) {
         rim[side] = { width: rim[side].width, kind: "shadow" };
@@ -1635,24 +1672,63 @@ function probe(image, box, options = {}) {
     const right = keep.right ? outer.x + outer.width : fillBox.x + fillBox.width;
     const bottom = keep.bottom ? outer.y + outer.height : fillBox.y + fillBox.height;
     bounds = { x: left, y: top, width: right - left, height: bottom - top };
+    borderBand = {
+      top: keep.top ? fillBox.y - outer.y : 0,
+      right: keep.right ? outer.x + outer.width - fillBox.x - fillBox.width : 0,
+      bottom: keep.bottom ? outer.y + outer.height - fillBox.y - fillBox.height : 0,
+      left: keep.left ? fillBox.x - outer.x : 0
+    };
     let near = 0;
     for (const o of pixels(image, bounds)) if (distance(d, o, ref) <= tol) near++;
     fill = { hex: hex2(ref), coverage: share(near / (bounds.width * bounds.height)) };
   }
   let area = bounds.width * bounds.height;
-  const outsideEl = fill ? flood(bounds.width, bounds.height, (i) => {
-    const lx = i % bounds.width;
-    return distance(d, off(bounds.x + lx, bounds.y + (i - lx) / bounds.width), ref) > tol;
-  }) : new Uint8Array(area);
+  const bw = bounds.width;
+  const bh = bounds.height;
+  const edgeConnected = fill ? flood(bw, bh, (i) => {
+    const lx = i % bw;
+    return distance(d, off(bounds.x + lx, bounds.y + (i - lx) / bw), ref) > tol;
+  }) : new Uint8Array(bw * bh);
+  const corner = Math.min(32, Math.round(CORNER_SHARE * Math.min(bw, bh)));
+  const inBorder = (lx, ly) => ly < borderBand.top || lx >= bw - borderBand.right || ly >= bh - borderBand.bottom || lx < borderBand.left;
+  const inZone = (lx, ly) => {
+    const dx = Math.min(lx, bw - 1 - lx);
+    const dy = Math.min(ly, bh - 1 - ly);
+    return inBorder(lx, ly) || Math.min(dx, dy) < EDGE_ZONE || dx < corner && dy < corner;
+  };
   const candidates = [];
+  const edgeCore = [];
   let farthest = 0;
   for (let y = bounds.y; y < bounds.y + bounds.height; y++) {
     for (let x = bounds.x; x < bounds.x + bounds.width; x++) {
       const o = off(x, y);
-      const isInk = fill ? !outsideEl[(y - bounds.y) * bounds.width + (x - bounds.x)] && distance(d, o, ref) > tol : kept[at(x, y)] === 1 && inside(search, x, y);
-      if (!isInk) continue;
+      const lx = x - bounds.x;
+      const ly = y - bounds.y;
+      if (!fill) {
+        if (kept[at(x, y)] !== 1 || !inside(search, x, y)) continue;
+      } else {
+        if (distance(d, o, ref) <= tol || inBorder(lx, ly)) continue;
+        if (edgeConnected[ly * bw + lx] && inZone(lx, ly)) {
+          edgeCore.push(o);
+          continue;
+        }
+      }
       candidates.push(o);
       farthest = Math.max(farthest, distance(d, o, ref));
+    }
+  }
+  if (farthest > 0 && edgeCore.length) {
+    const core = Math.max(tol, CORE_SHARE * farthest);
+    const pending = new Set(edgeCore.filter((o) => distance(d, o, ref) >= core));
+    const queue = [...candidates];
+    for (let k = 0; k < queue.length && pending.size; k++) {
+      const o = queue[k];
+      for (const n of [o - 4, o + 4, o - image.width * 4, o + image.width * 4]) {
+        if (pending.delete(n)) {
+          candidates.push(n);
+          queue.push(n);
+        }
+      }
     }
   }
   const strongMin = Math.max(tol, STRONG_SHARE * farthest);
@@ -1687,7 +1763,12 @@ function probe(image, box, options = {}) {
     const core = inkOffsets.filter((o) => distance(d, o, ref) >= coreMin);
     const colour2 = dominant(d, core);
     const exactShare = core.filter((o) => distance(d, o, colour2) === 0).length / core.length;
-    ink = { hex: hex2(colour2), coverage: share(candidates.length / area), exact: exactShare >= EXACT_SHARE };
+    const within = candidates.filter((o) => {
+      const p = o / 4;
+      const x = p % image.width;
+      return inside(bounds, x, (p - x) / image.width);
+    }).length;
+    ink = { hex: hex2(colour2), coverage: share(within / area), exact: exactShare >= EXACT_SHARE };
     if (!ink.exact) warnings.push("the ink colour is approximate: no single colour dominates the strokes (a resampled image?)");
     const inkPx = { x: ix0, y: iy0, width: ix1 - ix0 + 1, height: iy1 - iy0 + 1 };
     inkBounds = cssBox(inkPx);

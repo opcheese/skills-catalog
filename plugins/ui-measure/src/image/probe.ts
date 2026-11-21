@@ -78,9 +78,12 @@ export interface ProbeResult {
 const FILLED_SHARE = 0.75
 /** A row or column is inside the fill when it holds at least this share of the widest fill run. */
 const FILL_RUN_SHARE = 0.25
-/** A rim side is a border when this share of it is one colour and it is at most BORDER_MAX CSS px wide. */
+/** A rim side is a border when this share of it is one colour (and all sides agree, see below). */
 const BORDER_SAME_SHARE = 0.8
-const BORDER_MAX = 4
+/** Non-fill pixels this close to the element's edge, or in its corners, are edge rather than ink... */
+const EDGE_ZONE = 2
+/** ...corners being squares of this share of the shorter side, at most 32 image pixels. */
+const CORNER_SHARE = 0.25
 /** Ink at least this share of the way to the farthest ink pixel sets extent and lines... */
 const STRONG_SHARE = 0.25
 /** ...and at least this share sets the ink colour. */
@@ -91,6 +94,20 @@ const EXACT_SHARE = 0.2
 const RING_SAME_SHARE = 0.7
 /** An enclosed region joins the element (a card inside its shadow ring) only above this share of it. */
 const HOLE_SHARE = 0.25
+
+/** Fewest ring pixels to trust for the background before falling back to the image edge. */
+const MIN_RING = 64
+
+function* edgePixels(image: RgbaImage): Generator<number> {
+  for (let x = 0; x < image.width; x++) {
+    yield x * 4
+    yield ((image.height - 1) * image.width + x) * 4
+  }
+  for (let y = 1; y < image.height - 1; y++) {
+    yield y * image.width * 4
+    yield (y * image.width + image.width - 1) * 4
+  }
+}
 
 /** 4-connected flood from the perimeter of a w x h grid over cells where passable(i) holds. */
 function flood(w: number, h: number, passable: (i: number) => boolean): Uint8Array {
@@ -184,14 +201,16 @@ export function probe(image: RgbaImage, box: Box, options: ProbeOptions = {}): P
   if (!given) return { ...empty, status: "nothing", reason: "the box is outside the image" }
 
   const d = image.data
-  const m = Math.max(4, Math.round(0.1 * Math.min(given.width, given.height)))
+  const m = Math.min(24, Math.max(4, Math.round(0.05 * Math.min(given.width, given.height))))
   const search = clip(grow(given, m), image)!
   const ringOuter = clip(grow(given, 2 * m), image)!
-  const ring = [...pixels(image, ringOuter, search)]
-  let bg = dominant(d, ring)
-  bg ??= dominant(d, pixels(image, { x: 0, y: 0, width: image.width, height: image.height }))!
+  // The background is what surrounds the box; with no room around it (the box reaches the image's
+  // edges), the image's own outermost pixels, which a frame export draws in its background.
+  let ring = [...pixels(image, ringOuter, search)]
+  if (ring.length < MIN_RING) ring = [...edgePixels(image)]
+  const bg = dominant(d, ring)!
   const warnings: string[] = []
-  if (ring.length && ring.filter((o) => distance(d, o, bg!) <= tol).length / ring.length < RING_SAME_SHARE) {
+  if (ring.length && ring.filter((o) => distance(d, o, bg) <= tol).length / ring.length < RING_SAME_SHARE) {
     warnings.push("the surrounding colour is mixed (the box sits across a boundary); the background guess may be wrong, move or resize the box")
   }
   const css = (v: number) => round(v / scale)
@@ -245,10 +264,18 @@ export function probe(image: RgbaImage, box: Box, options: ProbeOptions = {}): P
     return { ...empty, warnings, status: "nothing", background: hex(bg), reason: "nothing in the box differs from the surrounding colour" }
   }
   const clipped: Side[] = []
-  if (y0 === 0) clipped.push("top")
-  if (x1 === sw - 1) clipped.push("right")
-  if (y1 === search.height - 1) clipped.push("bottom")
-  if (x0 === 0) clipped.push("left")
+  // A side reaching the search edge means the box was too small, unless that edge is the image's own.
+  const imageEdge: Side[] = []
+  const reach = (side: Side, atSearchEdge: boolean, atImageEdge: boolean) => {
+    if (!atSearchEdge) return
+    if (atImageEdge) imageEdge.push(side)
+    else clipped.push(side)
+  }
+  reach("top", y0 === 0, search.y === 0)
+  reach("right", x1 === sw - 1, search.x + sw === image.width)
+  reach("bottom", y1 === search.height - 1, search.y + search.height === image.height)
+  reach("left", x0 === 0, search.x === 0)
+  if (imageEdge.length) warnings.push(`the element touches the image edge: ${imageEdge.join(", ")}; it may continue beyond the image`)
   const outer: Box = { x: search.x + x0, y: search.y + y0, width: x1 - x0 + 1, height: y1 - y0 + 1 }
   const at = (x: number, y: number) => (y - search.y) * sw + (x - search.x)
   const off = (x: number, y: number) => (y * image.width + x) * 4
@@ -284,6 +311,7 @@ export function probe(image: RgbaImage, box: Box, options: ProbeOptions = {}): P
   }
 
   let bounds = outer
+  let borderBand: Insets = { top: 0, right: 0, bottom: 0, left: 0 }
   let fill: ProbeResult["fill"] = null
   let rim: ProbeResult["rim"] = null
   let ref = bg
@@ -332,7 +360,7 @@ export function probe(image: RgbaImage, box: Box, options: ProbeOptions = {}): P
       const offsets = [...pixels(image, b)]
       const colour = dominant(d, offsets)!
       const same = offsets.filter((o) => distance(d, o, colour) <= tol).length / offsets.length
-      const border = same >= BORDER_SAME_SHARE && width / scale <= BORDER_MAX
+      const border = same >= BORDER_SAME_SHARE
       keep[side] = border
       rim[side] = border ? { width: css(width), kind: "border", hex: hex(colour) } : { width: css(width), kind: "shadow" }
     }
@@ -342,6 +370,9 @@ export function probe(image: RgbaImage, box: Box, options: ProbeOptions = {}): P
     const first = borders[0] && hexRgb(rim[borders[0]].hex!)
     const consistent = borders.length === nonEmpty.length &&
       borders.every((side) => colourDistance(hexRgb(rim![side].hex!), first!) <= tol && rim![side].width === rim![borders[0]!].width)
+    if (!consistent && borders.length === nonEmpty.length) {
+      warnings.push("the rim is one colour per side but uneven: an uneven border or an offset shadow; it is left out of the box, check it")
+    }
     if (!consistent) {
       for (const side of borders) {
         rim[side] = { width: rim[side].width, kind: "shadow" }
@@ -353,36 +384,74 @@ export function probe(image: RgbaImage, box: Box, options: ProbeOptions = {}): P
     const right = keep.right ? outer.x + outer.width : fillBox.x + fillBox.width
     const bottom = keep.bottom ? outer.y + outer.height : fillBox.y + fillBox.height
     bounds = { x: left, y: top, width: right - left, height: bottom - top }
+    borderBand = {
+      top: keep.top ? fillBox.y - outer.y : 0,
+      right: keep.right ? outer.x + outer.width - fillBox.x - fillBox.width : 0,
+      bottom: keep.bottom ? outer.y + outer.height - fillBox.y - fillBox.height : 0,
+      left: keep.left ? fillBox.x - outer.x : 0,
+    }
     let near = 0
     for (const o of pixels(image, bounds)) if (distance(d, o, ref) <= tol) near++
     fill = { hex: hex(ref), coverage: share(near / (bounds.width * bounds.height)) }
   }
   let area = bounds.width * bounds.height
 
-  // Inside a filled element, anything not fill-coloured that connects to the edge is edge (rounded
-  // corners, anti-aliasing, border, shadow), not ink. Text is enclosed by fill, so even white text on
-  // a white page is never reached.
-  const outsideEl = fill
-    ? flood(bounds.width, bounds.height, (i) => {
-        const lx = i % bounds.width
-        return distance(d, off(bounds.x + lx, bounds.y + (i - lx) / bounds.width), ref) > tol
+  // Inside a filled element, non-fill pixels connected to its edge are edge (rounded corners,
+  // anti-aliasing, a border) where they lie in the edge zone: the outermost EDGE_ZONE pixels, the corner
+  // squares and the border band. Deeper, or as strong as the content's core, they are content that runs to
+  // the edge (zero padding, a full-bleed image). Text enclosed by fill is never edge-connected, so even
+  // white text on a white page is ink.
+  const bw = bounds.width
+  const bh = bounds.height
+  const edgeConnected = fill
+    ? flood(bw, bh, (i) => {
+        const lx = i % bw
+        return distance(d, off(bounds.x + lx, bounds.y + (i - lx) / bw), ref) > tol
       })
-    : new Uint8Array(area)
-
-  // Ink: content pixels inside the element. Its colour, extent and lines come from the strong ink, the
-  // pixels at least STRONG_SHARE of the way to the farthest one, so anti-aliasing and faint tints around
-  // the content do not decide them.
+    : new Uint8Array(bw * bh)
+  const corner = Math.min(32, Math.round(CORNER_SHARE * Math.min(bw, bh)))
+  const inBorder = (lx: number, ly: number) =>
+    ly < borderBand.top || lx >= bw - borderBand.right || ly >= bh - borderBand.bottom || lx < borderBand.left
+  const inZone = (lx: number, ly: number) => {
+    const dx = Math.min(lx, bw - 1 - lx)
+    const dy = Math.min(ly, bh - 1 - ly)
+    return inBorder(lx, ly) || Math.min(dx, dy) < EDGE_ZONE || (dx < corner && dy < corner)
+  }
   const candidates: number[] = []
+  const edgeCore: number[] = []
   let farthest = 0
   for (let y = bounds.y; y < bounds.y + bounds.height; y++) {
     for (let x = bounds.x; x < bounds.x + bounds.width; x++) {
       const o = off(x, y)
-      const isInk = fill
-        ? !outsideEl[(y - bounds.y) * bounds.width + (x - bounds.x)] && distance(d, o, ref) > tol
-        : kept[at(x, y)] === 1 && inside(search, x, y)
-      if (!isInk) continue
+      const lx = x - bounds.x
+      const ly = y - bounds.y
+      if (!fill) {
+        if (kept[at(x, y)] !== 1 || !inside(search, x, y)) continue
+      } else {
+        if (distance(d, o, ref) <= tol || inBorder(lx, ly)) continue
+        if (edgeConnected[ly * bw + lx] && inZone(lx, ly)) {
+          edgeCore.push(o)
+          continue
+        }
+      }
       candidates.push(o)
       farthest = Math.max(farthest, distance(d, o, ref))
+    }
+  }
+  // Edge-zone pixels as strong as the content's core and connected to interior content belong to content
+  // touching the edge; corner anti-aliasing is never connected to the interior.
+  if (farthest > 0 && edgeCore.length) {
+    const core = Math.max(tol, CORE_SHARE * farthest)
+    const pending = new Set(edgeCore.filter((o) => distance(d, o, ref) >= core))
+    const queue = [...candidates]
+    for (let k = 0; k < queue.length && pending.size; k++) {
+      const o = queue[k]!
+      for (const n of [o - 4, o + 4, o - image.width * 4, o + image.width * 4]) {
+        if (pending.delete(n)) {
+          candidates.push(n)
+          queue.push(n)
+        }
+      }
     }
   }
   const strongMin = Math.max(tol, STRONG_SHARE * farthest)
@@ -418,7 +487,12 @@ export function probe(image: RgbaImage, box: Box, options: ProbeOptions = {}): P
     const core = inkOffsets.filter((o) => distance(d, o, ref) >= coreMin)
     const colour = dominant(d, core)!
     const exactShare = core.filter((o) => distance(d, o, colour) === 0).length / core.length
-    ink = { hex: hex(colour), coverage: share(candidates.length / area), exact: exactShare >= EXACT_SHARE }
+    const within = candidates.filter((o) => {
+      const p = o / 4
+      const x = p % image.width
+      return inside(bounds, x, (p - x) / image.width)
+    }).length
+    ink = { hex: hex(colour), coverage: share(within / area), exact: exactShare >= EXACT_SHARE }
     if (!ink.exact) warnings.push("the ink colour is approximate: no single colour dominates the strokes (a resampled image?)")
     const inkPx: Box = { x: ix0, y: iy0, width: ix1 - ix0 + 1, height: iy1 - iy0 + 1 }
     inkBounds = cssBox(inkPx)

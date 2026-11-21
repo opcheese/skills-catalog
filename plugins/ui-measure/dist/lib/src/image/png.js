@@ -2,6 +2,8 @@ import { inflateSync } from "node:zlib";
 import { SetupError } from "../errors.js";
 const SIGNATURE = [137, 80, 78, 71, 13, 10, 26, 10];
 const CHANNELS = { 0: 1, 2: 3, 3: 1, 4: 2, 6: 4 };
+/** Largest image decoded: 50 megapixels (a 2x export of a 3500 x 7000 frame), about 200 MB of RGBA. */
+const MAX_PIXELS = 50_000_000;
 function paeth(a, b, c) {
     const p = a + b - c;
     const pa = Math.abs(p - a);
@@ -23,12 +25,18 @@ export function decodePng(buf) {
     let palette;
     let paletteAlpha;
     const idat = [];
-    while (offset + 8 <= buf.length) {
+    while (offset < buf.length) {
+        if (offset + 8 > buf.length)
+            throw new SetupError("PNG is truncated inside a chunk header");
         const length = buf.readUInt32BE(offset);
         const type = buf.toString("ascii", offset + 4, offset + 8);
+        if (offset + 12 + length > buf.length)
+            throw new SetupError(`PNG is truncated inside the ${type} chunk`);
         const data = buf.subarray(offset + 8, offset + 8 + length);
         offset += 12 + length;
         if (type === "IHDR") {
+            if (length !== 13)
+                throw new SetupError("PNG IHDR chunk has the wrong length");
             width = data.readUInt32BE(0);
             height = data.readUInt32BE(4);
             const bitDepth = data[8];
@@ -53,14 +61,20 @@ export function decodePng(buf) {
         throw new SetupError("PNG has no image data");
     if (colorType === 3 && !palette)
         throw new SetupError("palette PNG has no palette");
+    if (width * height > MAX_PIXELS) {
+        throw new SetupError(`PNG is too large: ${width}x${height}, at most ${MAX_PIXELS} pixels; crop or export a smaller frame`);
+    }
     const channels = CHANNELS[colorType];
     const stride = width * channels;
     let raw;
     try {
-        raw = inflateSync(Buffer.concat(idat));
+        raw = inflateSync(Buffer.concat(idat), { maxOutputLength: height * (stride + 1) });
     }
-    catch {
-        throw new SetupError("PNG image data is corrupt");
+    catch (error) {
+        if (error.code === "ERR_BUFFER_TOO_LARGE")
+            raw = Buffer.alloc(0);
+        else
+            throw new SetupError("PNG image data is corrupt");
     }
     if (raw.length < height * (stride + 1))
         throw new SetupError("PNG image data is truncated");
@@ -79,16 +93,27 @@ export function decodePng(buf) {
             pixels[row + i] = (raw[src + i] + predictor) & 0xff;
         }
     }
+    // tRNS for RGB and greyscale names one colour as transparent, in 16-bit samples (low byte at 8-bit depth).
+    const transparentKey = paletteAlpha && (colorType === 0 || colorType === 2)
+        ? Array.from({ length: colorType === 0 ? 1 : 3 }, (_, k) => paletteAlpha.readUInt16BE(k * 2) & 0xff)
+        : undefined;
     const data = new Uint8Array(width * height * 4);
     for (let p = 0; p < width * height; p++) {
         const s = p * channels;
         let r, g, b, alpha = 255;
         if (colorType === 6)
             [r, g, b, alpha] = [pixels[s], pixels[s + 1], pixels[s + 2], pixels[s + 3]];
-        else if (colorType === 2)
+        else if (colorType === 2) {
+            ;
             [r, g, b] = [pixels[s], pixels[s + 1], pixels[s + 2]];
-        else if (colorType === 0)
+            if (transparentKey && r === transparentKey[0] && g === transparentKey[1] && b === transparentKey[2])
+                alpha = 0;
+        }
+        else if (colorType === 0) {
             r = g = b = pixels[s];
+            if (transparentKey && r === transparentKey[0])
+                alpha = 0;
+        }
         else if (colorType === 4) {
             r = g = b = pixels[s];
             alpha = pixels[s + 1];
