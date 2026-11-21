@@ -291,7 +291,7 @@ describe("authoritative pairs skip the plausibility rules", () => {
     expect(r.pairs[0].rule).toBe("size_plausible")
   })
 
-  it("authoritative swapped text is accepted and its text compared", () => {
+  it("authoritative swapped text is accepted for downstream comparison", () => {
     const design = designOf([
       { id: "r", type: "FRAME", box: bb(0, 0, 300, 200) },
       { id: "a", type: "TEXT", text: "Alpha", box: bb(0, 0, 100, 20), parentId: "r" },
