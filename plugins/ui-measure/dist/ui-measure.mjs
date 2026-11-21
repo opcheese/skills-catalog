@@ -1654,6 +1654,12 @@ function parseCssShadow(s) {
   if (!colour2 || nums.length < 2) return void 0;
   return { inset, x: nums[0], y: nums[1], blur: nums[2] ?? 0, spread: nums[3] ?? 0, colour: colour2 };
 }
+function filterShadowEntries(filter) {
+  return (filter.match(/drop-shadow\((?:[^()]|\([^)]*\))*\)/g) ?? []).map((text) => ({
+    text,
+    shadow: parseCssShadow(text.slice("drop-shadow(".length, -1))
+  }));
+}
 function parseDesignEffect(s) {
   const type = s.split(" ")[0];
   const rest = s.slice(type.length).trim();
@@ -1938,43 +1944,58 @@ function compareSpec(design2, dom, v, opts) {
       }
     } else {
       const wanted = node.effects.map(parseDesignEffect);
-      const unexpected = ["filter", "backdropFilter"].flatMap((property) => {
-        const value = style[property];
-        if (!value || value === "none") return [];
-        const hasBlur = wanted.some((e) => e.kind === "blur" && e.of === property);
-        const remainder = hasBlur ? value.replace(/blur\([^)]*\)/, "").trim() : value;
-        return remainder ? [`${property}: ${remainder}`] : [];
-      });
-      if (unexpected.length) {
-        findings.push({
-          check: "spec",
-          kind: "effects",
-          status: "fail",
-          target: targetOf(node, el),
-          expected: "none",
-          actual: unexpected.join("; ")
+      const reportUnexpected = (matchedFilter) => {
+        const unexpected = ["filter", "backdropFilter"].flatMap((property) => {
+          const value = style[property];
+          if (!value || value === "none") return [];
+          let remainder = value;
+          if (wanted.some((e) => e.kind === "blur" && e.of === property)) remainder = remainder.replace(/blur\([^)]*\)/, "");
+          if (property === "filter") for (const t of matchedFilter) remainder = remainder.replace(t, "");
+          remainder = remainder.trim();
+          return remainder ? [`${property}: ${remainder}`] : [];
         });
-      }
+        if (unexpected.length) {
+          findings.push({
+            check: "spec",
+            kind: "effects",
+            status: "fail",
+            target: targetOf(node, el),
+            expected: "none",
+            actual: unexpected.join("; ")
+          });
+        }
+      };
       const unknown = wanted.find((e) => e.kind === "unknown");
       if (unknown && unknown.kind === "unknown") {
+        reportUnexpected([]);
         skip("effects", node, el, `effect type ${unknown.type} is not compared`);
       } else {
-        const actualShadows = (style.boxShadow === "none" ? [] : splitTopLevel(style.boxShadow)).map(parseCssShadow);
+        const boxEntries = (style.boxShadow === "none" ? [] : splitTopLevel(style.boxShadow)).map(parseCssShadow);
+        const filterEntries = style.filter && style.filter !== "none" ? filterShadowEntries(style.filter) : [];
+        const candidates = [
+          ...boxEntries.map((shadow) => ({ shadow, filterText: void 0 })),
+          ...filterEntries.map((e) => ({ shadow: e.shadow, filterText: e.text }))
+        ];
         const wantShadows = wanted.flatMap((e) => e.kind === "shadow" ? [e.shadow] : []);
-        let ok = actualShadows.length === wantShadows.length && actualShadows.every((s) => s !== void 0);
-        const free = actualShadows.filter((s) => s !== void 0);
+        let ok = candidates.length === wantShadows.length && candidates.every((c) => c.shadow !== void 0);
+        const free = candidates.filter((c) => c.shadow !== void 0);
+        const matchedFilter = [];
         for (const w of wantShadows) {
           const i = free.findIndex(
-            (s) => s.inset === w.inset && Math.abs(s.x - w.x * scale) <= tol && Math.abs(s.y - w.y * scale) <= tol && Math.abs(s.blur - w.blur * scale) <= tol && Math.abs(s.spread - w.spread * scale) <= tol && sameColour(s.colour, w.colour)
+            ({ shadow: s }) => s.inset === w.inset && Math.abs(s.x - w.x * scale) <= tol && Math.abs(s.y - w.y * scale) <= tol && Math.abs(s.blur - w.blur * scale) <= tol && Math.abs(s.spread - w.spread * scale) <= tol && sameColour(s.colour, w.colour)
           );
           if (i < 0) ok = false;
-          else free.splice(i, 1);
+          else {
+            const [hit] = free.splice(i, 1);
+            if (hit.filterText) matchedFilter.push(hit.filterText);
+          }
         }
         for (const e of wanted) {
           if (e.kind !== "blur") continue;
           const m = /blur\(([\d.]+)px\)/.exec(style[e.of]);
           if (!m || Math.abs(Number(m[1]) - e.radius * scale) > tol) ok = false;
         }
+        reportUnexpected(matchedFilter);
         findings.push({
           check: "spec",
           kind: "effects",

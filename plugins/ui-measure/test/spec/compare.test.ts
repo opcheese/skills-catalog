@@ -10,7 +10,7 @@ import { verifyMapping } from "../../src/correspondence/verify"
 import type { Box, DesignNode, DesignTree, DomElement, DomStyle, DomTree, Proposal, Verification } from "../../src/correspondence/types"
 import type { Token } from "../../src/tokens"
 import type { Finding } from "../../src/report/types"
-import { compareSpec } from "../../src/spec/compare"
+import { compareSpec, parseFilterShadows } from "../../src/spec/compare"
 
 const PAGES = fileURLToPath(new URL("../fixtures/pages", import.meta.url))
 const CARD = fileURLToPath(new URL("../fixtures/figma/card.json", import.meta.url))
@@ -405,6 +405,60 @@ describe("compareSpec", () => {
       expect(failed).toHaveLength(1)
       expect(failed[0].expected).toBe("none")
       expect(failed[0].actual).toContain("blur(10px)")
+    })
+
+    describe("CSS filter drop-shadow against DROP_SHADOW", () => {
+      const FS = "rgba(255, 255, 255, 0.33) 4px 0px 7.5px"
+      it("a matching filter drop-shadow produces no effects finding", () => {
+        const out = compareOne({ id: "r", type: "FRAME", effects: ["DROP_SHADOW 4 0 7.5 rgba(255,255,255,0.33)"] }, { filter: `drop-shadow(${FS})` })
+        expect(kind(out, "effects", "fail")).toEqual([])
+        expect(kind(out, "effects", "pass")).toHaveLength(1)
+      })
+
+      it("a different blur fails and names the blur", () => {
+        const out = compareOne({ id: "r", type: "FRAME", effects: ["DROP_SHADOW 4 0 12 rgba(255,255,255,0.33)"] }, { filter: `drop-shadow(${FS})` })
+        const f = kind(out, "effects", "fail")
+        expect(f.length).toBeGreaterThan(0)
+        expect(f.map((x) => x.expected).join(" ")).toContain("12")
+        expect(f.map((x) => x.actual).join(" ")).toContain("7.5px")
+      })
+
+      it("a filter drop-shadow on a design with no effects still fails with expected none", () => {
+        const out = compareOne({ id: "r", type: "FRAME" }, { filter: `drop-shadow(${FS})` })
+        const f = kind(out, "effects")
+        expect(f).toHaveLength(1)
+        expect(f[0].expected).toBe("none")
+      })
+
+      it("two drop-shadows plus a blur match two DROP_SHADOWs and a LAYER_BLUR", () => {
+        const out = compareOne(
+          { id: "r", type: "FRAME", effects: ["DROP_SHADOW 4 0 7.5 rgba(255,255,255,0.33)", "DROP_SHADOW 0 2 4 rgba(0,0,0,0.25)", "LAYER_BLUR 4"] },
+          { filter: `drop-shadow(${FS}) drop-shadow(rgba(0, 0, 0, 0.25) 0px 2px 4px) blur(4px)` },
+        )
+        expect(kind(out, "effects", "fail")).toEqual([])
+        expect(kind(out, "effects", "pass")).toHaveLength(1)
+      })
+
+      it("a design shadow matched by neither box-shadow nor filter fails as missing", () => {
+        const out = compareOne({ id: "r", type: "FRAME", effects: ["DROP_SHADOW 0 9 9 rgba(0,0,0,0.5)"] }, { filter: `drop-shadow(${FS})` })
+        expect(kind(out, "effects", "fail").length).toBeGreaterThan(0)
+      })
+
+      it("a box-shadow plus a filter drop-shadow each match one design shadow", () => {
+        const out = compareOne(
+          { id: "r", type: "FRAME", effects: ["DROP_SHADOW 0 4 8 rgba(0,0,0,0.1)", "DROP_SHADOW 4 0 7.5 rgba(255,255,255,0.33)"] },
+          { boxShadow: "rgba(0, 0, 0, 0.1) 0px 4px 8px 0px", filter: `drop-shadow(${FS})` },
+        )
+        expect(kind(out, "effects", "fail")).toEqual([])
+      })
+
+      it("parseFilterShadows reads colour-first and colour-last entries", () => {
+        const s = parseFilterShadows("drop-shadow(rgba(1, 2, 3, 0.5) 4px 5px 6px) blur(2px) drop-shadow(7px 8px 9px rgb(10, 20, 30))")
+        expect(s).toHaveLength(2)
+        expect(s[0]).toMatchObject({ inset: false, x: 4, y: 5, blur: 6, spread: 0 })
+        expect(s[1]).toMatchObject({ x: 7, y: 8, blur: 9, spread: 0 })
+        expect(parseFilterShadows("blur(2px)")).toEqual([])
+      })
     })
   })
 
