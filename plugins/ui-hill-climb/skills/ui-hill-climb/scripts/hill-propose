@@ -1,0 +1,90 @@
+#!/usr/bin/env python3
+"""Propose design-node to DOM-element pairs for ui-measure."""
+import json
+import os
+import subprocess
+import sys
+import tempfile
+
+from hilllib import DEFAULT_MODEL, find_delegate, first_json
+
+PROMPT = """Files in the current directory:
+- design.json: a Figma node tree.
+- dom.json: a DOM tree.
+
+Pair each design node with the DOM element that renders it, using type, text and reading order.
+List design nodes and DOM selectors with no counterpart under unmapped. Never pair one element twice.
+
+Answer with one JSON object and nothing else:
+{"pairs": [{"nodeId": "...", "selector": "..."}],
+ "unmapped": {"design": ["..."], "impl": ["..."]}}
+"""
+
+
+def die(code, msg):
+    print(f"hill-propose: {msg}", file=sys.stderr)
+    sys.exit(code)
+
+
+def is_proposal(obj):
+    pairs = obj.get("pairs")
+    unmapped = obj.get("unmapped")
+    return (isinstance(pairs, list)
+            and all(isinstance(pair, dict)
+                    and isinstance(pair.get("nodeId"), str)
+                    and isinstance(pair.get("selector"), str) for pair in pairs)
+            and isinstance(unmapped, dict)
+            and isinstance(unmapped.get("design"), list)
+            and all(isinstance(node, str) for node in unmapped["design"])
+            and isinstance(unmapped.get("impl"), list)
+            and all(isinstance(selector, str) for selector in unmapped["impl"]))
+
+
+def run():
+    try:
+        data = json.load(sys.stdin)
+    except (json.JSONDecodeError, UnicodeDecodeError) as e:
+        die(2, f"stdin must be a JSON object with design and dom: {e}")
+    if not isinstance(data, dict) or "design" not in data or "dom" not in data:
+        die(2, "stdin must be a JSON object with design and dom")
+
+    delegate = find_delegate()
+    model = os.environ.get("HILL_JUDGE_MODEL", DEFAULT_MODEL)
+    env = dict(os.environ, KIMI_DELEGATE_MODEL=model)
+    with tempfile.TemporaryDirectory(prefix="hill-propose-") as work:
+        with open(os.path.join(work, "design.json"), "w") as f:
+            json.dump(data["design"], f, ensure_ascii=False)
+        with open(os.path.join(work, "dom.json"), "w") as f:
+            json.dump(data["dom"], f, ensure_ascii=False)
+
+        for _ in (1, 2):
+            p = subprocess.run([delegate, "--via", "kimi", "--final-only", "--cwd", work, "--", PROMPT],
+                               capture_output=True, text=True, env=env)
+            if p.returncode != 0:
+                sys.stderr.write(p.stderr)
+                return p.returncode
+            proposal = first_json(p.stdout, is_proposal)
+            if proposal is not None:
+                rendered = json.dumps(proposal, ensure_ascii=False)
+                out = os.environ.get("HILL_PROPOSAL_OUT")
+                if out:
+                    with open(out, "w") as f:
+                        f.write(rendered + "\n")
+                print(rendered)
+                return 0
+        print(f"hill-propose: no usable Proposal after two answers; last answer: {p.stdout.strip()[:200]!r}",
+              file=sys.stderr)
+        return 3
+
+
+if __name__ == "__main__":
+    code = 1
+    try:
+        code = run()
+    except SystemExit as e:
+        code = e.code
+    out = os.environ.get("HILL_PROPOSAL_OUT")
+    if out:
+        with open(out + ".status", "w") as f:
+            f.write(f"{code}\n")
+    sys.exit(code)
