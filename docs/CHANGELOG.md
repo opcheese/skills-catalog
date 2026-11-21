@@ -8,6 +8,17 @@ audience: developers
 
 Notable changes to the catalog: what devs install, and what the docs tell them.
 
+## 2026-11-21: ui-measure 0.2.0, building from Figma
+
+The ui-measure skill now teaches a build-time workflow: the agent records authoritative pairs
+(`.ui-measure/pairs/<target>.json`) while building from Figma, measures the dev server, triages fails and hands
+over a table; `ui-hill-climb` reuses the same pairs. Selectors may be any CSS that matches exactly one element
+inside the root; rejected pairs appear in `coverage.rejected` and as `not_comparable` findings. CSS
+`filter: drop-shadow(...)` now matches Figma DROP_SHADOW. New shipped files: `scripts/export-node.js`,
+`templates/FIGMA.md`, `templates/ui-measure.config.json`, `templates/gitignore-snippet.txt`, and a plugin README
+with known gaps. A real-screen trial of the workflow is pending. Spec
+`docs/superpowers/specs/2026-11-21-ui-measure-0.2-design.md`.
+
 ## 2026-11-20: ui-hill-climb 0.2.0, climbing on measured counts
 
 With an optional `measure.json`, the loop now runs ui-measure on each round's screens and ranks rounds on

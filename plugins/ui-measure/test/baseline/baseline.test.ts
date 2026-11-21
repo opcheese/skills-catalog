@@ -26,7 +26,7 @@ const fail = (over: Partial<Finding> = {}): Finding => ({
 
 const report = (findings: Finding[], over: Partial<Report> = {}): Report => ({
   tool: "ui-measure",
-  version: "0.1.0",
+  version: "0.2.0",
   ranAt: "2026-11-20T00:00:00.000Z",
   page: { url: "http://x/", viewport: [800, 600], screen: [800, 600], dpr: 1 },
   scale: 1,

@@ -2122,7 +2122,7 @@ function compareSpec(design2, dom, v, opts) {
 // package.json
 var package_default = {
   name: "ui-measure",
-  version: "0.1.0",
+  version: "0.2.0",
   description: "Measure rendered UI geometry and design conformance without a model",
   type: "module",
   license: "MIT",
