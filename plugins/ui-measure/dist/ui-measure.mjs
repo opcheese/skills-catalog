@@ -2,8 +2,8 @@
 
 // src/cli.ts
 import { existsSync as existsSync2 } from "node:fs";
-import { readFile as readFile2 } from "node:fs/promises";
-import { dirname as dirname3, join as join2, resolve as resolve2 } from "node:path";
+import { readFile as readFile3 } from "node:fs/promises";
+import { dirname as dirname4, join as join2, resolve as resolve3 } from "node:path";
 
 // src/baseline/baseline.ts
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -278,7 +278,7 @@ function parseProposal(text, source) {
   return v;
 }
 function runCommand(argv, input) {
-  return new Promise((resolve3, reject) => {
+  return new Promise((resolve4, reject) => {
     if (argv.length === 0) {
       reject(new ProposalError("proposer command is empty"));
       return;
@@ -295,7 +295,7 @@ function runCommand(argv, input) {
       (e) => reject(new ProposalError(`could not run ${argv[0]}: ${e.message}`))
     );
     child.on("close", (code) => {
-      if (code === 0) resolve3(out);
+      if (code === 0) resolve4(out);
       else
         reject(
           new ProposalError(
@@ -825,11 +825,11 @@ async function resolveProposal(p, dom, proposal) {
             return { note: "invalid selector" };
           }
           if (matches.length === 0) return { note: "no element" };
-          const inside = matches.filter((el) => root !== null && (root === el || root.contains(el)));
-          if (inside.length === 0) return { note: "no element inside root" };
-          if (inside.length > 1) return { note: `ambiguous: ${inside.length} elements` };
+          const inside2 = matches.filter((el) => root !== null && (root === el || root.contains(el)));
+          if (inside2.length === 0) return { note: "no element inside root" };
+          if (inside2.length > 1) return { note: `ambiguous: ${inside2.length} elements` };
           const steps = [];
-          let node = inside[0];
+          let node = inside2[0];
           while (root !== null && node !== root && node.parentElement) {
             steps.unshift(Array.from(node.parentElement.children).indexOf(node) + 1);
             node = node.parentElement;
@@ -1259,12 +1259,583 @@ async function detectGeometry(p, cfg) {
   }));
 }
 
+// src/image/command.ts
+import { readFile as readFile2, mkdir, writeFile } from "node:fs/promises";
+import { dirname as dirname2, resolve as resolve2 } from "node:path";
+
+// package.json
+var package_default = {
+  name: "ui-measure",
+  version: "0.2.0",
+  description: "Measure rendered UI geometry and design conformance without a model",
+  type: "module",
+  license: "MIT",
+  exports: {
+    ".": {
+      types: "./dist/lib/src/index.d.ts",
+      default: "./dist/lib/src/index.js"
+    },
+    "./version": {
+      types: "./dist/lib/src/version.d.ts",
+      default: "./dist/lib/src/version.js"
+    }
+  },
+  bin: {
+    "ui-measure": "./dist/ui-measure.mjs"
+  },
+  scripts: {
+    test: "vitest run",
+    "build:cli": "esbuild src/cli.ts --bundle --outfile=dist/ui-measure.mjs --platform=node --format=esm --external:playwright",
+    "build:lib": "tsc -p tsconfig.lib.json",
+    build: "pnpm run build:cli && pnpm run build:lib"
+  },
+  engines: {
+    node: ">=24"
+  },
+  peerDependencies: {
+    playwright: ">=1.50.0"
+  },
+  devDependencies: {
+    "@types/node": "^24.10.0",
+    esbuild: "^0.27.0",
+    playwright: "^1.56.1",
+    typescript: "^5.9.3",
+    vitest: "^4.0.0"
+  }
+};
+
+// src/version.ts
+var VERSION = package_default.version;
+
+// src/image/png.ts
+import { inflateSync } from "node:zlib";
+var SIGNATURE = [137, 80, 78, 71, 13, 10, 26, 10];
+var CHANNELS = { 0: 1, 2: 3, 3: 1, 4: 2, 6: 4 };
+function paeth(a, b, c) {
+  const p = a + b - c;
+  const pa = Math.abs(p - a);
+  const pb = Math.abs(p - b);
+  const pc = Math.abs(p - c);
+  return pa <= pb && pa <= pc ? a : pb <= pc ? b : c;
+}
+function decodePng(buf) {
+  if (buf.length < 8 || SIGNATURE.some((b, i) => buf[i] !== b)) throw new SetupError("not a PNG file");
+  let offset = 8;
+  let width = 0;
+  let height = 0;
+  let colorType = -1;
+  let palette;
+  let paletteAlpha;
+  const idat = [];
+  while (offset + 8 <= buf.length) {
+    const length2 = buf.readUInt32BE(offset);
+    const type = buf.toString("ascii", offset + 4, offset + 8);
+    const data2 = buf.subarray(offset + 8, offset + 8 + length2);
+    offset += 12 + length2;
+    if (type === "IHDR") {
+      width = data2.readUInt32BE(0);
+      height = data2.readUInt32BE(4);
+      const bitDepth = data2[8];
+      colorType = data2[9];
+      if (data2[12] !== 0) throw new SetupError("interlaced PNG is not supported; re-export it non-interlaced");
+      if (bitDepth !== 8) throw new SetupError(`PNG bit depth ${bitDepth} is not supported; re-export as 8-bit`);
+      if (!(colorType in CHANNELS)) throw new SetupError(`PNG colour type ${colorType} is not supported`);
+    } else if (type === "PLTE") palette = data2;
+    else if (type === "tRNS") paletteAlpha = data2;
+    else if (type === "IDAT") idat.push(data2);
+    else if (type === "IEND") break;
+  }
+  if (!width || !height || idat.length === 0) throw new SetupError("PNG has no image data");
+  if (colorType === 3 && !palette) throw new SetupError("palette PNG has no palette");
+  const channels = CHANNELS[colorType];
+  const stride = width * channels;
+  let raw;
+  try {
+    raw = inflateSync(Buffer.concat(idat));
+  } catch {
+    throw new SetupError("PNG image data is corrupt");
+  }
+  if (raw.length < height * (stride + 1)) throw new SetupError("PNG image data is truncated");
+  const pixels2 = new Uint8Array(height * stride);
+  for (let y = 0; y < height; y++) {
+    const filter = raw[y * (stride + 1)];
+    const src = y * (stride + 1) + 1;
+    const row = y * stride;
+    for (let i = 0; i < stride; i++) {
+      const a = i >= channels ? pixels2[row + i - channels] : 0;
+      const b = y > 0 ? pixels2[row - stride + i] : 0;
+      const c = i >= channels && y > 0 ? pixels2[row - stride + i - channels] : 0;
+      const predictor = filter === 0 ? 0 : filter === 1 ? a : filter === 2 ? b : filter === 3 ? a + b >> 1 : filter === 4 ? paeth(a, b, c) : -1;
+      if (predictor < 0) throw new SetupError(`PNG row filter ${filter} is invalid`);
+      pixels2[row + i] = raw[src + i] + predictor & 255;
+    }
+  }
+  const data = new Uint8Array(width * height * 4);
+  for (let p = 0; p < width * height; p++) {
+    const s = p * channels;
+    let r, g, b, alpha = 255;
+    if (colorType === 6) [r, g, b, alpha] = [pixels2[s], pixels2[s + 1], pixels2[s + 2], pixels2[s + 3]];
+    else if (colorType === 2) [r, g, b] = [pixels2[s], pixels2[s + 1], pixels2[s + 2]];
+    else if (colorType === 0) r = g = b = pixels2[s];
+    else if (colorType === 4) {
+      r = g = b = pixels2[s];
+      alpha = pixels2[s + 1];
+    } else {
+      const index = pixels2[s];
+      r = palette[index * 3] ?? 0;
+      g = palette[index * 3 + 1] ?? 0;
+      b = palette[index * 3 + 2] ?? 0;
+      alpha = paletteAlpha?.[index] ?? 255;
+    }
+    const over = (v) => Math.round((v * alpha + 255 * (255 - alpha)) / 255);
+    data.set([over(r), over(g), over(b), 255], p * 4);
+  }
+  return { width, height, data };
+}
+
+// src/image/probe.ts
+var FILLED_SHARE = 0.75;
+var FILL_RUN_SHARE = 0.25;
+var BORDER_SAME_SHARE = 0.8;
+var BORDER_MAX = 4;
+var STRONG_SHARE = 0.25;
+var CORE_SHARE = 0.5;
+var EXACT_SHARE = 0.2;
+var RING_SAME_SHARE = 0.7;
+var HOLE_SHARE = 0.25;
+function flood(w, h, passable) {
+  const seen = new Uint8Array(w * h);
+  const queue = [];
+  const seed = (x, y) => {
+    const i = y * w + x;
+    if (!seen[i] && passable(i)) {
+      seen[i] = 1;
+      queue.push(i);
+    }
+  };
+  for (let x = 0; x < w; x++) {
+    seed(x, 0);
+    seed(x, h - 1);
+  }
+  for (let y = 0; y < h; y++) {
+    seed(0, y);
+    seed(w - 1, y);
+  }
+  for (let k = 0; k < queue.length; k++) {
+    const i = queue[k];
+    const x = i % w;
+    const y = (i - x) / w;
+    if (x + 1 < w) seed(x + 1, y);
+    if (x > 0) seed(x - 1, y);
+    if (y + 1 < h) seed(x, y + 1);
+    if (y > 0) seed(x, y - 1);
+  }
+  return seen;
+}
+function distance(d, o, c) {
+  return Math.abs(d[o] - c[0]) + Math.abs(d[o + 1] - c[1]) + Math.abs(d[o + 2] - c[2]);
+}
+function dominant(d, offsets) {
+  const counts = /* @__PURE__ */ new Map();
+  let best = -1;
+  let bestCount = 0;
+  for (const o of offsets) {
+    const key = d[o] << 16 | d[o + 1] << 8 | d[o + 2];
+    const n = (counts.get(key) ?? 0) + 1;
+    counts.set(key, n);
+    if (n > bestCount) {
+      bestCount = n;
+      best = key;
+    }
+  }
+  return best < 0 ? void 0 : [best >> 16 & 255, best >> 8 & 255, best & 255];
+}
+var hexRgb = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+var colourDistance = (a, b) => Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]) + Math.abs(a[2] - b[2]);
+var hex2 = (c) => "#" + c.map((v) => v.toString(16).padStart(2, "0")).join("");
+var round = (v) => Math.round(v * 100) / 100;
+var share = (v) => Math.round(v * 1e3) / 1e3;
+function clip(box, image) {
+  const x0 = Math.max(0, Math.floor(box.x));
+  const y0 = Math.max(0, Math.floor(box.y));
+  const x1 = Math.min(image.width, Math.ceil(box.x + box.width));
+  const y1 = Math.min(image.height, Math.ceil(box.y + box.height));
+  return x1 > x0 && y1 > y0 ? { x: x0, y: y0, width: x1 - x0, height: y1 - y0 } : void 0;
+}
+var grow = (b, m) => ({ x: b.x - m, y: b.y - m, width: b.width + 2 * m, height: b.height + 2 * m });
+var inside = (b, x, y) => x >= b.x && y >= b.y && x < b.x + b.width && y < b.y + b.height;
+function* pixels(image, b, skip) {
+  for (let y = b.y; y < b.y + b.height; y++) {
+    for (let x = b.x; x < b.x + b.width; x++) if (!skip || !inside(skip, x, y)) yield (y * image.width + x) * 4;
+  }
+}
+function probe(image, box, options = {}) {
+  const scale = options.scale ?? 1;
+  const tol = options.tolerance ?? 12;
+  const empty = { box, warnings: [], rim: null, clipped: [], fill: null, ink: null, inkBounds: null, insets: null, lines: [], linePitch: null };
+  const given = clip(box, image);
+  if (!given) return { ...empty, status: "nothing", reason: "the box is outside the image" };
+  const d = image.data;
+  const m = Math.max(4, Math.round(0.1 * Math.min(given.width, given.height)));
+  const search = clip(grow(given, m), image);
+  const ringOuter = clip(grow(given, 2 * m), image);
+  const ring = [...pixels(image, ringOuter, search)];
+  let bg = dominant(d, ring);
+  bg ??= dominant(d, pixels(image, { x: 0, y: 0, width: image.width, height: image.height }));
+  const warnings = [];
+  if (ring.length && ring.filter((o) => distance(d, o, bg) <= tol).length / ring.length < RING_SAME_SHARE) {
+    warnings.push("the surrounding colour is mixed (the box sits across a boundary); the background guess may be wrong, move or resize the box");
+  }
+  const css = (v) => round(v / scale);
+  const cssBox = (b) => ({ x: css(b.x), y: css(b.y), width: css(b.width), height: css(b.height) });
+  const sw = search.width;
+  const mask = new Uint8Array(sw * search.height);
+  for (let y = 0; y < search.height; y++) {
+    for (let x = 0; x < sw; x++) {
+      if (distance(d, ((search.y + y) * image.width + search.x + x) * 4, bg) > tol) mask[y * sw + x] = 1;
+    }
+  }
+  const kept = new Uint8Array(mask.length);
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (let start = 0; start < mask.length; start++) {
+    if (!mask[start] || kept[start]) continue;
+    const component = [start];
+    kept[start] = 2;
+    let touches = false;
+    for (let k = 0; k < component.length; k++) {
+      const p = component[k];
+      const px2 = p % sw;
+      const py = (p - px2) / sw;
+      if (inside(given, search.x + px2, search.y + py)) touches = true;
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          const nx = px2 + dx;
+          const ny = py + dy;
+          if (nx < 0 || ny < 0 || nx >= sw || ny >= search.height) continue;
+          const q = ny * sw + nx;
+          if (mask[q] && !kept[q]) {
+            kept[q] = 2;
+            component.push(q);
+          }
+        }
+      }
+    }
+    for (const p of component) {
+      kept[p] = touches ? 1 : 3;
+      if (!touches) continue;
+      const px2 = p % sw;
+      const py = (p - px2) / sw;
+      x0 = Math.min(x0, px2);
+      y0 = Math.min(y0, py);
+      x1 = Math.max(x1, px2);
+      y1 = Math.max(y1, py);
+    }
+  }
+  if (x1 < 0) {
+    return { ...empty, warnings, status: "nothing", background: hex2(bg), reason: "nothing in the box differs from the surrounding colour" };
+  }
+  const clipped = [];
+  if (y0 === 0) clipped.push("top");
+  if (x1 === sw - 1) clipped.push("right");
+  if (y1 === search.height - 1) clipped.push("bottom");
+  if (x0 === 0) clipped.push("left");
+  const outer = { x: search.x + x0, y: search.y + y0, width: x1 - x0 + 1, height: y1 - y0 + 1 };
+  const at = (x, y) => (y - search.y) * sw + (x - search.x);
+  const off = (x, y) => (y * image.width + x) * 4;
+  const exterior = flood(sw, search.height, (i) => kept[i] !== 1);
+  const enclosed = new Uint8Array(mask.length);
+  const outerAreaPx = outer.width * outer.height;
+  for (let start = 0; start < mask.length; start++) {
+    if (kept[start] === 1 || exterior[start] || enclosed[start]) continue;
+    const region = [start];
+    enclosed[start] = 2;
+    for (let k = 0; k < region.length; k++) {
+      const i = region[k];
+      const x = i % sw;
+      for (const j of [i - sw, i + sw, x > 0 ? i - 1 : -1, x + 1 < sw ? i + 1 : -1]) {
+        if (j >= 0 && j < mask.length && kept[j] !== 1 && !exterior[j] && !enclosed[j]) {
+          enclosed[j] = 2;
+          region.push(j);
+        }
+      }
+    }
+    const big = region.length >= HOLE_SHARE * outerAreaPx;
+    for (const i of region) enclosed[i] = big ? 1 : 3;
+  }
+  const isElement = (x, y) => kept[at(x, y)] === 1 || enclosed[at(x, y)] === 1;
+  const outerArea = outer.width * outer.height;
+  let solid = 0;
+  for (let y = outer.y; y < outer.y + outer.height; y++) {
+    for (let x = outer.x; x < outer.x + outer.width; x++) if (isElement(x, y)) solid++;
+  }
+  let bounds = outer;
+  let fill = null;
+  let rim = null;
+  let ref = bg;
+  if (solid / outerArea >= FILLED_SHARE) {
+    const own = [];
+    for (let y = outer.y; y < outer.y + outer.height; y++) {
+      for (let x = outer.x; x < outer.x + outer.width; x++) if (isElement(x, y)) own.push(off(x, y));
+    }
+    ref = dominant(d, own);
+    const rowFill = new Array(outer.height).fill(0);
+    const colFill = new Array(outer.width).fill(0);
+    for (let y = outer.y; y < outer.y + outer.height; y++) {
+      for (let x = outer.x; x < outer.x + outer.width; x++) {
+        if (distance(d, off(x, y), ref) <= tol) {
+          rowFill[y - outer.y]++;
+          colFill[x - outer.x]++;
+        }
+      }
+    }
+    const span = (counts) => {
+      const max = Math.max(...counts);
+      const first2 = counts.findIndex((c) => c >= FILL_RUN_SHARE * max);
+      let last = counts.length - 1;
+      while (last > first2 && counts[last] < FILL_RUN_SHARE * max) last--;
+      return [first2, last];
+    };
+    const [fy0, fy1] = span(rowFill);
+    const [fx0, fx1] = span(colFill);
+    const fillBox = { x: outer.x + fx0, y: outer.y + fy0, width: fx1 - fx0 + 1, height: fy1 - fy0 + 1 };
+    const band = {
+      top: { x: fillBox.x, y: outer.y, width: fillBox.width, height: fillBox.y - outer.y },
+      bottom: { x: fillBox.x, y: fillBox.y + fillBox.height, width: fillBox.width, height: outer.y + outer.height - fillBox.y - fillBox.height },
+      left: { x: outer.x, y: fillBox.y, width: fillBox.x - outer.x, height: fillBox.height },
+      right: { x: fillBox.x + fillBox.width, y: fillBox.y, width: outer.x + outer.width - fillBox.x - fillBox.width, height: fillBox.height }
+    };
+    rim = {};
+    const keep = {};
+    for (const side of ["top", "right", "bottom", "left"]) {
+      const b = band[side];
+      const width = side === "top" || side === "bottom" ? b.height : b.width;
+      if (width <= 0 || b.width <= 0 || b.height <= 0) {
+        rim[side] = { width: 0, kind: "none" };
+        continue;
+      }
+      const offsets = [...pixels(image, b)];
+      const colour2 = dominant(d, offsets);
+      const same = offsets.filter((o) => distance(d, o, colour2) <= tol).length / offsets.length;
+      const border = same >= BORDER_SAME_SHARE && width / scale <= BORDER_MAX;
+      keep[side] = border;
+      rim[side] = border ? { width: css(width), kind: "border", hex: hex2(colour2) } : { width: css(width), kind: "shadow" };
+    }
+    const borders = ["top", "right", "bottom", "left"].filter((side) => rim[side].kind === "border");
+    const nonEmpty = ["top", "right", "bottom", "left"].filter((side) => rim[side].kind !== "none");
+    const first = borders[0] && hexRgb(rim[borders[0]].hex);
+    const consistent = borders.length === nonEmpty.length && borders.every((side) => colourDistance(hexRgb(rim[side].hex), first) <= tol && rim[side].width === rim[borders[0]].width);
+    if (!consistent) {
+      for (const side of borders) {
+        rim[side] = { width: rim[side].width, kind: "shadow" };
+        keep[side] = false;
+      }
+    }
+    const left = keep.left ? outer.x : fillBox.x;
+    const top = keep.top ? outer.y : fillBox.y;
+    const right = keep.right ? outer.x + outer.width : fillBox.x + fillBox.width;
+    const bottom = keep.bottom ? outer.y + outer.height : fillBox.y + fillBox.height;
+    bounds = { x: left, y: top, width: right - left, height: bottom - top };
+    let near = 0;
+    for (const o of pixels(image, bounds)) if (distance(d, o, ref) <= tol) near++;
+    fill = { hex: hex2(ref), coverage: share(near / (bounds.width * bounds.height)) };
+  }
+  let area = bounds.width * bounds.height;
+  const outsideEl = fill ? flood(bounds.width, bounds.height, (i) => {
+    const lx = i % bounds.width;
+    return distance(d, off(bounds.x + lx, bounds.y + (i - lx) / bounds.width), ref) > tol;
+  }) : new Uint8Array(area);
+  const candidates = [];
+  let farthest = 0;
+  for (let y = bounds.y; y < bounds.y + bounds.height; y++) {
+    for (let x = bounds.x; x < bounds.x + bounds.width; x++) {
+      const o = off(x, y);
+      const isInk = fill ? !outsideEl[(y - bounds.y) * bounds.width + (x - bounds.x)] && distance(d, o, ref) > tol : kept[at(x, y)] === 1 && inside(search, x, y);
+      if (!isInk) continue;
+      candidates.push(o);
+      farthest = Math.max(farthest, distance(d, o, ref));
+    }
+  }
+  const strongMin = Math.max(tol, STRONG_SHARE * farthest);
+  const strong = candidates.filter((o) => distance(d, o, ref) >= strongMin);
+  const coreMin = Math.max(tol, CORE_SHARE * farthest);
+  const inkOffsets = strong;
+  let ix0 = Infinity, iy0 = Infinity, ix1 = -Infinity, iy1 = -Infinity;
+  for (const o of strong) {
+    const p = o / 4;
+    const x = p % image.width;
+    const y = (p - x) / image.width;
+    ix0 = Math.min(ix0, x);
+    iy0 = Math.min(iy0, y);
+    ix1 = Math.max(ix1, x);
+    iy1 = Math.max(iy1, y);
+  }
+  if (!fill && strong.length >= 4) {
+    bounds = { x: ix0, y: iy0, width: ix1 - ix0 + 1, height: iy1 - iy0 + 1 };
+  }
+  const rows = new Uint8Array(bounds.height);
+  for (const o of strong) {
+    const p = o / 4;
+    const y = (p - p % image.width) / image.width;
+    if (y >= bounds.y && y < bounds.y + bounds.height) rows[y - bounds.y] = 1;
+  }
+  area = bounds.width * bounds.height;
+  let ink = null;
+  let inkBounds = null;
+  let insets = null;
+  const lines = [];
+  if (inkOffsets.length >= 4) {
+    const core = inkOffsets.filter((o) => distance(d, o, ref) >= coreMin);
+    const colour2 = dominant(d, core);
+    const exactShare = core.filter((o) => distance(d, o, colour2) === 0).length / core.length;
+    ink = { hex: hex2(colour2), coverage: share(candidates.length / area), exact: exactShare >= EXACT_SHARE };
+    if (!ink.exact) warnings.push("the ink colour is approximate: no single colour dominates the strokes (a resampled image?)");
+    const inkPx = { x: ix0, y: iy0, width: ix1 - ix0 + 1, height: iy1 - iy0 + 1 };
+    inkBounds = cssBox(inkPx);
+    insets = {
+      top: css(inkPx.y - bounds.y),
+      right: css(bounds.x + bounds.width - (inkPx.x + inkPx.width)),
+      bottom: css(bounds.y + bounds.height - (inkPx.y + inkPx.height)),
+      left: css(inkPx.x - bounds.x)
+    };
+    for (let r = 0; r < rows.length; r++) {
+      if (!rows[r] || r > 0 && rows[r - 1]) continue;
+      let end = r;
+      while (end < rows.length && rows[end]) end++;
+      lines.push({ top: css(bounds.y + r), bottom: css(bounds.y + end), height: css(end - r) });
+    }
+  }
+  const tops = lines.map((l) => l.top);
+  const steps = tops.slice(1).map((t, i) => t - tops[i]).sort((a, b) => a - b);
+  const linePitch = steps.length ? round(steps[Math.floor((steps.length - 1) / 2)]) : null;
+  return {
+    status: "measured",
+    box,
+    background: hex2(bg),
+    bounds: cssBox(bounds),
+    boundsPx: bounds,
+    outer: cssBox(outer),
+    outerPx: outer,
+    rim,
+    clipped,
+    fill,
+    ink,
+    inkBounds,
+    insets,
+    lines,
+    linePitch,
+    warnings
+  };
+}
+
+// src/image/command.ts
+var PROBE_USAGE = `  ui-measure probe IMAGE.png --box X,Y,W,H [--box ...] [--scale S | --frame-width W]
+    [--tolerance N] [--json OUT]
+    (boxes in image pixels; results in CSS pixels = image pixels / scale)`;
+function positive(flag, value) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) throw new SetupError(`${flag} must be a positive number, got ${value}`);
+  return n;
+}
+function parseBox(value) {
+  const parts = value.split(",").map(Number);
+  if (parts.length !== 4 || parts.some((n) => !Number.isFinite(n)) || parts[2] <= 0 || parts[3] <= 0) {
+    throw new SetupError(`--box must be X,Y,W,H with a positive width and height, got ${value}`);
+  }
+  const [x, y, width, height] = parts;
+  return { x, y, width, height };
+}
+var size2 = (b) => `${b.width}x${b.height} at ${b.x},${b.y}`;
+function line(index, r) {
+  if (r.status === "nothing") return `box ${index}: nothing - ${r.reason}`;
+  const parts = [`box ${index}: ${size2(r.bounds)}`, `on ${r.background}`];
+  parts.push(r.fill ? `fill ${r.fill.hex}` : "no fill");
+  if (r.ink) parts.push(`ink ${r.ink.hex}${r.ink.exact ? "" : " (approximate)"}`);
+  if (r.insets) parts.push(`insets ${r.insets.top}/${r.insets.right}/${r.insets.bottom}/${r.insets.left}`);
+  if (r.lines.length) parts.push(`${r.lines.length} line${r.lines.length > 1 ? "s" : ""}${r.linePitch !== null ? ` pitch ${r.linePitch}` : ""}`);
+  const rim = r.rim && ["top", "right", "bottom", "left"].filter((s) => r.rim[s].kind !== "none");
+  if (rim?.length) parts.push(`rim ${rim.map((s) => `${s} ${r.rim[s].width} ${r.rim[s].kind}`).join(", ")}`);
+  if (r.clipped.length) parts.push(`CLIPPED ${r.clipped.join(",")} - enlarge the box`);
+  for (const w of r.warnings) if (!w.startsWith("the ink colour")) parts.push(`WARNING ${w}`);
+  return parts.join(" ");
+}
+async function probeCommand(args) {
+  let image;
+  const boxes = [];
+  let scale;
+  let frameWidth;
+  let tolerance;
+  let json;
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    if (!arg.startsWith("--")) {
+      if (image) throw new SetupError(`unexpected argument ${arg}
+Usage:
+${PROBE_USAGE}`);
+      image = arg;
+      continue;
+    }
+    const value = args[++i];
+    if (value === void 0 || value === "") throw new SetupError(`${arg} needs a value`);
+    if (arg === "--box") boxes.push(parseBox(value));
+    else if (arg === "--scale") scale = positive(arg, value);
+    else if (arg === "--frame-width") frameWidth = positive(arg, value);
+    else if (arg === "--tolerance") tolerance = positive(arg, value);
+    else if (arg === "--json") json = value;
+    else throw new SetupError(`unknown option ${arg}
+Usage:
+${PROBE_USAGE}`);
+  }
+  if (!image) throw new SetupError(`probe needs an image
+Usage:
+${PROBE_USAGE}`);
+  if (boxes.length === 0) throw new SetupError(`probe needs at least one --box
+Usage:
+${PROBE_USAGE}`);
+  if (scale !== void 0 && frameWidth !== void 0) throw new SetupError("give --scale or --frame-width, not both");
+  let buf;
+  try {
+    buf = await readFile2(image);
+  } catch {
+    throw new SetupError(`cannot read image ${image}`);
+  }
+  const decoded = decodePng(buf);
+  const warnings = [];
+  let scaleSource = "flag";
+  if (frameWidth !== void 0) {
+    scale = decoded.width / frameWidth;
+    scaleSource = "frame-width";
+  } else if (scale === void 0) {
+    scale = 1;
+    scaleSource = "assumed";
+    warnings.push("scale assumed 1: pass --scale or --frame-width, or CSS values may be off by the export scale");
+  }
+  const report2 = {
+    tool: "ui-measure",
+    version: VERSION,
+    kind: "probe",
+    image: { path: image, width: decoded.width, height: decoded.height },
+    scale,
+    scaleSource,
+    warnings,
+    probes: boxes.map((box) => probe(decoded, box, { scale, tolerance }))
+  };
+  if (json) {
+    const file = resolve2(json);
+    await mkdir(dirname2(file), { recursive: true });
+    await writeFile(file, `${JSON.stringify(report2, null, 2)}
+`, "utf8");
+  }
+  for (const w of warnings) console.log(`warning: ${w}`);
+  report2.probes.forEach((r, i) => console.log(line(i + 1, r)));
+  return report2.probes.some((r) => r.status === "nothing") ? 2 : 0;
+}
+
 // src/report/write.ts
-import { mkdir, writeFile } from "node:fs/promises";
-import { dirname as dirname2 } from "node:path";
+import { mkdir as mkdir2, writeFile as writeFile2 } from "node:fs/promises";
+import { dirname as dirname3 } from "node:path";
 async function writeReport(file, report2) {
-  await mkdir(dirname2(file), { recursive: true });
-  await writeFile(file, `${JSON.stringify(report2, null, 2)}
+  await mkdir2(dirname3(file), { recursive: true });
+  await writeFile2(file, `${JSON.stringify(report2, null, 2)}
 `, "utf8");
 }
 function reportSummary(report2, maxLines = 20) {
@@ -1355,10 +1926,10 @@ function colorObject(value) {
     if (typeof value.hex !== "string") throw new Error("hex must be a string");
     const match = /^#([0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.exec(value.hex);
     if (!match) throw new Error("hex must be #rgb, #rgba, #rrggbb, or #rrggbbaa");
-    let hex2 = match[1];
-    if (hex2.length <= 4) hex2 = [...hex2].map((c) => c + c).join("");
-    components = [0, 2, 4].map((i) => parseInt(hex2.slice(i, i + 2), 16) / 255);
-    if (hex2.length === 8) hexAlpha = parseInt(hex2.slice(6, 8), 16) / 255;
+    let hex3 = match[1];
+    if (hex3.length <= 4) hex3 = [...hex3].map((c) => c + c).join("");
+    components = [0, 2, 4].map((i) => parseInt(hex3.slice(i, i + 2), 16) / 255);
+    if (hex3.length === 8) hexAlpha = parseInt(hex3.slice(6, 8), 16) / 255;
   } else {
     if (value.colorSpace !== "srgb") throw new Error("color requires colorSpace srgb or a hex string");
     if (!Array.isArray(value.components) || value.components.length !== 3 || value.components.some((n) => typeof n !== "number" || !Number.isFinite(n) || n < 0 || n > 1)) {
@@ -1608,14 +2179,14 @@ var TEXT_TOLERANCE_PX = 0.5;
 var COLOUR_CHANNEL_TOLERANCE = 1;
 var COLOUR_ALPHA_TOLERANCE = 0.01;
 var GRAPHIC_TYPES2 = /* @__PURE__ */ new Set(["VECTOR", "ELLIPSE", "LINE", "STAR", "BOOLEAN_OPERATION"]);
-var round = (n, places = 2) => Math.round(n * 10 ** places) / 10 ** places;
-var px = (n) => `${round(n)}px`;
-var dims = (w, h) => `${round(w)}x${round(h)}px`;
+var round2 = (n, places = 2) => Math.round(n * 10 ** places) / 10 ** places;
+var px = (n) => `${round2(n)}px`;
+var dims = (w, h) => `${round2(w)}x${round2(h)}px`;
 function parseColour(input) {
   const s = input.trim().toLowerCase();
-  const hex2 = /^#([0-9a-f]{3,8})$/.exec(s);
-  if (hex2) {
-    let h = hex2[1];
+  const hex3 = /^#([0-9a-f]{3,8})$/.exec(s);
+  if (hex3) {
+    let h = hex3[1];
     if (h.length === 3 || h.length === 4) h = [...h].map((c) => c + c).join("");
     if (h.length !== 6 && h.length !== 8) return void 0;
     const n = (i) => parseInt(h.slice(i, i + 2), 16);
@@ -1628,7 +2199,7 @@ function parseColour(input) {
   return [parts[0], parts[1], parts[2], parts[3] ?? 1];
 }
 function formatColour(c) {
-  const a = round(c[3], 3);
+  const a = round2(c[3], 3);
   if (a >= 1) return `#${c.slice(0, 3).map((n) => Math.round(n).toString(16).padStart(2, "0")).join("")}`;
   return `rgba(${c.slice(0, 3).map(Math.round).join(", ")}, ${a})`;
 }
@@ -1690,7 +2261,7 @@ function geomBox(node, el) {
   if (node.hugsWidth !== true || !el.ink) return box;
   return { x: el.ink.x, y: box.y, width: el.ink.width, height: box.height };
 }
-var fmtBox = (b) => `${round(b.x, 1)},${round(b.y, 1)} ${round(b.width, 1)}x${round(b.height, 1)}`;
+var fmtBox = (b) => `${round2(b.x, 1)},${round2(b.y, 1)} ${round2(b.width, 1)}x${round2(b.height, 1)}`;
 function compareSpec(design2, dom, v, opts) {
   const { scale } = opts;
   const tol = TOLERANCE_FLOOR_PX * scale;
@@ -1731,7 +2302,7 @@ function compareSpec(design2, dom, v, opts) {
       target: targetOf(node, el),
       expected: property ? named(property.name, property.designValue, shown) : shown,
       actual: `${label}${px(actual)}`,
-      deltaPx: round(delta)
+      deltaPx: round2(delta)
     });
   };
   const skip = (kindName, node, el, reason) => findings.push({ check: "spec", kind: kindName, status: "not_comparable", target: targetOf(node, el), reason });
@@ -1745,7 +2316,7 @@ function compareSpec(design2, dom, v, opts) {
       target: { selector: dom.root.selector, designNode: design2.root.id },
       expected: dims(rootBox.width * scale, rootBox.height * scale),
       actual: dims(domRootBox.width, domRootBox.height),
-      deltaPx: round(Math.max(dw, dh))
+      deltaPx: round2(Math.max(dw, dh))
     });
   } else {
     findings.push({
@@ -1777,7 +2348,7 @@ function compareSpec(design2, dom, v, opts) {
             target: targetOf(node, el),
             expected: dims(want.width, want.height),
             actual: dims(got.width, got.height),
-            deltaPx: round(worst)
+            deltaPx: round2(worst)
           });
           const shift = Math.max(Math.abs(want.x - got.x), Math.abs(want.y - got.y));
           findings.push({
@@ -1785,9 +2356,9 @@ function compareSpec(design2, dom, v, opts) {
             kind: "box",
             status: shift > tol ? "fail" : "pass",
             target: targetOf(node, el),
-            expected: `${round(want.x, 1)},${round(want.y, 1)}`,
-            actual: `${round(got.x, 1)},${round(got.y, 1)}`,
-            deltaPx: round(shift)
+            expected: `${round2(want.x, 1)},${round2(want.y, 1)}`,
+            actual: `${round2(got.x, 1)},${round2(got.y, 1)}`,
+            deltaPx: round2(shift)
           });
         } else {
           const worst = Math.max(
@@ -1803,7 +2374,7 @@ function compareSpec(design2, dom, v, opts) {
             target: targetOf(node, el),
             expected: fmtBox(want),
             actual: fmtBox(got),
-            deltaPx: round(worst)
+            deltaPx: round2(worst)
           });
         }
       }
@@ -1839,7 +2410,7 @@ function compareSpec(design2, dom, v, opts) {
             target: targetOf(node, el),
             expected: node.radii ? expected.map(px).join(", ") : has ? named("radius", String(node.radius), px(expected[0])) : "none",
             actual: node.radii ? got.map(px).join(", ") : px(far),
-            deltaPx: round(worst)
+            deltaPx: round2(worst)
           });
         }
       }
@@ -1867,7 +2438,7 @@ function compareSpec(design2, dom, v, opts) {
           target: targetOf(node, el),
           expected: has ? named("borderWidth", String(node.strokeWeight), px(want)) : "none",
           actual: off.length ? shown : px(widths[0].w ?? 0),
-          deltaPx: round(worst)
+          deltaPx: round2(worst)
         });
       }
     }
@@ -1914,9 +2485,9 @@ function compareSpec(design2, dom, v, opts) {
         expected: named("fontFamily", node.font.family, node.font.family),
         actual: family
       });
-      const size2 = length(style.fontSize);
-      if (size2 === void 0) skip("font-size", node, el, `font size ${style.fontSize} is not a length`);
-      else measure("font-size", node, el, node.font.size * scale, size2, textTol, { name: "fontSize", designValue: String(node.font.size) });
+      const size3 = length(style.fontSize);
+      if (size3 === void 0) skip("font-size", node, el, `font size ${style.fontSize} is not a length`);
+      else measure("font-size", node, el, node.font.size * scale, size3, textTol, { name: "fontSize", designValue: String(node.font.size) });
       const weight = Number(style.fontWeight);
       findings.push({
         check: "spec",
@@ -2083,7 +2654,7 @@ function compareSpec(design2, dom, v, opts) {
         skip("padding", own.node, own.el, `the ${side.label} padding is measured to ${missing?.id ?? "every child"}, which has no accepted pair`);
         continue;
       }
-      measure("padding", own.node, own.el, side.design * scale, side.dom(), tol, { name: "spacing", designValue: String(round(side.design)) }, `${side.label} `);
+      measure("padding", own.node, own.el, side.design * scale, side.dom(), tol, { name: "spacing", designValue: String(round2(side.design)) }, `${side.label} `);
     }
   }
   const proposed = v.pairs.length;
@@ -2120,50 +2691,6 @@ function compareSpec(design2, dom, v, opts) {
   };
 }
 
-// package.json
-var package_default = {
-  name: "ui-measure",
-  version: "0.2.0",
-  description: "Measure rendered UI geometry and design conformance without a model",
-  type: "module",
-  license: "MIT",
-  exports: {
-    ".": {
-      types: "./dist/lib/src/index.d.ts",
-      default: "./dist/lib/src/index.js"
-    },
-    "./version": {
-      types: "./dist/lib/src/version.d.ts",
-      default: "./dist/lib/src/version.js"
-    }
-  },
-  bin: {
-    "ui-measure": "./dist/ui-measure.mjs"
-  },
-  scripts: {
-    test: "vitest run",
-    "build:cli": "esbuild src/cli.ts --bundle --outfile=dist/ui-measure.mjs --platform=node --format=esm --external:playwright",
-    "build:lib": "tsc -p tsconfig.lib.json",
-    build: "pnpm run build:cli && pnpm run build:lib"
-  },
-  engines: {
-    node: ">=24"
-  },
-  peerDependencies: {
-    playwright: ">=1.50.0"
-  },
-  devDependencies: {
-    "@types/node": "^24.10.0",
-    esbuild: "^0.27.0",
-    playwright: "^1.56.1",
-    typescript: "^5.9.3",
-    vitest: "^4.0.0"
-  }
-};
-
-// src/version.ts
-var VERSION = package_default.version;
-
 // src/cli.ts
 var USAGE = `Usage:
   ui-measure geometry --config C --target T [--json OUT]
@@ -2172,7 +2699,8 @@ var USAGE = `Usage:
     (with no proposer, uses .ui-measure/pairs/TARGET.json beside the config when it exists)
   ui-measure baseline record|check --config C --target T [--mode geometry|spec]
     [--node FILE | --figma NODE_ID] [--proposer recorded --proposal FILE | --proposer command -- ARGV...]
-    [--force] [--json OUT]`;
+    [--force] [--json OUT]
+${PROBE_USAGE}`;
 function parseOptions(args) {
   const out = { command: [] };
   for (let i = 0; i < args.length; i++) {
@@ -2256,12 +2784,12 @@ async function geometry(target, config) {
 async function proposer(options) {
   const kind = options.proposer ?? (options.proposal ? "recorded" : options.command.length ? "command" : void 0);
   if (kind === void 0) {
-    const file = join2(dirname3(resolve2(options.config)), ".ui-measure", "pairs", `${options.target}.json`);
+    const file = join2(dirname4(resolve3(options.config)), ".ui-measure", "pairs", `${options.target}.json`);
     return existsSync2(file) ? { kind: "recorded", file } : void 0;
   }
   if (kind === "recorded") {
     if (!options.proposal) throw new SetupError("recorded proposer needs --proposal FILE");
-    return { kind, file: resolve2(options.proposal) };
+    return { kind, file: resolve3(options.proposal) };
   }
   if (kind === "command") {
     if (options.command.length === 0) throw new SetupError("command proposer needs arguments after --");
@@ -2273,7 +2801,7 @@ async function design(target, options) {
   if (options.node && options.figma) throw new SetupError("--node and --figma are mutually exclusive");
   const nodeFile = options.node ?? (options.figma ? void 0 : target.node);
   if (nodeFile) {
-    const json2 = JSON.parse(await readFile2(resolve2(nodeFile), "utf8"));
+    const json2 = JSON.parse(await readFile3(resolve3(nodeFile), "utf8"));
     return flatten(readNode(json2, target.figma?.nodeId));
   }
   const nodeId = options.figma ?? target.figma?.nodeId;
@@ -2342,6 +2870,7 @@ async function main(argv = process.argv.slice(2)) {
       console.log(USAGE);
       return command ? 0 : 3;
     }
+    if (command === "probe") return await probeCommand(argv.slice(1));
     const isBaseline = command === "baseline";
     const action = isBaseline ? argv[1] : void 0;
     if (!["geometry", "spec", "baseline"].includes(command) || isBaseline && action !== "record" && action !== "check") {
@@ -2363,7 +2892,7 @@ ${USAGE}`);
     const mode = options.mode ?? "geometry";
     if (mode !== "geometry" && mode !== "spec") throw new SetupError("--mode must be geometry or spec");
     let result = command === "spec" || isBaseline && mode === "spec" ? await spec(target, config, options) : await geometry(target, config);
-    if (options.json) await writeReport(resolve2(options.json), result);
+    if (options.json) await writeReport(resolve3(options.json), result);
     if (isBaseline) {
       if (!config.baselineDir) throw new SetupError("baselineDir is required for baseline commands");
       if (action === "record") {
@@ -2379,7 +2908,7 @@ ${USAGE}`);
         findings,
         verdict: verdict(findings.filter((f) => f.origin !== "inherited"), result.coverage)
       };
-      if (options.json) await writeReport(resolve2(options.json), result);
+      if (options.json) await writeReport(resolve3(options.json), result);
     }
     console.log(reportSummary(result));
     return exitCode(result);

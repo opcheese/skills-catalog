@@ -15,6 +15,7 @@ import { join } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 import packageJson from "../package.json" with { type: "json" }
 import { serve, type TestServer } from "./helpers/serve"
+import { Canvas } from "./helpers/png"
 import type { Report } from "../src/report/types"
 
 const PACKAGE = fileURLToPath(new URL("..", import.meta.url))
@@ -393,6 +394,65 @@ describe("built package exports", () => {
       expect(api.VERSION).toBe(packageJson.version)
       expect(typeof api.openPage).toBe("function")
       expect(typeof api.loadConfig).toBe("function")
+    }
+  })
+})
+
+describe("ui-measure probe", () => {
+  let png: string
+  beforeAll(() => {
+    png = join(scratch, "card.png")
+    const canvas = new Canvas(400, 300, "#ffffff").rect(40, 50, 200, 100, "#f2f4f7")
+    for (let x = 56; x < 136; x += 4) canvas.rect(x, 66, 2, 10, "#1a1a1a")
+    writeFileSync(png, canvas.png())
+  })
+
+  it("measures each box, prints a line per box and writes a JSON report", async () => {
+    const out = join(scratch, "probe.json")
+    const result = await run(["probe", png, "--box", "30,40,230,125", "--box", "52,62,90,20", "--scale", "2", "--json", out])
+    expect(result.status, output(result)).toBe(0)
+    expect(result.stdout).toMatch(/box 1: 100x50 at 20,25 .*fill #f2f4f7.*ink #1a1a1a.*insets 8\/53\/37\/8/)
+    expect(result.stdout).toMatch(/box 2: 39x5 at 28,33 .*no fill.*ink #1a1a1a/)
+    const report = JSON.parse(readFileSync(out, "utf8"))
+    expect(report).toMatchObject({ tool: "ui-measure", kind: "probe", scale: 2, scaleSource: "flag", warnings: [] })
+    expect(report.image).toEqual({ path: png, width: 400, height: 300 })
+    expect(report.probes).toHaveLength(2)
+    expect(report.probes[0].bounds).toEqual({ x: 20, y: 25, width: 100, height: 50 })
+  })
+
+  it("derives the scale from the design frame width", async () => {
+    const out = join(scratch, "probe-frame.json")
+    const result = await run(["probe", png, "--box", "30,40,230,125", "--frame-width", "200", "--json", out])
+    expect(result.status, output(result)).toBe(0)
+    const report = JSON.parse(readFileSync(out, "utf8"))
+    expect(report).toMatchObject({ scale: 2, scaleSource: "frame-width" })
+  })
+
+  it("warns when the scale is assumed", async () => {
+    const result = await run(["probe", png, "--box", "30,40,230,125"])
+    expect(result.status, output(result)).toBe(0)
+    expect(result.stdout).toMatch(/scale assumed 1/)
+  })
+
+  it("exits 2 when a box measures nothing", async () => {
+    const result = await run(["probe", png, "--box", "100,110,40,20"])
+    expect(result.status).toBe(2)
+    expect(result.stdout).toMatch(/box 1: nothing - nothing in the box differs from the surrounding colour/)
+  })
+
+  it("refuses bad input with exit 3", async () => {
+    for (const args of [
+      ["probe", png],
+      ["probe", png, "--box", "1,2,3"],
+      ["probe", png, "--box", "1,2,0,4"],
+      ["probe", png, "--box", "1,2,3,4", "--scale", "2", "--frame-width", "200"],
+      ["probe", png, "--box", "1,2,3,4", "--scale", "-1"],
+      ["probe", join(scratch, "missing.png"), "--box", "1,2,3,4"],
+      ["probe", "--box", "1,2,3,4"],
+    ]) {
+      const result = await run(args)
+      expect(result.status, args.join(" ")).toBe(3)
+      expect(result.stderr).toMatch(/^ui-measure: /)
     }
   })
 })
