@@ -21,6 +21,6 @@ export interface Report {
   page: { url: string; viewport: [number, number]; screen: [number, number]; dpr: number }
   scale: number // CSS px per design px, from the live root font size
   findings: Finding[]
-  coverage: { pairsProposed: number; pairsAccepted: number; dropped: number }
+  coverage: { pairsProposed: number; pairsAccepted: number; dropped: number; authoritative: boolean }
   verdict: "clean" | "mismatches" | "not_comparable"
 }

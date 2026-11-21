@@ -79,4 +79,48 @@ describe("propose", () => {
       propose({ kind: "command", argv: ["/nonexistent/ui-measure-nope"] }, design, dom),
     ).rejects.toBeInstanceOf(ProposalError)
   })
+
+  describe("authoritative and unmappedReasons", () => {
+    const write = (name: string, body: unknown) => {
+      const f = join(dir, name)
+      writeFileSync(f, JSON.stringify(body))
+      return f
+    }
+    const base = { pairs: [], unmapped: { design: ["9:9"], impl: [] } }
+
+    it("parses authoritative and unmappedReasons", async () => {
+      const f = write("auth.json", {
+        ...base,
+        authoritative: true,
+        unmappedReasons: { "9:9": "merged into background" },
+      })
+      const got = await propose({ kind: "recorded", file: f }, design, dom)
+      expect(got.authoritative).toBe(true)
+      expect(got.unmappedReasons).toEqual({ "9:9": "merged into background" })
+    })
+
+    it("rejects non-boolean authoritative", async () => {
+      const f = write("auth-bad.json", { ...base, authoritative: "yes" })
+      await expect(
+        propose({ kind: "recorded", file: f }, design, dom),
+      ).rejects.toBeInstanceOf(ProposalError)
+    })
+
+    it("rejects non-string reason values", async () => {
+      const f = write("reason-bad.json", { ...base, unmappedReasons: { "9:9": 3 } })
+      await expect(
+        propose({ kind: "recorded", file: f }, design, dom),
+      ).rejects.toBeInstanceOf(ProposalError)
+    })
+
+    it("old files still parse", async () => {
+      const got = await propose(
+        { kind: "recorded", file: join(__dirname, "../fixtures/card-proposal.json") },
+        design,
+        dom,
+      )
+      expect(got.authoritative).toBeUndefined()
+      expect(got.unmappedReasons).toBeUndefined()
+    })
+  })
 })

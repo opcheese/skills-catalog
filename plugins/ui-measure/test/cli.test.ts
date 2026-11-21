@@ -106,7 +106,7 @@ describe("ui-measure CLI", () => {
     ])
     expect(result.status, output(result)).toBe(1)
     const report = readReport(json)
-    expect(report.coverage).toEqual({ pairsProposed: 3, pairsAccepted: 3, dropped: 0 })
+    expect(report.coverage).toEqual({ pairsProposed: 3, pairsAccepted: 3, dropped: 0, authoritative: false })
     expect(report.findings.some((f) => f.kind === "padding" && f.status === "fail" && f.deltaPx === 8)).toBe(true)
     expect(result.stdout.trim().split("\n").length).toBeLessThanOrEqual(20)
   })

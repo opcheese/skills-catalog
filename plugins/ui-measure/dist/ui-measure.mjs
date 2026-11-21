@@ -272,7 +272,7 @@ function parseProposal(text, source) {
   const strings = (a) => Array.isArray(a) && a.every((s) => typeof s === "string");
   const ok = v !== null && typeof v === "object" && Array.isArray(v.pairs) && v.pairs.every(
     (p) => p !== null && typeof p === "object" && typeof p.nodeId === "string" && typeof p.selector === "string"
-  ) && v.unmapped !== void 0 && v.unmapped !== null && strings(v.unmapped.design) && strings(v.unmapped.impl);
+  ) && v.unmapped !== void 0 && v.unmapped !== null && strings(v.unmapped.design) && strings(v.unmapped.impl) && (v.authoritative === void 0 || typeof v.authoritative === "boolean") && (v.unmappedReasons === void 0 || v.unmappedReasons !== null && typeof v.unmappedReasons === "object" && !Array.isArray(v.unmappedReasons) && Object.values(v.unmappedReasons).every((r) => typeof r === "string"));
   if (!ok) throw new ProposalError(`${source} did not produce a Proposal`);
   return v;
 }
@@ -1992,7 +1992,7 @@ function compareSpec(design2, dom, v, opts) {
   const proposed = v.pairs.length;
   return {
     findings,
-    coverage: { pairsProposed: proposed, pairsAccepted: kept.length, dropped: proposed - kept.length }
+    coverage: { pairsProposed: proposed, pairsAccepted: kept.length, dropped: proposed - kept.length, authoritative: opts.authoritative === true }
   };
 }
 
@@ -2106,7 +2106,7 @@ function notComparable(target, check, reason) {
     target,
     void 0,
     [{ check, kind: "page", status: "not_comparable", target: { selector: target.adapter.kind === "url" ? target.adapter.root : "root" }, reason }],
-    { pairsProposed: 0, pairsAccepted: 0, dropped: 0 },
+    { pairsProposed: 0, pairsAccepted: 0, dropped: 0, authoritative: false },
     "not_comparable"
   );
 }
@@ -2122,7 +2122,7 @@ async function geometry(target, config) {
   if ("notComparable" in opened) return notComparable(target, "geometry", opened.notComparable);
   try {
     const findings = await detectGeometry(opened, config.geometry ?? { insetPx: 4, nonScrolling: [] });
-    const coverage = { pairsProposed: 0, pairsAccepted: 0, dropped: 0 };
+    const coverage = { pairsProposed: 0, pairsAccepted: 0, dropped: 0, authoritative: false };
     return report(target, opened, findings, coverage, verdict(findings, coverage));
   } finally {
     await opened.close();
@@ -2181,7 +2181,7 @@ async function spec(target, config, options) {
         target,
         opened,
         [{ check: "spec", kind: "correspondence", status: "not_comparable", target: { selector: opened.rootSelector }, reason: "no correspondence proposer was selected" }],
-        { pairsProposed: 0, pairsAccepted: 0, dropped: 0 },
+        { pairsProposed: 0, pairsAccepted: 0, dropped: 0, authoritative: false },
         "not_comparable"
       );
     }
@@ -2191,7 +2191,8 @@ async function spec(target, config, options) {
     const compared = compareSpec(designTree, dom, verification, {
       scale: opened.scale,
       tokens,
-      unthemed: config.unthemed
+      unthemed: config.unthemed,
+      authoritative: proposal.authoritative
     });
     return report(target, opened, compared.findings, compared.coverage, verdict(compared.findings, compared.coverage));
   } finally {

@@ -158,7 +158,7 @@ export function compareSpec(
   design: DesignTree,
   dom: DomTree,
   v: Verification,
-  opts: { scale: number; tokens?: Token[]; unthemed?: string[] },
+  opts: { scale: number; tokens?: Token[]; unthemed?: string[]; authoritative?: boolean },
 ): { findings: Finding[]; coverage: Report["coverage"] } {
   const { scale } = opts
   const tol = TOLERANCE_FLOOR_PX * scale
@@ -591,6 +591,6 @@ export function compareSpec(
   const proposed = v.pairs.length
   return {
     findings,
-    coverage: { pairsProposed: proposed, pairsAccepted: kept.length, dropped: proposed - kept.length },
+    coverage: { pairsProposed: proposed, pairsAccepted: kept.length, dropped: proposed - kept.length, authoritative: opts.authoritative === true },
   }
 }

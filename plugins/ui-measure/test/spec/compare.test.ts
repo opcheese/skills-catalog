@@ -101,7 +101,7 @@ describe("compareSpec", () => {
     for (const k of ["box", "gap", "padding", "radius", "border-width", "colour", "font-family", "font-size", "font-weight", "line-height", "effects", "root-size"]) {
       expect(kind(r, k, "pass").length, `no passing ${k} finding`).toBeGreaterThan(0)
     }
-    expect(r.coverage).toEqual({ pairsProposed: 3, pairsAccepted: 3, dropped: 0 })
+    expect(r.coverage).toEqual({ pairsProposed: 3, pairsAccepted: 3, dropped: 0, authoritative: false })
   })
 
   it("card-padding (32 vs 24) fails padding by 8 and drops no pair", async () => {
@@ -164,7 +164,7 @@ describe("compareSpec", () => {
     expect(size[0].deltaPx).toBeCloseTo(40, 0)
     // Its text matches, so it is size_differs, which lets the verifier rescue the root too.
     expect(r.v.sizeDiffers.map((p) => p.nodeId).sort()).toEqual(["1:1", "1:3"])
-    expect(r.coverage).toEqual({ pairsProposed: 3, pairsAccepted: 3, dropped: 0 })
+    expect(r.coverage).toEqual({ pairsProposed: 3, pairsAccepted: 3, dropped: 0, authoritative: false })
   })
 
   it("a size-differing pair that is also displaced reports a size fail and a position fail", async () => {
@@ -216,14 +216,32 @@ describe("compareSpec", () => {
       const partial: Proposal = { pairs: proposal.pairs.slice(0, 2), unmapped: { design: [], impl: [] } }
       const v = verifyMapping(partial, design, dom, { scale: 1 })
       const r = compareSpec(design, dom, v, { scale: 1 })
-      expect(r.coverage).toEqual({ pairsProposed: 2, pairsAccepted: 2, dropped: 0 })
+      expect(r.coverage).toEqual({ pairsProposed: 2, pairsAccepted: 2, dropped: 0, authoritative: false })
       const gap = r.findings.filter((f) => f.kind === "gap")
       expect(gap).toHaveLength(1)
       expect(gap[0].status).toBe("not_comparable")
       expect(gap[0].reason).toMatch(/1:3/)
       const bogus: Proposal = { pairs: [...partial.pairs, { nodeId: "9:9", selector: "#nope" }], unmapped: { design: [], impl: [] } }
       const v2 = verifyMapping(bogus, design, dom, { scale: 1 })
-      expect(compareSpec(design, dom, v2, { scale: 1 }).coverage).toEqual({ pairsProposed: 3, pairsAccepted: 2, dropped: 1 })
+      expect(compareSpec(design, dom, v2, { scale: 1 }).coverage).toEqual({ pairsProposed: 3, pairsAccepted: 2, dropped: 1, authoritative: false })
+    } finally {
+      await p.close()
+    }
+  })
+
+  it("coverage.authoritative follows the option and defaults to false", async () => {
+    const design = freshDesign()
+    const p = await openPage(
+      { adapter: { kind: "url", url: `${server.origin}/card-clean.html`, root: "#card" }, viewport: [800, 600] },
+      { browser },
+    )
+    if ("notComparable" in p) throw new Error(p.notComparable)
+    try {
+      const dom = await domTree(p)
+      const v = verifyMapping(proposal, design, dom, { scale: 1 })
+      expect(compareSpec(design, dom, v, { scale: 1, authoritative: true }).coverage.authoritative).toBe(true)
+      expect(compareSpec(design, dom, v, { scale: 1, authoritative: false }).coverage.authoritative).toBe(false)
+      expect(compareSpec(design, dom, v, { scale: 1 }).coverage.authoritative).toBe(false)
     } finally {
       await p.close()
     }

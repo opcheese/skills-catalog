@@ -551,6 +551,6 @@ export function compareSpec(design, dom, v, opts) {
     const proposed = v.pairs.length;
     return {
         findings,
-        coverage: { pairsProposed: proposed, pairsAccepted: kept.length, dropped: proposed - kept.length },
+        coverage: { pairsProposed: proposed, pairsAccepted: kept.length, dropped: proposed - kept.length, authoritative: opts.authoritative === true },
     };
 }

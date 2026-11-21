@@ -7,6 +7,7 @@ export declare function compareSpec(design: DesignTree, dom: DomTree, v: Verific
     scale: number;
     tokens?: Token[];
     unthemed?: string[];
+    authoritative?: boolean;
 }): {
     findings: Finding[];
     coverage: Report["coverage"];

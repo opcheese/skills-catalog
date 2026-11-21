@@ -30,6 +30,7 @@ export interface Report {
         pairsProposed: number;
         pairsAccepted: number;
         dropped: number;
+        authoritative: boolean;
     };
     verdict: "clean" | "mismatches" | "not_comparable";
 }

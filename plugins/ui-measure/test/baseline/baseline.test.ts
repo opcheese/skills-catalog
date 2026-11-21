@@ -31,7 +31,7 @@ const report = (findings: Finding[], over: Partial<Report> = {}): Report => ({
   page: { url: "http://x/", viewport: [800, 600], screen: [800, 600], dpr: 1 },
   scale: 1,
   findings,
-  coverage: { pairsProposed: 1, pairsAccepted: 1, dropped: 0 },
+  coverage: { pairsProposed: 1, pairsAccepted: 1, dropped: 0, authoritative: false },
   verdict: findings.some((f) => f.status === "fail") ? "mismatches" : "clean",
   ...over,
 })
@@ -150,7 +150,7 @@ describe("recordBaseline and readBaseline", () => {
   })
 
   it("refuses a run that dropped pairs even when the verdict is mismatches", () => {
-    const r = report([fail()], { coverage: { pairsProposed: 3, pairsAccepted: 2, dropped: 1 } })
+    const r = report([fail()], { coverage: { pairsProposed: 3, pairsAccepted: 2, dropped: 1, authoritative: false } })
     expect(() => recordBaseline(dir, "card", r)).toThrow(PartialRunError)
   })
 

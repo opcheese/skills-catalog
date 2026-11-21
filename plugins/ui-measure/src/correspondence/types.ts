@@ -122,6 +122,12 @@ export interface Proposal {
   /** What the proposer says has no counterpart. Carried through untouched:
    *  an unmapped node is not a finding, it is an absence of one. */
   unmapped: { design: string[]; impl: string[] }
+  /** The proposer vouches that the mapping is complete: whatever it left
+   *  unmapped really has no counterpart. Absent on files that predate it. */
+  authoritative?: boolean
+  /** Why each unmapped id (design node id or impl selector) has no
+   *  counterpart. Carried on the Proposal only; the engine does not read it. */
+  unmappedReasons?: Record<string, string>
 }
 
 export type RejectionRule =
