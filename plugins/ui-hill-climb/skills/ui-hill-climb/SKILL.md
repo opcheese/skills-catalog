@@ -1,6 +1,6 @@
 ---
 name: ui-hill-climb
-description: Use when an app's UI should look better and the result must be judged by someone other than the agent that built it - polishing screens against the product's best screens or competitors, "make this look like a real product", design QA before a UI merge request, or a designer's taste rules that keep being missed. Needs a running app the agent can screenshot and kimi-delegation 1.3.2+; optionally ui-measure for exact counts.
+description: Use when an app's UI should look better and the result must be judged by someone other than the agent that built it - polishing screens against the product's best screens or competitors, "make this look like a real product", design QA before a UI merge request, or a designer's taste rules that keep being missed. Needs a running app the agent can screenshot and a second model it can call (Kimi, Claude, Codex or any command); optionally ui-measure for exact counts.
 ---
 
 # UI hill-climb
@@ -10,6 +10,20 @@ recapture, repeat. The judge never sees the code, and you never score your own w
 UI high.
 
 `$HC` below is this skill's directory; the scripts are in `$HC/scripts/`.
+
+**Which model judges.** `HILL_RUNNER` picks how a prompt reaches a model: `kimi` (the default, through
+kimi-delegation 1.3.2+), `claude` (`claude -p` with read-only tools, in the work directory), `codex`
+(`codex exec`, each screenshot attached) or `command` (`HILL_RUNNER_CMD`, an argv that reads the prompt on stdin
+and prints the answer). `HILL_JUDGE_MODEL` names the model for runners that take one; on `claude` and `codex` it
+is passed only when you set it, and otherwise the CLI's own default answers. The judge runs on a different model
+from the builder: nothing enforces that, so pick the runner with it in mind. Every judgement file records a
+provenance line (`runner=<name> model=<model or default> cmd=<program>`; on Kimi, the delegate's own line), so the
+handover can say which model judged. Exit 75 (quota) comes only from the Kimi runner; any other runner's failure
+is exit 1.
+
+A screen built with ui-measure's build-time workflow already has its pairs: `hill-measure` picks up
+`.ui-measure/pairs/<target>.json` next to the config (or the screen's `proposal`, which wins), uses it in round 1
+and never asks a model to pair.
 
 ## Before round 1
 
@@ -60,10 +74,10 @@ UI high.
    `<label>.proposal.json`. Later rounds reuse the latest saved proposal; if it drops more pairs than the
    round it came from, `hill-measure` proposes once more and keeps whichever result drops fewer. Exit 0: written. Exit 2: bad input (a malformed `measure.json`, an unknown `--label`, a missing
    screenshot, or ui-measure not installed): fix it and rerun. Exit 3: setup problem (the app isn't
-   running, the config or target is wrong, the browser won't launch): fix the setup, don't judge. If Kimi's
+   running, the config or target is wrong, the browser won't launch): fix the setup, don't judge. If the proposer's
    pairing answer is unusable twice, `hill-measure` still exits 0 but writes no `<label>.spec.json`, so
    `hill-score` marks the round not comparable: measure again (or give the screen a `proposal` in
-   `measure.json`) rather than judge. A round without its reports is never comparable. Exit 75: the Kimi quota ran out: stop
+   `measure.json`) rather than judge. A round without its reports is never comparable. Exit 75: the Kimi quota ran out (kimi runner only): stop
    and report.
    Then, if `npx impeccable detect <url> --json` runs, fix what it reports. Judges can't overrule it.
 3. **Judge.** For each screen, and for each reference every round (the references are the drift control):
@@ -131,8 +145,9 @@ never merge (see superpowers:finishing-a-development-branch). State the limits b
 
 ## Limits
 
-- **One judge provider:** Kimi `k3.1-pro`. Kimi doesn't report which model actually answered, so only the
-  requested ID is known.
+- **One judge per run, and its answer is only as known as the provenance line.** Kimi doesn't report which model
+  actually answered, so on that runner only the requested ID is known; on the other runners the line records the
+  runner and the model you set (or `default`).
 - **Recall is unmeasured.** Whether the judge catches what designers catch is still being tested. In one
   product's review lists, about 10% of the items were visual, and this loop sees only that slice.
 - It judges what it can see in a still screenshot: not motion, timing, interaction or copy.

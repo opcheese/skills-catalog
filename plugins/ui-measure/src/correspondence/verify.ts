@@ -253,14 +253,19 @@ export function verifyMapping(
   proposal: Proposal,
   design: DesignTree,
   dom: DomTree,
-  opts: { scale: number },
+  opts: { scale: number; notes?: Record<string, string> },
 ): Verification {
   const nodesById = new Map(design.nodes.map((n) => [n.id, n]))
   const elementsBySelector = new Map(dom.elements.map((e) => [e.selector, e]))
+  // Authoritative: pairs made by the builder, not guessed. The plausibility rules
+  // (size_plausible, its rescues, text_consistent, order_consistent) exist to catch a guess; here a size, text or order
+  // difference is the finding, so those rules are skipped and the difference is measured.
+  const authoritative = proposal.authoritative === true
 
   const verdicts: PairVerdict[] = proposal.pairs.map((p) => ({
     nodeId: p.nodeId,
     selector: p.selector,
+    ...(p.proposed !== undefined ? { proposed: p.proposed } : {}),
     outcome: "accepted",
   }))
 
@@ -273,11 +278,17 @@ export function verifyMapping(
 
   // Rule 0: both ends exist. A pair naming something that is not in either tree
   // cannot be checked by any later rule, and must not reach arithmetic.
+  // `opts.notes[selector]`, when present, says why a recorded selector could not be
+  // resolved (ambiguous, outside the root, invalid) and replaces the generic note.
   for (const v of verdicts) {
     if (!nodesById.has(v.nodeId)) {
       reject(v, "resolvable", `no design node ${v.nodeId}`)
     } else if (!elementsBySelector.has(v.selector)) {
-      reject(v, "resolvable", `no element matching ${v.selector}`)
+      reject(
+        v,
+        "resolvable",
+        opts.notes?.[v.selector] ?? `no element matching ${v.selector}`,
+      )
     }
   }
 
@@ -337,7 +348,9 @@ export function verifyMapping(
     textOwners.set(t, [...(textOwners.get(t) ?? []), v.selector])
   }
   for (const v of verdicts) {
-    if (v.outcome === "not_comparable") continue
+    // An authoritative pair is the builder's own claim; a swap is a finding to compare, not a
+    // reason to drop it.
+    if (authoritative || v.outcome === "not_comparable") continue
     const node = nodesById.get(v.nodeId)
     const el = elementsBySelector.get(v.selector)
     const wanted = (node?.text ?? "").trim()
@@ -404,7 +417,7 @@ export function verifyMapping(
 
   // Rule 3: order-consistent. Both sides are ranked in reading order and the
   // ranks must agree; pairs outside the longest agreeing run are rejected.
-  if (geometric.length > 1) {
+  if (!authoritative && geometric.length > 1) {
     const rank = (boxes: Box[]) => {
       const out = new Map<number, number>()
       const order = readingOrder(boxes)
@@ -446,6 +459,8 @@ export function verifyMapping(
       reject(g.v, "measurable", "a box carries a non-finite coordinate")
       continue
     }
+    // Authoritative pairs are measured, not judged for plausibility.
+    if (authoritative) continue
     const tolerance = SIZE_TOLERANCE_PX * opts.scale
     if (worst > tolerance) {
       reject(

@@ -8,6 +8,27 @@ audience: developers
 
 Notable changes to the catalog: what devs install, and what the docs tell them.
 
+## 2026-11-21: ui-hill-climb 0.3.0, any model
+
+`hill-judge` and `hill-propose` now send prompts through one runner seam. `HILL_RUNNER` is `kimi` (default; the
+kimi-delegation call is unchanged, including exit 75 on quota), `claude` (`claude -p`, read-only tools), `codex`
+(`codex exec`, screenshots attached with `-i`) or `command` (`HILL_RUNNER_CMD`, prompt on stdin). `HILL_JUDGE_MODEL`
+is passed to `claude` and `codex` only when set. Judgements record `runner=<name> model=<model or default>
+cmd=<program>` as provenance; any non-Kimi runner failure is exit 1, never 75. The skill no longer requires
+kimi-delegation and says that the judge must run on a different model from the builder. Spec
+`docs/superpowers/specs/2026-11-21-ui-measure-0.2-design.md`.
+
+## 2026-11-21: ui-measure 0.2.0, building from Figma
+
+The ui-measure skill now teaches a build-time workflow: the agent records authoritative pairs
+(`.ui-measure/pairs/<target>.json`) while building from Figma, measures the dev server, triages fails and hands
+over a table; `ui-hill-climb` reuses the same pairs. Selectors may be any CSS that matches exactly one element
+inside the root; rejected pairs appear in `coverage.rejected` and as `not_comparable` findings. CSS
+`filter: drop-shadow(...)` now matches Figma DROP_SHADOW. New shipped files: `scripts/export-node.js`,
+`templates/FIGMA.md`, `templates/ui-measure.config.json`, `templates/gitignore-snippet.txt`, and a plugin README
+with known gaps. An initial trial on a private replay of a real screen ran with builder pairs (the CSS-filter glow that previously failed as a control now passes, the missing glow is still caught); a team trial on a new screen is pending. Spec
+`docs/superpowers/specs/2026-11-21-ui-measure-0.2-design.md`.
+
 ## 2026-11-20: ui-hill-climb 0.2.0, climbing on measured counts
 
 With an optional `measure.json`, the loop now runs ui-measure on each round's screens and ranks rounds on

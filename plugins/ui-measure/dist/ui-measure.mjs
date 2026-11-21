@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 
 // src/cli.ts
+import { existsSync as existsSync2 } from "node:fs";
 import { readFile as readFile2 } from "node:fs/promises";
-import { resolve as resolve2 } from "node:path";
+import { dirname as dirname3, join as join2, resolve as resolve2 } from "node:path";
 
 // src/baseline/baseline.ts
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -272,7 +273,7 @@ function parseProposal(text, source) {
   const strings = (a) => Array.isArray(a) && a.every((s) => typeof s === "string");
   const ok = v !== null && typeof v === "object" && Array.isArray(v.pairs) && v.pairs.every(
     (p) => p !== null && typeof p === "object" && typeof p.nodeId === "string" && typeof p.selector === "string"
-  ) && v.unmapped !== void 0 && v.unmapped !== null && strings(v.unmapped.design) && strings(v.unmapped.impl);
+  ) && v.unmapped !== void 0 && v.unmapped !== null && strings(v.unmapped.design) && strings(v.unmapped.impl) && (v.authoritative === void 0 || typeof v.authoritative === "boolean") && (v.unmappedReasons === void 0 || v.unmappedReasons !== null && typeof v.unmappedReasons === "object" && !Array.isArray(v.unmappedReasons) && Object.values(v.unmappedReasons).every((r) => typeof r === "string"));
   if (!ok) throw new ProposalError(`${source} did not produce a Proposal`);
   return v;
 }
@@ -405,9 +406,11 @@ function comparableBox(node, el) {
 function verifyMapping(proposal, design2, dom, opts) {
   const nodesById = new Map(design2.nodes.map((n) => [n.id, n]));
   const elementsBySelector = new Map(dom.elements.map((e) => [e.selector, e]));
+  const authoritative = proposal.authoritative === true;
   const verdicts = proposal.pairs.map((p) => ({
     nodeId: p.nodeId,
     selector: p.selector,
+    ...p.proposed !== void 0 ? { proposed: p.proposed } : {},
     outcome: "accepted"
   }));
   const reject = (v, rule, note) => {
@@ -420,7 +423,11 @@ function verifyMapping(proposal, design2, dom, opts) {
     if (!nodesById.has(v.nodeId)) {
       reject(v, "resolvable", `no design node ${v.nodeId}`);
     } else if (!elementsBySelector.has(v.selector)) {
-      reject(v, "resolvable", `no element matching ${v.selector}`);
+      reject(
+        v,
+        "resolvable",
+        opts.notes?.[v.selector] ?? `no element matching ${v.selector}`
+      );
     }
   }
   const nodeUses = /* @__PURE__ */ new Map();
@@ -461,7 +468,7 @@ function verifyMapping(proposal, design2, dom, opts) {
     textOwners.set(t, [...textOwners.get(t) ?? [], v.selector]);
   }
   for (const v of verdicts) {
-    if (v.outcome === "not_comparable") continue;
+    if (authoritative || v.outcome === "not_comparable") continue;
     const node = nodesById.get(v.nodeId);
     const el = elementsBySelector.get(v.selector);
     const wanted = (node?.text ?? "").trim();
@@ -513,7 +520,7 @@ function verifyMapping(proposal, design2, dom, opts) {
     }
     geometric.push({ v, design: normalised, dom: domBox });
   }
-  if (geometric.length > 1) {
+  if (!authoritative && geometric.length > 1) {
     const rank = (boxes) => {
       const out = /* @__PURE__ */ new Map();
       const order = readingOrder(boxes);
@@ -546,6 +553,7 @@ function verifyMapping(proposal, design2, dom, opts) {
       reject(g.v, "measurable", "a box carries a non-finite coordinate");
       continue;
     }
+    if (authoritative) continue;
     const tolerance = SIZE_TOLERANCE_PX * opts.scale;
     if (worst > tolerance) {
       reject(
@@ -774,6 +782,74 @@ async function rootIsHidden(page, selector) {
     }
     return false;
   }, selector);
+}
+
+// src/dom/resolve.ts
+function isUnbalanced(selector) {
+  const open = [];
+  let quote = null;
+  for (let i = 0; i < selector.length; i++) {
+    const c = selector[i];
+    if (c === "\\") {
+      i++;
+    } else if (quote !== null) {
+      if (c === quote) quote = null;
+    } else if (c === '"' || c === "'") {
+      quote = c;
+    } else if (c === "[" || c === "(") {
+      open.push(c === "[" ? "]" : ")");
+    } else if (c === "]" || c === ")") {
+      if (open.pop() !== c) return true;
+    }
+  }
+  return quote !== null || open.length > 0;
+}
+async function resolveProposal(p, dom, proposal) {
+  const known = new Set(dom.elements.map((e) => e.selector));
+  const unknown = [...new Set(proposal.pairs.map((x) => x.selector).filter((s) => !known.has(s)))];
+  const resolved = /* @__PURE__ */ new Map();
+  const wanted = [];
+  for (const sel of unknown) {
+    if (isUnbalanced(sel)) resolved.set(sel, { note: "invalid selector" });
+    else wanted.push(sel);
+  }
+  if (wanted.length > 0) {
+    const results = await p.page.evaluate(
+      ({ rootSelector, selectors }) => {
+        const root = document.querySelector(rootSelector);
+        return selectors.map((sel) => {
+          let matches;
+          try {
+            matches = Array.from(document.querySelectorAll(sel));
+          } catch {
+            return { note: "invalid selector" };
+          }
+          if (matches.length === 0) return { note: "no element" };
+          const inside = matches.filter((el) => root !== null && (root === el || root.contains(el)));
+          if (inside.length === 0) return { note: "no element inside root" };
+          if (inside.length > 1) return { note: `ambiguous: ${inside.length} elements` };
+          const steps = [];
+          let node = inside[0];
+          while (root !== null && node !== root && node.parentElement) {
+            steps.unshift(Array.from(node.parentElement.children).indexOf(node) + 1);
+            node = node.parentElement;
+          }
+          return { path: rootSelector + steps.map((i) => ` > :nth-child(${i})`).join("") };
+        });
+      },
+      { rootSelector: p.rootSelector, selectors: wanted }
+    );
+    wanted.forEach((sel, i) => resolved.set(sel, results[i]));
+  }
+  const notes = {};
+  const pairs = proposal.pairs.map((pair) => {
+    const r = resolved.get(pair.selector);
+    if (r === void 0) return pair;
+    if ("path" in r) return { ...pair, selector: r.path, ...r.path !== pair.selector ? { proposed: pair.selector } : {} };
+    notes[pair.selector] = r.note;
+    return pair;
+  });
+  return { proposal: { ...proposal, pairs }, notes };
 }
 
 // src/dom/tree.ts
@@ -1580,6 +1656,12 @@ function parseCssShadow(s) {
   if (!colour2 || nums.length < 2) return void 0;
   return { inset, x: nums[0], y: nums[1], blur: nums[2] ?? 0, spread: nums[3] ?? 0, colour: colour2 };
 }
+function filterShadowEntries(filter) {
+  return (filter.match(/drop-shadow\((?:[^()]|\([^)]*\))*\)/g) ?? []).map((text) => ({
+    text,
+    shadow: parseCssShadow(text.slice("drop-shadow(".length, -1))
+  }));
+}
 function parseDesignEffect(s) {
   const type = s.split(" ")[0];
   const rest = s.slice(type.length).trim();
@@ -1864,43 +1946,58 @@ function compareSpec(design2, dom, v, opts) {
       }
     } else {
       const wanted = node.effects.map(parseDesignEffect);
-      const unexpected = ["filter", "backdropFilter"].flatMap((property) => {
-        const value = style[property];
-        if (!value || value === "none") return [];
-        const hasBlur = wanted.some((e) => e.kind === "blur" && e.of === property);
-        const remainder = hasBlur ? value.replace(/blur\([^)]*\)/, "").trim() : value;
-        return remainder ? [`${property}: ${remainder}`] : [];
-      });
-      if (unexpected.length) {
-        findings.push({
-          check: "spec",
-          kind: "effects",
-          status: "fail",
-          target: targetOf(node, el),
-          expected: "none",
-          actual: unexpected.join("; ")
+      const reportUnexpected = (matchedFilter) => {
+        const unexpected = ["filter", "backdropFilter"].flatMap((property) => {
+          const value = style[property];
+          if (!value || value === "none") return [];
+          let remainder = value;
+          if (wanted.some((e) => e.kind === "blur" && e.of === property)) remainder = remainder.replace(/blur\([^)]*\)/, "");
+          if (property === "filter") for (const t of matchedFilter) remainder = remainder.replace(t, "");
+          remainder = remainder.trim();
+          return remainder ? [`${property}: ${remainder}`] : [];
         });
-      }
+        if (unexpected.length) {
+          findings.push({
+            check: "spec",
+            kind: "effects",
+            status: "fail",
+            target: targetOf(node, el),
+            expected: "none",
+            actual: unexpected.join("; ")
+          });
+        }
+      };
       const unknown = wanted.find((e) => e.kind === "unknown");
       if (unknown && unknown.kind === "unknown") {
+        reportUnexpected([]);
         skip("effects", node, el, `effect type ${unknown.type} is not compared`);
       } else {
-        const actualShadows = (style.boxShadow === "none" ? [] : splitTopLevel(style.boxShadow)).map(parseCssShadow);
+        const boxEntries = (style.boxShadow === "none" ? [] : splitTopLevel(style.boxShadow)).map(parseCssShadow);
+        const filterEntries = style.filter && style.filter !== "none" ? filterShadowEntries(style.filter) : [];
+        const candidates = [
+          ...boxEntries.map((shadow) => ({ shadow, filterText: void 0 })),
+          ...filterEntries.map((e) => ({ shadow: e.shadow, filterText: e.text }))
+        ];
         const wantShadows = wanted.flatMap((e) => e.kind === "shadow" ? [e.shadow] : []);
-        let ok = actualShadows.length === wantShadows.length && actualShadows.every((s) => s !== void 0);
-        const free = actualShadows.filter((s) => s !== void 0);
+        let ok = candidates.length === wantShadows.length && candidates.every((c) => c.shadow !== void 0);
+        const free = candidates.filter((c) => c.shadow !== void 0);
+        const matchedFilter = [];
         for (const w of wantShadows) {
           const i = free.findIndex(
-            (s) => s.inset === w.inset && Math.abs(s.x - w.x * scale) <= tol && Math.abs(s.y - w.y * scale) <= tol && Math.abs(s.blur - w.blur * scale) <= tol && Math.abs(s.spread - w.spread * scale) <= tol && sameColour(s.colour, w.colour)
+            ({ shadow: s }) => s.inset === w.inset && Math.abs(s.x - w.x * scale) <= tol && Math.abs(s.y - w.y * scale) <= tol && Math.abs(s.blur - w.blur * scale) <= tol && Math.abs(s.spread - w.spread * scale) <= tol && sameColour(s.colour, w.colour)
           );
           if (i < 0) ok = false;
-          else free.splice(i, 1);
+          else {
+            const [hit] = free.splice(i, 1);
+            if (hit.filterText) matchedFilter.push(hit.filterText);
+          }
         }
         for (const e of wanted) {
           if (e.kind !== "blur") continue;
           const m = /blur\(([\d.]+)px\)/.exec(style[e.of]);
           if (!m || Math.abs(Number(m[1]) - e.radius * scale) > tol) ok = false;
         }
+        reportUnexpected(matchedFilter);
         findings.push({
           check: "spec",
           kind: "effects",
@@ -1990,16 +2087,43 @@ function compareSpec(design2, dom, v, opts) {
     }
   }
   const proposed = v.pairs.length;
+  if (opts.authoritative === true) {
+    if (proposed === 0) {
+      findings.push({
+        check: "spec",
+        kind: "correspondence",
+        status: "not_comparable",
+        target: { selector: dom.root.selector, designNode: design2.root.id },
+        reason: "authoritative proposal has no pairs"
+      });
+    }
+    for (const p of v.pairs) {
+      if (p.outcome !== "not_comparable") continue;
+      findings.push({
+        check: "spec",
+        kind: "correspondence",
+        status: "not_comparable",
+        target: { selector: p.proposed ?? p.selector, designNode: p.nodeId },
+        reason: `${p.rule}: ${p.note ?? p.rule}`
+      });
+    }
+  }
   return {
     findings,
-    coverage: { pairsProposed: proposed, pairsAccepted: kept.length, dropped: proposed - kept.length }
+    coverage: {
+      pairsProposed: proposed,
+      pairsAccepted: kept.length,
+      dropped: proposed - kept.length,
+      authoritative: opts.authoritative === true,
+      rejected: v.pairs.filter((p) => p.outcome === "not_comparable").map((p) => ({ nodeId: p.nodeId, selector: p.proposed ?? p.selector, rule: p.rule, ...p.note ? { note: p.note } : {} }))
+    }
   };
 }
 
 // package.json
 var package_default = {
   name: "ui-measure",
-  version: "0.1.0",
+  version: "0.2.0",
   description: "Measure rendered UI geometry and design conformance without a model",
   type: "module",
   license: "MIT",
@@ -2045,6 +2169,7 @@ var USAGE = `Usage:
   ui-measure geometry --config C --target T [--json OUT]
   ui-measure spec --config C --target T [--node FILE | --figma NODE_ID]
     [--proposer recorded --proposal FILE | --proposer command -- ARGV...] [--json OUT]
+    (with no proposer, uses .ui-measure/pairs/TARGET.json beside the config when it exists)
   ui-measure baseline record|check --config C --target T [--mode geometry|spec]
     [--node FILE | --figma NODE_ID] [--proposer recorded --proposal FILE | --proposer command -- ARGV...]
     [--force] [--json OUT]`;
@@ -2106,7 +2231,7 @@ function notComparable(target, check, reason) {
     target,
     void 0,
     [{ check, kind: "page", status: "not_comparable", target: { selector: target.adapter.kind === "url" ? target.adapter.root : "root" }, reason }],
-    { pairsProposed: 0, pairsAccepted: 0, dropped: 0 },
+    { pairsProposed: 0, pairsAccepted: 0, dropped: 0, authoritative: false, rejected: [] },
     "not_comparable"
   );
 }
@@ -2122,7 +2247,7 @@ async function geometry(target, config) {
   if ("notComparable" in opened) return notComparable(target, "geometry", opened.notComparable);
   try {
     const findings = await detectGeometry(opened, config.geometry ?? { insetPx: 4, nonScrolling: [] });
-    const coverage = { pairsProposed: 0, pairsAccepted: 0, dropped: 0 };
+    const coverage = { pairsProposed: 0, pairsAccepted: 0, dropped: 0, authoritative: false, rejected: [] };
     return report(target, opened, findings, coverage, verdict(findings, coverage));
   } finally {
     await opened.close();
@@ -2130,7 +2255,10 @@ async function geometry(target, config) {
 }
 async function proposer(options) {
   const kind = options.proposer ?? (options.proposal ? "recorded" : options.command.length ? "command" : void 0);
-  if (kind === void 0) return void 0;
+  if (kind === void 0) {
+    const file = join2(dirname3(resolve2(options.config)), ".ui-measure", "pairs", `${options.target}.json`);
+    return existsSync2(file) ? { kind: "recorded", file } : void 0;
+  }
   if (kind === "recorded") {
     if (!options.proposal) throw new SetupError("recorded proposer needs --proposal FILE");
     return { kind, file: resolve2(options.proposal) };
@@ -2181,17 +2309,23 @@ async function spec(target, config, options) {
         target,
         opened,
         [{ check: "spec", kind: "correspondence", status: "not_comparable", target: { selector: opened.rootSelector }, reason: "no correspondence proposer was selected" }],
-        { pairsProposed: 0, pairsAccepted: 0, dropped: 0 },
+        { pairsProposed: 0, pairsAccepted: 0, dropped: 0, authoritative: false, rejected: [] },
         "not_comparable"
       );
     }
     const dom = await domTree(opened);
-    const proposal = await propose(mappingProposer, designTree, dom);
-    const verification = verifyMapping(proposal, designTree, dom, { scale: opened.scale });
+    let proposal = await propose(mappingProposer, designTree, dom);
+    let notes;
+    if (mappingProposer.kind === "recorded") {
+      ;
+      ({ proposal, notes } = await resolveProposal(opened, dom, proposal));
+    }
+    const verification = verifyMapping(proposal, designTree, dom, { scale: opened.scale, notes });
     const compared = compareSpec(designTree, dom, verification, {
       scale: opened.scale,
       tokens,
-      unthemed: config.unthemed
+      unthemed: config.unthemed,
+      authoritative: proposal.authoritative
     });
     return report(target, opened, compared.findings, compared.coverage, verdict(compared.findings, compared.coverage));
   } finally {

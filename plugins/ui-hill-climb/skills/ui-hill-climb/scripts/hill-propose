@@ -2,13 +2,12 @@
 """Propose design-node to DOM-element pairs for ui-measure."""
 import json
 import os
-import subprocess
 import sys
 import tempfile
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from hilllib import DEFAULT_MODEL, find_delegate, first_json
+from hilllib import first_json, requested_model, run_model, runner_name
 
 PROMPT = """Files in the current directory:
 - design.json: a Figma node tree.
@@ -50,9 +49,8 @@ def run():
     if not isinstance(data, dict) or "design" not in data or "dom" not in data:
         die(2, "stdin must be a JSON object with design and dom")
 
-    delegate = find_delegate()
-    model = os.environ.get("HILL_JUDGE_MODEL", DEFAULT_MODEL)
-    env = dict(os.environ, KIMI_DELEGATE_MODEL=model)
+    runner_name()
+    model = requested_model()
     with tempfile.TemporaryDirectory(prefix="hill-propose-") as work:
         with open(os.path.join(work, "design.json"), "w") as f:
             json.dump(data["design"], f, ensure_ascii=False)
@@ -61,15 +59,13 @@ def run():
 
         for _ in (1, 2):
             try:
-                p = subprocess.run([delegate, "--via", "kimi", "--final-only", "--cwd", work, "--", PROMPT],
-                                   capture_output=True, text=True, env=env)
+                code, answer, _ = run_model(PROMPT, work, [], model)
             except OSError as e:
-                print(f"hill-propose: could not launch delegate {delegate!r}: {e}", file=sys.stderr)
+                print(f"hill-propose: could not launch delegate: {e}", file=sys.stderr)
                 return 3
-            if p.returncode != 0:
-                sys.stderr.write(p.stderr)
-                return p.returncode
-            proposal = first_json(p.stdout, is_proposal)
+            if code != 0:
+                return code
+            proposal = first_json(answer, is_proposal)
             if proposal is not None:
                 rendered = json.dumps(proposal, ensure_ascii=False)
                 out = os.environ.get("HILL_PROPOSAL_OUT")
@@ -78,7 +74,7 @@ def run():
                         f.write(rendered + "\n")
                 print(rendered)
                 return 0
-        print(f"hill-propose: no usable Proposal after two answers; last answer: {p.stdout.strip()[:200]!r}",
+        print(f"hill-propose: no usable Proposal after two answers; last answer: {answer.strip()[:200]!r}",
               file=sys.stderr)
         return 3
 

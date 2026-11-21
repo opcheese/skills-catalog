@@ -1,0 +1,2 @@
+# ui-measure run output (reports are regenerated on every run)
+.ui-measure/reports/

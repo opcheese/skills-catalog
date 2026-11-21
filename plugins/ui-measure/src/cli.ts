@@ -1,12 +1,14 @@
 #!/usr/bin/env node
+import { existsSync } from "node:fs"
 import { readFile } from "node:fs/promises"
-import { resolve } from "node:path"
+import { dirname, join, resolve } from "node:path"
 import { classify, readBaseline, recordBaseline } from "./baseline/baseline.js"
 import { loadConfig, type Config, type Target } from "./config.js"
 import { propose, type Proposer } from "./correspondence/propose.js"
 import { verifyMapping } from "./correspondence/verify.js"
 import { adapterTarget } from "./dom/adapters.js"
 import { openPage, type OpenPage } from "./dom/open.js"
+import { resolveProposal } from "./dom/resolve.js"
 import { domTree } from "./dom/tree.js"
 import { SetupError, PartialRunError, NotComparableError } from "./errors.js"
 import { fetchNode } from "./figma/fetch.js"
@@ -22,6 +24,7 @@ const USAGE = `Usage:
   ui-measure geometry --config C --target T [--json OUT]
   ui-measure spec --config C --target T [--node FILE | --figma NODE_ID]
     [--proposer recorded --proposal FILE | --proposer command -- ARGV...] [--json OUT]
+    (with no proposer, uses .ui-measure/pairs/TARGET.json beside the config when it exists)
   ui-measure baseline record|check --config C --target T [--mode geometry|spec]
     [--node FILE | --figma NODE_ID] [--proposer recorded --proposal FILE | --proposer command -- ARGV...]
     [--force] [--json OUT]`
@@ -104,7 +107,7 @@ function notComparable(target: Target, check: Finding["check"], reason: string):
     target,
     undefined,
     [{ check, kind: "page", status: "not_comparable", target: { selector: target.adapter.kind === "url" ? target.adapter.root : "root" }, reason }],
-    { pairsProposed: 0, pairsAccepted: 0, dropped: 0 },
+    { pairsProposed: 0, pairsAccepted: 0, dropped: 0, authoritative: false, rejected: [] },
     "not_comparable",
   )
 }
@@ -126,7 +129,7 @@ async function geometry(target: Target, config: Config): Promise<Report> {
   if ("notComparable" in opened) return notComparable(target, "geometry", opened.notComparable)
   try {
     const findings = await detectGeometry(opened, config.geometry ?? { insetPx: 4, nonScrolling: [] })
-    const coverage = { pairsProposed: 0, pairsAccepted: 0, dropped: 0 }
+    const coverage = { pairsProposed: 0, pairsAccepted: 0, dropped: 0, authoritative: false, rejected: [] }
     return report(target, opened, findings, coverage, verdict(findings, coverage))
   } finally {
     await opened.close()
@@ -135,7 +138,11 @@ async function geometry(target: Target, config: Config): Promise<Report> {
 
 async function proposer(options: Options): Promise<Proposer | undefined> {
   const kind = options.proposer ?? (options.proposal ? "recorded" : options.command.length ? "command" : undefined)
-  if (kind === undefined) return undefined
+  if (kind === undefined) {
+    // A recorded proposal at the conventional path goes through the same resolution as --proposal.
+    const file = join(dirname(resolve(options.config as string)), ".ui-measure", "pairs", `${options.target}.json`)
+    return existsSync(file) ? { kind: "recorded", file } : undefined
+  }
   if (kind === "recorded") {
     if (!options.proposal) throw new SetupError("recorded proposer needs --proposal FILE")
     return { kind, file: resolve(options.proposal) }
@@ -187,17 +194,22 @@ async function spec(target: Target, config: Config, options: Options): Promise<R
         target,
         opened,
         [{ check: "spec", kind: "correspondence", status: "not_comparable", target: { selector: opened.rootSelector }, reason: "no correspondence proposer was selected" }],
-        { pairsProposed: 0, pairsAccepted: 0, dropped: 0 },
+        { pairsProposed: 0, pairsAccepted: 0, dropped: 0, authoritative: false, rejected: [] },
         "not_comparable",
       )
     }
     const dom = await domTree(opened)
-    const proposal = await propose(mappingProposer, designTree, dom)
-    const verification = verifyMapping(proposal, designTree, dom, { scale: opened.scale })
+    let proposal = await propose(mappingProposer, designTree, dom)
+    let notes: Record<string, string> | undefined
+    if (mappingProposer.kind === "recorded") {
+      ;({ proposal, notes } = await resolveProposal(opened, dom, proposal))
+    }
+    const verification = verifyMapping(proposal, designTree, dom, { scale: opened.scale, notes })
     const compared = compareSpec(designTree, dom, verification, {
       scale: opened.scale,
       tokens,
       unthemed: config.unthemed,
+      authoritative: proposal.authoritative,
     })
     return report(target, opened, compared.findings, compared.coverage, verdict(compared.findings, compared.coverage))
   } finally {

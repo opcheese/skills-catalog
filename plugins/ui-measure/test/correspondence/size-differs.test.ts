@@ -263,3 +263,72 @@ describe("a text-matched size_differs child counts for its parent", () => {
     expect(r.pairs.filter((v) => v.outcome === "not_comparable")).toEqual([])
   })
 })
+
+describe("authoritative pairs skip the plausibility rules", () => {
+  const iconTrees = (): [DesignTree, DomTree] => [
+    designOf([
+      { id: "r", type: "FRAME", box: bb(0, 0, 300, 200) },
+      { id: "i", type: "VECTOR", box: bb(0, 0, 74, 74), parentId: "r" },
+    ]),
+    domOf([
+      { selector: "root", tag: "div", box: bb(0, 0, 300, 200) },
+      { selector: "root > svg", tag: "svg", box: bb(0, 0, 121, 121) },
+    ]),
+  ]
+  const withFlag = (p: Proposal, authoritative: boolean): Proposal => (authoritative ? { ...p, authoritative: true } : p)
+
+  it("authoritative icon 121 vs 74 px is accepted", () => {
+    const [design, dom] = iconTrees()
+    const r = verifyMapping(withFlag(proposalOf([["i", "root > svg"]]), true), design, dom, ONE)
+    expect(r.pairs[0].outcome).toBe("accepted")
+    expect(r.rejected).toBe(false)
+  })
+
+  it("proposer pairs still drop it", () => {
+    const [design, dom] = iconTrees()
+    const r = verifyMapping(proposalOf([["i", "root > svg"]]), design, dom, ONE)
+    expect(r.pairs[0].outcome).toBe("not_comparable")
+    expect(r.pairs[0].rule).toBe("size_plausible")
+  })
+
+  it("authoritative swapped text is accepted for downstream comparison", () => {
+    const design = designOf([
+      { id: "r", type: "FRAME", box: bb(0, 0, 300, 200) },
+      { id: "a", type: "TEXT", text: "Alpha", box: bb(0, 0, 100, 20), parentId: "r" },
+      { id: "b", type: "TEXT", text: "Beta", box: bb(0, 30, 100, 20), parentId: "r" },
+    ])
+    const dom = domOf([
+      { selector: "root", tag: "div", box: bb(0, 0, 300, 200) },
+      { selector: "root > p:nth-child(1)", tag: "p", text: "Beta", box: bb(0, 0, 100, 20) },
+      { selector: "root > p:nth-child(2)", tag: "p", text: "Alpha", box: bb(0, 30, 100, 20) },
+    ])
+    const swapped = proposalOf([
+      ["a", "root > p:nth-child(1)"],
+      ["b", "root > p:nth-child(2)"],
+    ])
+    const proposer = verifyMapping(swapped, design, dom, ONE)
+    expect(proposer.pairs.map((p) => p.rule)).toEqual(["text_consistent", "text_consistent"])
+    const auth = verifyMapping(withFlag(swapped, true), design, dom, ONE)
+    expect(auth.pairs.map((p) => p.outcome)).toEqual(["accepted", "accepted"])
+  })
+})
+
+describe("authoritative pairs still need measurable boxes", () => {
+  it.each([
+    ["x", { x: Number.NaN, y: 0, width: 10, height: 10 }],
+    ["width", { x: 0, y: 0, width: Number.POSITIVE_INFINITY, height: 10 }],
+  ])("a non-finite DOM %s is not_comparable by measurable", (_name, box) => {
+    const design = designOf([
+      { id: "r", type: "FRAME", box: bb(0, 0, 100, 100) },
+      { id: "i", type: "VECTOR", box: bb(0, 0, 10, 10), parentId: "r" },
+    ])
+    const dom = domOf([
+      { selector: "root", tag: "div", box: bb(0, 0, 100, 100) },
+      { selector: "root > svg", tag: "svg", box },
+    ])
+    const p: Proposal = { pairs: [{ nodeId: "i", selector: "root > svg" }], unmapped: { design: [], impl: [] }, authoritative: true }
+    const v = verifyMapping(p, design, dom, ONE).pairs[0]
+    expect(v.outcome).toBe("not_comparable")
+    expect(v.rule).toBe("measurable")
+  })
+})

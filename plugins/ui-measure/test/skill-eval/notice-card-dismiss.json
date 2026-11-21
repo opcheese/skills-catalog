@@ -1,0 +1,137 @@
+{
+  "name": "Notice frame",
+  "nodes": {
+    "10:1": {
+      "document": {
+        "id": "10:1",
+        "name": "Notice card",
+        "type": "FRAME",
+        "layoutMode": "VERTICAL",
+        "itemSpacing": 12,
+        "paddingLeft": 24,
+        "paddingRight": 24,
+        "paddingTop": 24,
+        "paddingBottom": 24,
+        "cornerRadius": 16,
+        "fills": [
+          {
+            "type": "SOLID",
+            "color": {
+              "r": 1,
+              "g": 1,
+              "b": 1,
+              "a": 1
+            }
+          }
+        ],
+        "effects": [
+          {
+            "type": "DROP_SHADOW",
+            "visible": true,
+            "color": {
+              "r": 0,
+              "g": 0,
+              "b": 0,
+              "a": 0.1
+            },
+            "offset": {
+              "x": 0,
+              "y": 4
+            },
+            "radius": 8
+          }
+        ],
+        "absoluteBoundingBox": {
+          "x": 100,
+          "y": 100,
+          "width": 320,
+          "height": 160
+        },
+        "children": [
+          {
+            "id": "10:2",
+            "name": "Heading",
+            "type": "TEXT",
+            "characters": "Plan overview",
+            "layoutSizingHorizontal": "HUG",
+            "fills": [
+              {
+                "type": "SOLID",
+                "color": {
+                  "r": 0.1,
+                  "g": 0.2,
+                  "b": 0.3,
+                  "a": 1
+                }
+              }
+            ],
+            "style": {
+              "fontFamily": "Inter",
+              "fontSize": 20,
+              "fontWeight": 600,
+              "lineHeightPx": 28
+            },
+            "absoluteBoundingBox": {
+              "x": 124,
+              "y": 124,
+              "width": 140,
+              "height": 28
+            }
+          },
+          {
+            "id": "10:3",
+            "name": "Body",
+            "type": "TEXT",
+            "characters": "Everything you need in one place.",
+            "fills": [
+              {
+                "type": "SOLID",
+                "opacity": 0.5,
+                "color": {
+                  "r": 0,
+                  "g": 0,
+                  "b": 0,
+                  "a": 1
+                }
+              }
+            ],
+            "style": {
+              "fontFamily": "Inter",
+              "fontSize": 14,
+              "fontWeight": 400,
+              "lineHeightPx": 20
+            },
+            "absoluteBoundingBox": {
+              "x": 124,
+              "y": 164,
+              "width": 272,
+              "height": 20
+            }
+          },
+          {
+            "id": "10:4",
+            "name": "Dismiss icon",
+            "type": "FRAME",
+            "fills": [
+              {
+                "type": "SOLID",
+                "color": {
+                  "r": 0.5,
+                  "g": 0.5,
+                  "b": 0.5,
+                  "a": 1
+                }
+              }
+            ],
+            "absoluteBoundingBox": {
+              "x": 124,
+              "y": 196,
+              "width": 24,
+              "height": 24
+            }
+          }
+        ]
+      }
+    }
+  }
+}

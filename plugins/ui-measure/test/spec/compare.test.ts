@@ -10,7 +10,7 @@ import { verifyMapping } from "../../src/correspondence/verify"
 import type { Box, DesignNode, DesignTree, DomElement, DomStyle, DomTree, Proposal, Verification } from "../../src/correspondence/types"
 import type { Token } from "../../src/tokens"
 import type { Finding } from "../../src/report/types"
-import { compareSpec } from "../../src/spec/compare"
+import { compareSpec, parseFilterShadows } from "../../src/spec/compare"
 
 const PAGES = fileURLToPath(new URL("../fixtures/pages", import.meta.url))
 const CARD = fileURLToPath(new URL("../fixtures/figma/card.json", import.meta.url))
@@ -101,7 +101,7 @@ describe("compareSpec", () => {
     for (const k of ["box", "gap", "padding", "radius", "border-width", "colour", "font-family", "font-size", "font-weight", "line-height", "effects", "root-size"]) {
       expect(kind(r, k, "pass").length, `no passing ${k} finding`).toBeGreaterThan(0)
     }
-    expect(r.coverage).toEqual({ pairsProposed: 3, pairsAccepted: 3, dropped: 0 })
+    expect(r.coverage).toEqual({ pairsProposed: 3, pairsAccepted: 3, dropped: 0, authoritative: false, rejected: [] })
   })
 
   it("card-padding (32 vs 24) fails padding by 8 and drops no pair", async () => {
@@ -164,7 +164,7 @@ describe("compareSpec", () => {
     expect(size[0].deltaPx).toBeCloseTo(40, 0)
     // Its text matches, so it is size_differs, which lets the verifier rescue the root too.
     expect(r.v.sizeDiffers.map((p) => p.nodeId).sort()).toEqual(["1:1", "1:3"])
-    expect(r.coverage).toEqual({ pairsProposed: 3, pairsAccepted: 3, dropped: 0 })
+    expect(r.coverage).toEqual({ pairsProposed: 3, pairsAccepted: 3, dropped: 0, authoritative: false, rejected: [] })
   })
 
   it("a size-differing pair that is also displaced reports a size fail and a position fail", async () => {
@@ -216,14 +216,40 @@ describe("compareSpec", () => {
       const partial: Proposal = { pairs: proposal.pairs.slice(0, 2), unmapped: { design: [], impl: [] } }
       const v = verifyMapping(partial, design, dom, { scale: 1 })
       const r = compareSpec(design, dom, v, { scale: 1 })
-      expect(r.coverage).toEqual({ pairsProposed: 2, pairsAccepted: 2, dropped: 0 })
+      expect(r.coverage).toEqual({ pairsProposed: 2, pairsAccepted: 2, dropped: 0, authoritative: false, rejected: [] })
       const gap = r.findings.filter((f) => f.kind === "gap")
       expect(gap).toHaveLength(1)
       expect(gap[0].status).toBe("not_comparable")
       expect(gap[0].reason).toMatch(/1:3/)
       const bogus: Proposal = { pairs: [...partial.pairs, { nodeId: "9:9", selector: "#nope" }], unmapped: { design: [], impl: [] } }
       const v2 = verifyMapping(bogus, design, dom, { scale: 1 })
-      expect(compareSpec(design, dom, v2, { scale: 1 }).coverage).toEqual({ pairsProposed: 3, pairsAccepted: 2, dropped: 1 })
+      expect(compareSpec(design, dom, v2, { scale: 1 }).coverage).toEqual({ pairsProposed: 3, pairsAccepted: 2, dropped: 1, authoritative: false, rejected: [{ nodeId: "9:9", selector: "#nope", rule: "resolvable", note: "no design node 9:9" }] })
+      // Rejected pairs are listed with the selector as proposed, and a note from resolution wins.
+      const noted = verifyMapping(
+        { pairs: [...partial.pairs, { nodeId: "1:3", selector: ".item" }], unmapped: { design: [], impl: [] } },
+        design, dom, { scale: 1, notes: { ".item": "ambiguous: 2 elements" } },
+      )
+      expect(compareSpec(design, dom, noted, { scale: 1 }).coverage.rejected).toEqual([
+        { nodeId: "1:3", selector: ".item", rule: "resolvable", note: "ambiguous: 2 elements" },
+      ])
+    } finally {
+      await p.close()
+    }
+  })
+
+  it("coverage.authoritative follows the option and defaults to false", async () => {
+    const design = freshDesign()
+    const p = await openPage(
+      { adapter: { kind: "url", url: `${server.origin}/card-clean.html`, root: "#card" }, viewport: [800, 600] },
+      { browser },
+    )
+    if ("notComparable" in p) throw new Error(p.notComparable)
+    try {
+      const dom = await domTree(p)
+      const v = verifyMapping(proposal, design, dom, { scale: 1 })
+      expect(compareSpec(design, dom, v, { scale: 1, authoritative: true }).coverage.authoritative).toBe(true)
+      expect(compareSpec(design, dom, v, { scale: 1, authoritative: false }).coverage.authoritative).toBe(false)
+      expect(compareSpec(design, dom, v, { scale: 1 }).coverage.authoritative).toBe(false)
     } finally {
       await p.close()
     }
@@ -380,6 +406,60 @@ describe("compareSpec", () => {
       expect(failed[0].expected).toBe("none")
       expect(failed[0].actual).toContain("blur(10px)")
     })
+
+    describe("CSS filter drop-shadow against DROP_SHADOW", () => {
+      const FS = "rgba(255, 255, 255, 0.33) 4px 0px 7.5px"
+      it("a matching filter drop-shadow produces no effects finding", () => {
+        const out = compareOne({ id: "r", type: "FRAME", effects: ["DROP_SHADOW 4 0 7.5 rgba(255,255,255,0.33)"] }, { filter: `drop-shadow(${FS})` })
+        expect(kind(out, "effects", "fail")).toEqual([])
+        expect(kind(out, "effects", "pass")).toHaveLength(1)
+      })
+
+      it("a different blur fails and names the blur", () => {
+        const out = compareOne({ id: "r", type: "FRAME", effects: ["DROP_SHADOW 4 0 12 rgba(255,255,255,0.33)"] }, { filter: `drop-shadow(${FS})` })
+        const f = kind(out, "effects", "fail")
+        expect(f.length).toBeGreaterThan(0)
+        expect(f.map((x) => x.expected).join(" ")).toContain("12")
+        expect(f.map((x) => x.actual).join(" ")).toContain("7.5px")
+      })
+
+      it("a filter drop-shadow on a design with no effects still fails with expected none", () => {
+        const out = compareOne({ id: "r", type: "FRAME" }, { filter: `drop-shadow(${FS})` })
+        const f = kind(out, "effects")
+        expect(f).toHaveLength(1)
+        expect(f[0].expected).toBe("none")
+      })
+
+      it("two drop-shadows plus a blur match two DROP_SHADOWs and a LAYER_BLUR", () => {
+        const out = compareOne(
+          { id: "r", type: "FRAME", effects: ["DROP_SHADOW 4 0 7.5 rgba(255,255,255,0.33)", "DROP_SHADOW 0 2 4 rgba(0,0,0,0.25)", "LAYER_BLUR 4"] },
+          { filter: `drop-shadow(${FS}) drop-shadow(rgba(0, 0, 0, 0.25) 0px 2px 4px) blur(4px)` },
+        )
+        expect(kind(out, "effects", "fail")).toEqual([])
+        expect(kind(out, "effects", "pass")).toHaveLength(1)
+      })
+
+      it("a design shadow matched by neither box-shadow nor filter fails as missing", () => {
+        const out = compareOne({ id: "r", type: "FRAME", effects: ["DROP_SHADOW 0 9 9 rgba(0,0,0,0.5)"] }, { filter: `drop-shadow(${FS})` })
+        expect(kind(out, "effects", "fail").length).toBeGreaterThan(0)
+      })
+
+      it("a box-shadow plus a filter drop-shadow each match one design shadow", () => {
+        const out = compareOne(
+          { id: "r", type: "FRAME", effects: ["DROP_SHADOW 0 4 8 rgba(0,0,0,0.1)", "DROP_SHADOW 4 0 7.5 rgba(255,255,255,0.33)"] },
+          { boxShadow: "rgba(0, 0, 0, 0.1) 0px 4px 8px 0px", filter: `drop-shadow(${FS})` },
+        )
+        expect(kind(out, "effects", "fail")).toEqual([])
+      })
+
+      it("parseFilterShadows reads colour-first and colour-last entries", () => {
+        const s = parseFilterShadows("drop-shadow(rgba(1, 2, 3, 0.5) 4px 5px 6px) blur(2px) drop-shadow(7px 8px 9px rgb(10, 20, 30))")
+        expect(s).toHaveLength(2)
+        expect(s[0]).toMatchObject({ inset: false, x: 4, y: 5, blur: 6, spread: 0 })
+        expect(s[1]).toMatchObject({ x: 7, y: 8, blur: 9, spread: 0 })
+        expect(parseFilterShadows("blur(2px)")).toEqual([])
+      })
+    })
   })
 
   describe("padding is read from the design's own geometry", () => {
@@ -419,5 +499,84 @@ describe("compareSpec", () => {
       expect(bad.map((f) => f.expected?.split(" ")[0]).sort()).toEqual(["left", "right"])
       expect(bad.every((f) => Math.abs(f.deltaPx ?? 0) === 20)).toBe(true)
     })
+  })
+})
+
+describe("authoritative correspondence findings", () => {
+  const design: DesignTree = {
+    root: { id: "r", type: "FRAME", box: { x: 0, y: 0, width: 300, height: 200 } },
+    nodes: [
+      { id: "r", type: "FRAME", box: { x: 0, y: 0, width: 300, height: 200 } },
+      { id: "i", type: "VECTOR", parentId: "r", box: { x: 0, y: 0, width: 74, height: 74 } },
+      { id: "g", type: "VECTOR", parentId: "r", box: { x: 100, y: 0, width: 10, height: 10 } },
+    ],
+  }
+  const root: DomElement = { selector: "#r", tag: "div", box: { x: 0, y: 0, width: 300, height: 200 }, style: STYLE }
+  const icon: DomElement = { selector: "#r > svg", tag: "svg", box: { x: 0, y: 0, width: 121, height: 121 }, style: STYLE }
+  const dom: DomTree = { root, elements: [root, icon] }
+  const pairs = (authoritative: boolean): Proposal => ({
+    pairs: [
+      { nodeId: "r", selector: "#r" },
+      { nodeId: "i", selector: "#r > svg" },
+      { nodeId: "g", selector: "#r > gone" },
+    ],
+    unmapped: { design: [], impl: [] },
+    ...(authoritative ? { authoritative: true } : {}),
+  })
+  const compare = (authoritative: boolean) =>
+    compareSpec(design, dom, verifyMapping(pairs(authoritative), design, dom, { scale: 1 }), { scale: 1, authoritative })
+
+  it("reports a size mismatch", () => {
+    const out = compare(true)
+    const box = out.findings.filter((f) => f.kind === "box" && f.target?.designNode === "i")
+    expect(box).toHaveLength(1)
+    expect(box[0].status).toBe("fail")
+    expect(box[0].expected).toContain("74x74")
+    expect(box[0].actual).toContain("121x121")
+  })
+
+  it("an authoritative rejected pair becomes a not_comparable correspondence finding", () => {
+    const f = compare(true).findings.filter((x) => x.kind === "correspondence")
+    expect(f).toEqual([
+      {
+        check: "spec",
+        kind: "correspondence",
+        status: "not_comparable",
+        target: { selector: "#r > gone", designNode: "g" },
+        reason: "resolvable: no element matching #r > gone",
+      },
+    ])
+  })
+
+  it("the same proposal without the flag adds no correspondence finding", () => {
+    expect(compare(false).findings.filter((x) => x.kind === "correspondence")).toEqual([])
+  })
+
+  it("an authoritative proposal with no pairs is not comparable", () => {
+    const empty: Proposal = { pairs: [], unmapped: { design: [], impl: [] }, authoritative: true }
+    const out = compareSpec(design, dom, verifyMapping(empty, design, dom, { scale: 1 }), { scale: 1, authoritative: true })
+    expect(out.findings.filter((x) => x.kind === "correspondence")).toEqual([
+      expect.objectContaining({ status: "not_comparable", reason: "authoritative proposal has no pairs" }),
+    ])
+  })
+
+  it("swapped text on authoritative pairs reaches the type-style comparison", () => {
+    const text = (id: string, t: string, y: number): DesignNode => ({ id, type: "TEXT", text: t, font: { family: "serif", size: 20, weight: 400 }, parentId: "r", box: { x: 0, y, width: 100, height: 20 } })
+    const d: DesignTree = { root: design.root, nodes: [design.root, text("a", "Alpha", 0), text("b", "Beta", 30)] }
+    const el = (sel: string, t: string, y: number): DomElement => ({ selector: sel, tag: "p", text: t, box: { x: 0, y, width: 100, height: 20 }, style: STYLE })
+    const e1 = el("#r > p:nth-child(1)", "Beta", 0)
+    const e2 = el("#r > p:nth-child(2)", "Alpha", 30)
+    const dm: DomTree = { root, elements: [root, e1, e2] }
+    const prop: Proposal = {
+      pairs: [{ nodeId: "a", selector: e1.selector }, { nodeId: "b", selector: e2.selector }],
+      unmapped: { design: [], impl: [] },
+      authoritative: true,
+    }
+    const out = compareSpec(d, dm, verifyMapping(prop, d, dm, { scale: 1 }), { scale: 1, authoritative: true })
+    // compareSpec compares type style, not the string; the swapped pairs must still be measured.
+    const sizes = out.findings.filter((f) => f.kind === "font-size")
+    expect(sizes.map((f) => f.target?.designNode).sort()).toEqual(["a", "b"])
+    expect(sizes.every((f) => f.status === "fail")).toBe(true)
+    expect(out.findings.some((f) => f.kind === "correspondence")).toBe(false)
   })
 })

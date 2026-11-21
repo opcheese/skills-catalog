@@ -26,6 +26,7 @@ import type {
   DomElement,
   DomTree,
   PairVerdict,
+  RejectionRule,
   Verification,
 } from "../correspondence/types.js"
 import type { Finding, Report } from "../report/types.js"
@@ -112,6 +113,20 @@ function parseCssShadow(s: string): Shadow | undefined {
   return { inset, x: nums[0], y: nums[1], blur: nums[2] ?? 0, spread: nums[3] ?? 0, colour }
 }
 
+/** The `drop-shadow(...)` entries of a computed `filter`, as text and parsed shadow (undefined when
+ *  the entry cannot be read). Chromium writes the colour first: `drop-shadow(rgba(0, 0, 0, 0.3) 4px 0px 7.5px)`. */
+function filterShadowEntries(filter: string): { text: string; shadow: Shadow | undefined }[] {
+  return (filter.match(/drop-shadow\((?:[^()]|\([^)]*\))*\)/g) ?? []).map((text) => ({
+    text,
+    shadow: parseCssShadow(text.slice("drop-shadow(".length, -1)),
+  }))
+}
+
+/** The readable `drop-shadow(...)` entries of a CSS `filter`, in the shape `box-shadow` entries parse to. */
+export function parseFilterShadows(filter: string): Shadow[] {
+  return filterShadowEntries(filter).flatMap((e) => (e.shadow ? [e.shadow] : []))
+}
+
 type DesignEffect =
   | { kind: "shadow"; shadow: Shadow }
   | { kind: "blur"; of: "filter" | "backdropFilter"; radius: number }
@@ -158,7 +173,7 @@ export function compareSpec(
   design: DesignTree,
   dom: DomTree,
   v: Verification,
-  opts: { scale: number; tokens?: Token[]; unthemed?: string[] },
+  opts: { scale: number; tokens?: Token[]; unthemed?: string[]; authoritative?: boolean },
 ): { findings: Finding[]; coverage: Report["coverage"] } {
   const { scale } = opts
   const tol = TOLERANCE_FLOOR_PX * scale
@@ -451,34 +466,46 @@ export function compareSpec(
       }
     } else {
       const wanted = node.effects.map(parseDesignEffect)
-      const unexpected = (["filter", "backdropFilter"] as const).flatMap((property) => {
-        const value = style[property]
-        if (!value || value === "none") return []
-        const hasBlur = wanted.some((e) => e.kind === "blur" && e.of === property)
-        const remainder = hasBlur ? value.replace(/blur\([^)]*\)/, "").trim() : value
-        return remainder ? [`${property}: ${remainder}`] : []
-      })
-      if (unexpected.length) {
-        findings.push({
-          check: "spec",
-          kind: "effects",
-          status: "fail",
-          target: targetOf(node, el),
-          expected: "none",
-          actual: unexpected.join("; "),
+      const reportUnexpected = (matchedFilter: string[]) => {
+        const unexpected = (["filter", "backdropFilter"] as const).flatMap((property) => {
+          const value = style[property]
+          if (!value || value === "none") return []
+          let remainder = value
+          if (wanted.some((e) => e.kind === "blur" && e.of === property)) remainder = remainder.replace(/blur\([^)]*\)/, "")
+          if (property === "filter") for (const t of matchedFilter) remainder = remainder.replace(t, "")
+          remainder = remainder.trim()
+          return remainder ? [`${property}: ${remainder}`] : []
         })
+        if (unexpected.length) {
+          findings.push({
+            check: "spec",
+            kind: "effects",
+            status: "fail",
+            target: targetOf(node, el),
+            expected: "none",
+            actual: unexpected.join("; "),
+          })
+        }
       }
       const unknown = wanted.find((e) => e.kind === "unknown")
       if (unknown && unknown.kind === "unknown") {
+        reportUnexpected([])
         skip("effects", node, el, `effect type ${unknown.type} is not compared`)
       } else {
-        const actualShadows = (style.boxShadow === "none" ? [] : splitTopLevel(style.boxShadow)).map(parseCssShadow)
+        // Candidates: box-shadow entries first, then filter drop-shadows; each is used once.
+        const boxEntries = (style.boxShadow === "none" ? [] : splitTopLevel(style.boxShadow)).map(parseCssShadow)
+        const filterEntries = style.filter && style.filter !== "none" ? filterShadowEntries(style.filter) : []
+        const candidates = [
+          ...boxEntries.map((shadow) => ({ shadow, filterText: undefined as string | undefined })),
+          ...filterEntries.map((e) => ({ shadow: e.shadow, filterText: e.text })),
+        ]
         const wantShadows = wanted.flatMap((e) => (e.kind === "shadow" ? [e.shadow] : []))
-        let ok = actualShadows.length === wantShadows.length && actualShadows.every((s) => s !== undefined)
-        const free = actualShadows.filter((s): s is Shadow => s !== undefined)
+        let ok = candidates.length === wantShadows.length && candidates.every((c) => c.shadow !== undefined)
+        const free = candidates.filter((c): c is { shadow: Shadow; filterText: string | undefined } => c.shadow !== undefined)
+        const matchedFilter: string[] = []
         for (const w of wantShadows) {
           const i = free.findIndex(
-            (s) =>
+            ({ shadow: s }) =>
               s.inset === w.inset &&
               Math.abs(s.x - w.x * scale) <= tol &&
               Math.abs(s.y - w.y * scale) <= tol &&
@@ -487,13 +514,17 @@ export function compareSpec(
               sameColour(s.colour, w.colour),
           )
           if (i < 0) ok = false
-          else free.splice(i, 1)
+          else {
+            const [hit] = free.splice(i, 1)
+            if (hit.filterText) matchedFilter.push(hit.filterText)
+          }
         }
         for (const e of wanted) {
           if (e.kind !== "blur") continue
           const m = /blur\(([\d.]+)px\)/.exec(style[e.of])
           if (!m || Math.abs(Number(m[1]) - e.radius * scale) > tol) ok = false
         }
+        reportUnexpected(matchedFilter)
         findings.push({
           check: "spec",
           kind: "effects",
@@ -589,8 +620,39 @@ export function compareSpec(
   }
 
   const proposed = v.pairs.length
+  // An authoritative proposal is the builder's complete claim, so a pair that could not be
+  // checked must keep the screen from reading clean.
+  if (opts.authoritative === true) {
+    if (proposed === 0) {
+      findings.push({
+        check: "spec",
+        kind: "correspondence",
+        status: "not_comparable",
+        target: { selector: dom.root.selector, designNode: design.root.id },
+        reason: "authoritative proposal has no pairs",
+      })
+    }
+    for (const p of v.pairs) {
+      if (p.outcome !== "not_comparable") continue
+      findings.push({
+        check: "spec",
+        kind: "correspondence",
+        status: "not_comparable",
+        target: { selector: p.proposed ?? p.selector, designNode: p.nodeId },
+        reason: `${p.rule}: ${p.note ?? p.rule}`,
+      })
+    }
+  }
   return {
     findings,
-    coverage: { pairsProposed: proposed, pairsAccepted: kept.length, dropped: proposed - kept.length },
+    coverage: {
+      pairsProposed: proposed,
+      pairsAccepted: kept.length,
+      dropped: proposed - kept.length,
+      authoritative: opts.authoritative === true,
+      rejected: v.pairs
+        .filter((p) => p.outcome === "not_comparable")
+        .map((p) => ({ nodeId: p.nodeId, selector: p.proposed ?? p.selector, rule: p.rule as RejectionRule, ...(p.note ? { note: p.note } : {}) })),
+    },
   }
 }

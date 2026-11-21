@@ -465,6 +465,14 @@ describe("verifyMapping, one rule at a time", () => {
     expect(r.pairs[0].rule).toBe("resolvable")
   })
 
+  it("uses the resolution note as the resolvable rejection note", () => {
+    const p = clone(GOOD_MAPPING)
+    p.pairs[0].selector = ".item"
+    const r = verifyMapping(p, designTree, domTree, { ...ONE, notes: { ".item": "ambiguous: 2 elements" } })
+    expect(r.pairs[0].rule).toBe("resolvable")
+    expect(r.pairs[0].note).toBe("ambiguous: 2 elements")
+  })
+
   it("rejects a mapping that claims one element for two nodes", () => {
     const p = clone(GOOD_MAPPING)
     p.pairs[4].selector = p.pairs[6].selector
@@ -617,6 +625,20 @@ describe("mutating a known-good mapping", () => {
     )
     expect(dropped.length).toBeGreaterThan(0)
     expect(rulesUsed(r)).toContain("order_consistent")
+  })
+
+  it("an authoritative proposal is not rejected for reading order; the same proposal without the flag is", () => {
+    const corrupted = clone(GOOD_MAPPING)
+    const icons = [1, 3, 5]
+    const selectors = icons.map((i) => corrupted.pairs[i].selector)
+    icons.forEach((pairIndex, k) => {
+      corrupted.pairs[pairIndex].selector = selectors[(k + 1) % icons.length]
+    })
+    const plain = verifyMapping(corrupted, designTree, domTree, ONE)
+    expect(rulesUsed(plain)).toContain("order_consistent")
+    const auth = verifyMapping({ ...corrupted, authoritative: true }, designTree, domTree, ONE)
+    expect(rulesUsed(auth)).not.toContain("order_consistent")
+    for (const i of icons) expect(verdict(auth, corrupted.pairs[i].nodeId).outcome).toBe("accepted")
   })
 
   it("catches two nodes mapped to the same element", () => {

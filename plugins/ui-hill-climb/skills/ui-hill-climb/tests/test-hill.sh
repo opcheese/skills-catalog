@@ -13,6 +13,13 @@ FAIL=0
 WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
 
+# Hermetic: a real kimi-delegate must never be reachable. Cases that need the canned
+# stub override HILL_KIMI_DELEGATE themselves.
+NO_REAL_DELEGATE="$WORK/no-real-delegate"
+printf '#!/usr/bin/env bash\necho "real kimi-delegate must not be reached in tests" >&2\nexit 99\n' > "$NO_REAL_DELEGATE"
+chmod +x "$NO_REAL_DELEGATE"
+export HILL_KIMI_DELEGATE="$NO_REAL_DELEGATE"
+
 ok()   { PASS=$((PASS+1)); echo "  [ok]   $1"; }
 bad()  { FAIL=$((FAIL+1)); echo "  [FAIL] $1"; [ -n "${2:-}" ] && echo "         got: ${2:0:400}"; }
 check_contains() { case "$2" in *"$3"*) ok "$1" ;; *) bad "$1" "$2" ;; esac; }
@@ -88,6 +95,12 @@ check_contains "a missing or added element is always a deviation, even live-data
 OUT=$(judge --screen "$WORK/screen.png" --design "$WORK/design.png" --reference "$WORK/ref.png" --label d2 --out "$WORK/rd"); RC=$?
 check_eq "design and reference together are refused" "$RC" "2"
 
+echo "hill-judge: the real delegate is unreachable in tests"
+reset; echo "$GOOD" > "$WORK/ans"
+OUT=$(env -u HILL_KIMI_DELEGATE HILL_KIMI_DELEGATE="$NO_REAL_DELEGATE" "$JUDGE" --screen "$WORK/screen.png" --label g --runs 1 --out "$WORK/rg" 2>&1); RC=$?
+check_eq "the suite's default delegate fails loudly" "$RC" "99"
+check_contains "with its message" "$OUT" "real kimi-delegate must not be reached"
+
 echo "hill-judge: model override"
 reset; echo "$GOOD" > "$WORK/ans"
 HILL_JUDGE_MODEL=kimi-for-coding/k3.1-pro judge --screen "$WORK/screen.png" --label a --out "$WORK/r2" >/dev/null
@@ -120,6 +133,89 @@ echo "hill-judge: quota stop is passed through"
 reset; echo "" > "$WORK/ans"; echo 75 > "$WORK/ans.exit"
 judge --screen "$WORK/screen.png" --label f --out "$WORK/r7" >/dev/null
 check_eq "exit 75 propagates" "$?" "75"
+
+echo "hill-judge: other runners (HILL_RUNNER)"
+BIN="$(cd "$(dirname "${BASH_SOURCE[0]}")/fixtures/bin" && pwd)"
+PROPOSE="$DIR/hill-propose"
+rjudge() { PATH="$BIN:$PATH" "$JUDGE" "$@" 2>&1; }
+reset; echo "$GOOD" > "$WORK/ans"
+OUT=$(HILL_RUNNER=claude rjudge --screen "$WORK/screen.png" --reference "$WORK/ref.png" --label cl --runs 1 --out "$WORK/rc"); RC=$?
+check_eq "claude runner exits 0" "$RC" "0"
+LOG="$(cat "$WORK/log")"
+check_contains "claude runs read-only with text output" "$LOG" $'ARG -p\nARG --allowedTools\nARG Read\nARG --output-format\nARG text\nSTDIN'
+check_missing "claude gets no --model when HILL_JUDGE_MODEL is unset" "$LOG" "--model"
+check_missing "the Kimi default model name never reaches claude" "$LOG" "kimi"
+check_contains "claude gets the prompt on stdin" "$LOG" "You are judging the visual design"
+check_contains "claude runs in the work directory" "$LOG" "CWD $(cd "$WORK/rc/work-cl" && pwd -P)"
+J="$(cat "$WORK/rc/cl.run1.json")"
+check_contains "provenance names runner and default model" "$J" '"provenance": "runner=claude model=default cmd=claude"'
+check_contains "model_requested says default, not a Kimi name" "$J" '"model_requested": "default"'
+reset; echo "$GOOD" > "$WORK/ans"
+HILL_RUNNER=claude HILL_JUDGE_MODEL=claude-test-model rjudge --screen "$WORK/screen.png" --label cm --runs 1 --out "$WORK/rc" >/dev/null
+check_contains "an explicit model reaches claude" "$(cat "$WORK/log")" $'ARG --model\nARG claude-test-model'
+check_contains "provenance names the explicit model" "$(cat "$WORK/rc/cm.run1.json")" "runner=claude model=claude-test-model cmd=claude"
+
+reset; echo "$GOOD" > "$WORK/ans"; png "$WORK/design.png"
+HILL_RUNNER=codex rjudge --screen "$WORK/screen.png" --design "$WORK/design.png" --label cx --runs 1 --out "$WORK/rx" >/dev/null
+LOG="$(cat "$WORK/log")"
+check_contains "codex uses exec outside a git repo" "$LOG" $'ARG exec\nARG --skip-git-repo-check\n'
+check_contains "codex attaches the screenshot with -i" "$LOG" "work-cx/screen.png"
+check_contains "codex attaches the design with -i" "$LOG" "work-cx/design.png"
+check_eq "one -i per image" "$(grep -c '^ARG -i$' "$WORK/log")" "2"
+check_missing "codex gets no -m when HILL_JUDGE_MODEL is unset" "$LOG" "ARG -m"
+check_contains "codex gets the prompt on stdin" "$LOG" "approved design frame"
+check_contains "codex provenance" "$(cat "$WORK/rx/cx.run1.json")" "runner=codex model=default cmd=codex"
+reset; echo "$GOOD" > "$WORK/ans"
+HILL_RUNNER=claude HILL_JUDGE_MODEL= rjudge --screen "$WORK/screen.png" --label ck --runs 1 --out "$WORK/rc" >/dev/null
+check_missing "an empty HILL_JUDGE_MODEL is unset for claude" "$(cat "$WORK/log")" "--model"
+check_contains "and the provenance says default" "$(cat "$WORK/rc/ck.run1.json")" "runner=claude model=default"
+reset; echo "$GOOD" > "$WORK/ans"
+HILL_RUNNER=codex HILL_JUDGE_MODEL= rjudge --screen "$WORK/screen.png" --label cz --runs 1 --out "$WORK/rx" >/dev/null
+check_missing "an empty HILL_JUDGE_MODEL is unset for codex" "$(cat "$WORK/log")" "ARG -m"
+reset; echo "$GOOD" > "$WORK/ans"
+HILL_RUNNER=codex HILL_JUDGE_MODEL=codex-test-model rjudge --screen "$WORK/screen.png" --label cy --runs 1 --out "$WORK/rx" >/dev/null
+check_contains "an explicit model reaches codex" "$(cat "$WORK/log")" $'ARG -m\nARG codex-test-model'
+
+reset; echo "$GOOD" > "$WORK/ans"
+HILL_RUNNER=command HILL_RUNNER_CMD="$BIN/stub-runner --flag 'two words'" rjudge --screen "$WORK/screen.png" --label cd --runs 1 --out "$WORK/rd2" >/dev/null
+check_eq "command runner exits 0" "$?" "0"
+LOG="$(cat "$WORK/log")"
+check_contains "command runner splits HILL_RUNNER_CMD like a shell" "$LOG" $'ARG --flag\nARG two words'
+check_contains "command runner gets the prompt on stdin" "$LOG" "You are judging the visual design"
+check_contains "command provenance" "$(cat "$WORK/rd2/cd.run1.json")" "runner=command model=default cmd=$BIN/stub-runner"
+OUT=$(HILL_RUNNER=command rjudge --screen "$WORK/screen.png" --label ce --out "$WORK/rd3"); RC=$?
+check_eq "command runner without HILL_RUNNER_CMD exits 2" "$RC" "2"
+check_contains "and says what to set" "$OUT" "HILL_RUNNER_CMD"
+
+reset; echo "$GOOD" > "$WORK/ans"
+OUT=$(HILL_RUNNER=gemini rjudge --screen "$WORK/screen.png" --label cu --out "$WORK/ru"); RC=$?
+check_eq "unknown runner exits 2" "$RC" "2"
+check_contains "and names the four runners" "$OUT" "kimi, claude, codex, command"
+check_eq "and makes no call" "$(cat "$WORK/state" 2>/dev/null || echo 0)" "0"
+
+reset; echo "" > "$WORK/ans"; echo 75 > "$WORK/ans.exit"
+OUT=$(HILL_RUNNER=claude rjudge --screen "$WORK/screen.png" --label cq --out "$WORK/rq"); RC=$?
+check_eq "a non-kimi failure is a delegate error, never 75" "$RC" "1"
+check_contains "its stderr is shown" "$OUT" "stub-runner noise"
+
+echo "hill-propose: the same runner"
+reset; PIN='{"design":{"nodeId":"1:1"},"dom":{"selector":"#card"}}'
+echo '{"pairs":[{"nodeId":"1:1","selector":"#card"}],"unmapped":{"design":[],"impl":[]}}' > "$WORK/ans"
+OUT=$(printf '%s' "$PIN" | HILL_RUNNER=claude PATH="$BIN:$PATH" "$PROPOSE" 2>"$WORK/perr"); RC=$?
+check_eq "propose on claude exits 0" "$RC" "0"
+check_contains "and prints the proposal" "$OUT" '"selector": "#card"'
+PLOG="$(cat "$WORK/log")"
+check_contains "claude got the pairing prompt" "$PLOG" "Pair each design node"
+check_contains "propose attaches no images" "$PLOG" "ENDSTDIN"
+check_contains "propose runs claude read-only" "$PLOG" $'ARG -p\nARG --allowedTools\nARG Read'
+reset; echo '{"pairs":[],"unmapped":{"design":[],"impl":[]}}' > "$WORK/ans"
+printf '%s' "$PIN" | HILL_RUNNER=codex PATH="$BIN:$PATH" "$PROPOSE" >/dev/null 2>&1
+check_eq "propose on codex attaches no -i" "$(grep -c '^ARG -i$' "$WORK/log")" "0"
+reset; echo "" > "$WORK/ans"; echo 75 > "$WORK/ans.exit"
+printf '%s' "$PIN" | HILL_RUNNER=claude PATH="$BIN:$PATH" "$PROPOSE" >/dev/null 2>&1
+check_eq "propose: a non-kimi failure is never 75" "$?" "1"
+printf '%s' "$PIN" | HILL_RUNNER=gemini "$PROPOSE" >/dev/null 2>&1
+check_eq "propose: unknown runner exits 2" "$?" "2"
 
 # ---------------------------------------------------------------------------
 # hill-score works on judge JSONs, so build rounds by hand.

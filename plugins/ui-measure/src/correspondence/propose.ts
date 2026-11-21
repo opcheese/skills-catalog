@@ -41,7 +41,13 @@ function parseProposal(text: string, source: string): Proposal {
     v.unmapped !== undefined &&
     v.unmapped !== null &&
     strings(v.unmapped.design) &&
-    strings(v.unmapped.impl)
+    strings(v.unmapped.impl) &&
+    (v.authoritative === undefined || typeof v.authoritative === "boolean") &&
+    (v.unmappedReasons === undefined ||
+      (v.unmappedReasons !== null &&
+        typeof v.unmappedReasons === "object" &&
+        !Array.isArray(v.unmappedReasons) &&
+        Object.values(v.unmappedReasons).every((r) => typeof r === "string")))
   if (!ok) throw new ProposalError(`${source} did not produce a Proposal`)
   return v as Proposal
 }

@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Stand-in for a model CLI: logs its name, argv, cwd and stdin to $FAKE_LOG, then
+# prints the canned answer in $FAKE_ANSWER (exit code from $FAKE_ANSWER.exit).
+{ echo "RUNNER ${STUB_NAME:-stub}"; echo "CWD $PWD"; printf 'ARG %s\n' "$@"; echo "STDIN"; cat; echo "ENDSTDIN"; } >> "$FAKE_LOG"
+echo "stub-runner noise on stderr" >&2
+cat "$FAKE_ANSWER"; exit "$(cat "$FAKE_ANSWER.exit" 2>/dev/null || echo 0)"

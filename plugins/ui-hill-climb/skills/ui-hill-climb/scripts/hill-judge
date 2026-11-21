@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Score one screen with an outside judge (Kimi k3.1-pro via kimi-delegation).
+"""Score one screen with an outside judge (Kimi k3.1-pro by default; any model via HILL_RUNNER).
 
   hill-judge --screen PNG --label NAME --out DIR
              [--reference PNG]... | [--design PNG]  [--constraints FILE] [--runs N]
@@ -12,14 +12,16 @@ Writes DIR/NAME.run<i>.json per run: scores per category, findings with
 regions, the requested model and the delegate's provenance line.
 
 Exit codes: 0 ok, 2 bad input (no call spent), 3 the judge's answer was
-unusable twice, 75 quota exhausted (from kimi-delegate), other: delegate error.
-Env: HILL_JUDGE_MODEL (default kimi-code/k3.1-pro), HILL_KIMI_DELEGATE (path).
+unusable twice, 75 quota exhausted (kimi runner only), other: delegate error.
+Env: HILL_RUNNER (kimi default, claude, codex, command), HILL_RUNNER_CMD (for command: an argv
+that reads the prompt on stdin), HILL_JUDGE_MODEL (default kimi-code/k3.1-pro on kimi; on the
+other runners it is passed only when set), HILL_KIMI_DELEGATE (path, kimi runner).
 """
-import argparse, hashlib, json, os, re, shutil, subprocess, sys
+import argparse, hashlib, json, os, re, shutil, sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from hilllib import DEFAULT_MODEL, find_delegate, first_json
+from hilllib import first_json, requested_model, run_model, runner_name
 
 CATEGORIES = ["hierarchy", "typography", "colour", "spacing", "consistency", "originality"]
 
@@ -150,25 +152,22 @@ def main():
     else:
         prompt = PROMPT.format(screen=screen_name, refs=refs, constraints=cons)
 
-    delegate = find_delegate()
-    model = os.environ.get("HILL_JUDGE_MODEL", DEFAULT_MODEL)
-    env = dict(os.environ, KIMI_DELEGATE_MODEL=model)
+    runner_name()
+    model = requested_model()
+    images = [os.path.join(work, n) for n in [screen_name] + ref_names + ([design_name] if a.design else [])]
     sha = hashlib.sha256(open(a.screen, "rb").read()).hexdigest()
 
     for run in range(1, a.runs + 1):
         result, why, prov = None, "", ""
         for attempt in (1, 2):
-            p = subprocess.run([delegate, "--via", "kimi", "--final-only", "--cwd", work, "--", prompt],
-                               capture_output=True, text=True, env=env)
-            prov = next((l for l in p.stderr.splitlines() if l.startswith("kimi-delegate:")), "")
-            if p.returncode != 0:
-                sys.stderr.write(p.stderr)
-                sys.exit(p.returncode)
-            result, why = parse_answer(p.stdout)
+            code, answer, prov = run_model(prompt, work, images, model)
+            if code != 0:
+                sys.exit(code)
+            result, why = parse_answer(answer)
             if result:
                 break
         if not result:
-            die(3, f"{a.label} run {run}: {why} (twice); last answer: {p.stdout.strip()[:200]!r}")
+            die(3, f"{a.label} run {run}: {why} (twice); last answer: {answer.strip()[:200]!r}")
         out = {"label": a.label, "mode": "design" if a.design else "reference",
                "image": os.path.abspath(a.screen), "sha256": sha,
                "references": [{"path": os.path.abspath(r), "sha256": hashlib.sha256(open(r, "rb").read()).hexdigest()}
