@@ -113,9 +113,9 @@ check_eq "not comparable does not stop" "$(jget "$OUT" 'j["stop"]')" "False"
 
 R="$WORK/e"; mkmeasure "$R" card:spec
 card_round "$R" 1 5.0 3 3
-judge "$R/round-2" card 8 "$NONE"; report "$R/round-2" card geometry 0 0
+judge "$R/round-2" card 8 "$NONE"; report "$R/round-2" card spec 0 3
 OUT=$(run "$R")
-check_contains "missing report names the screen and file" "$OUT" "round 2 not comparable: card: report missing: card.spec.json"
+check_contains "missing report names the screen and file" "$OUT" "round 2 not comparable: card: report missing: card.geometry.json"
 check_eq "missing report: best 1" "$(jget "$OUT" 'j["best_round"]')" "1"
 
 echo "hill-score measured: guard"
@@ -232,8 +232,17 @@ check_contains "measure.json added mid-run: round 1 says reports are missing" "$
 card_round "$R" 2 5.0 3 3
 check_eq "round 2 measured is best" "$(jget "$(run "$R")" 'j["best_round"]')" "2"
 
-R="$WORK/bad"; judge "$R/round-1" card 5 "$NONE"; echo '{"config":' > "$R/measure.json"
-"$SCORE" --run "$R" >/dev/null 2>&1; check_eq "malformed measure.json exits 2" "$?" "2"
+bad_measure() { # bad_measure NAME JSON WANT_TEXT
+  local R="$WORK/bad-$1" ERR RC
+  judge "$R/round-1" card 5 "$NONE"; printf '%s' "$2" > "$R/measure.json"
+  ERR=$("$SCORE" --run "$R" 2>&1 >/dev/null); RC=$?
+  check_eq "measure.json $1: exits 2" "$RC" "2"
+  check_contains "measure.json $1: names the file" "$ERR" "measure.json"
+  check_contains "measure.json $1: names the problem" "$ERR" "$3"
+}
+bad_measure notjson '{"config":' "invalid JSON"
+bad_measure unknownkey '{"config":"c.json","screens":{},"extra":1}' "unknown key 'extra'"
+bad_measure both '{"config":"c.json","screens":{"card":{"target":"card","figma":"1:2","node":"n.json"}}}' "mutually exclusive"
 
 echo
 echo "$PASS passed, $FAIL failed"

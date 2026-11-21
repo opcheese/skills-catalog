@@ -107,7 +107,7 @@ def measure_round(round_dir, n, screens):
                 verdict = rep.get("verdict", "clean")
                 if not isinstance(findings, list):
                     raise ValueError("findings is not a list")
-            except (ValueError, AttributeError) as e:
+            except (ValueError, AttributeError, OSError) as e:
                 problems.append(f"unreadable report {name}: {e}")
                 row["verdict"] = "unreadable"
                 continue
