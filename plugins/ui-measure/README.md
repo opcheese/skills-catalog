@@ -9,6 +9,16 @@ Measures a rendered page in a real browser, with no model judging pixels. Four c
 
 Outcomes: clean (exit 0), mismatches (1), not comparable (2), usage or setup failure (3).
 
+## Setup
+
+Node 20 or later. `probe` needs nothing else. `geometry`, `spec` and `baseline` drive Chromium through Playwright, found in the project you run from or installed globally:
+
+```bash
+pnpm add -g playwright && pnpm exec playwright install chromium
+```
+
+Without it they exit 3 and print this command.
+
 ## How far to trust it
 
 Geometry checks are dependable.

@@ -26,6 +26,8 @@ node dist/ui-measure.mjs spec --config ui-measure.config.json --target card \
 
 Keep credentials in the delegation environment, never in config or command arguments.
 
+**Light mode.** On a project run on light mode (task cards, a reader per screen card), run the checks after the card's cases are green and before its reader, and give the reports to the reader: they are evidence for it, not a reader file. Run `geometry` on every card that changes a screen. The intent-holder's approved look target is the design. If ui-hill-climb is installed, its `light-mode.md` has the rest.
+
 ## Building from Figma
 
 Record the pairing while you build, so nothing has to be guessed afterwards.

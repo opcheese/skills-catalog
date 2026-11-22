@@ -25,6 +25,10 @@ A screen built with ui-measure's build-time workflow already has its pairs: `hil
 `.ui-measure/pairs/<target>.json` next to the config (or the screen's `proposal`, which wins), uses it in round 1
 and never asks a model to pair.
 
+**Light mode.** On a project run on light mode (task cards, a reader per screen card, the stop cord), read
+`light-mode.md` in this directory before round 1: it places the climb and ui-measure in a card, names the look
+target as the design, and ties the climb's stops to the stop cord.
+
 ## Before round 1
 
 1. **Run directory:** `.hill/<YYYY-MM-DD>-<slug>/` in the project. Add `.hill/` to `.gitignore` if it isn't.

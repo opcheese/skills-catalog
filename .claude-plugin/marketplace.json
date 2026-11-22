@@ -60,13 +60,13 @@
     {
       "name": "ui-hill-climb",
       "description": "Screenshot, judge, fix loop for app UI: an outside judge scores fresh screenshots against reference screens, the agent fixes, the best round is kept. Judge on Kimi (default), Claude, Codex or any command; optionally climbs on ui-measure counts",
-      "version": "0.3.0",
+      "version": "0.3.1",
       "source": "./plugins/ui-hill-climb"
     },
     {
       "name": "ui-measure",
       "description": "Model-free UI measurement: compare rendered geometry and computed styles with a design, or check layout sanity without one",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "source": "./plugins/ui-measure"
     }
   ]
