@@ -1,7 +1,7 @@
 {
   "name": "ui-hill-climb",
   "description": "Improve an app's UI in a screenshot, judge, fix loop: an outside judge (Kimi by default, or Claude, Codex or any command) scores fresh screenshots against reference screens per category, the agent fixes, and the best round is kept. Human-piloted or unattended. Optionally climbs on exact ui-measure counts.",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "author": {
     "name": "opcheese"
   },

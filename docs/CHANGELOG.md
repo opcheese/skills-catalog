@@ -8,6 +8,15 @@ audience: developers
 
 Notable changes to the catalog: what devs install, and what the docs tell them.
 
+## 2026-11-22: light-mode page and Setup, after review
+
+ui-hill-climb 0.3.2 and ui-measure 0.2.2, from a review of the light-mode pages. The judge *should* run on a
+different model from the builder's (nothing enforces it). Only the budget stop and two rounds worse in a row pull
+the stop cord; a judge unreliable on its own frame and broken measurement stop the climb and ask the
+intent-holder without a pull. ui-measure's *Setup* gives the in-project and the global install separately, and
+installs Chromium with the same Playwright (the global form used `pnpm exec`, which may not find a global binary outside a project).
+ui-hill-climb's `SKILL.md` now says Playwright may be global, as ui-measure's loader allows.
+
 ## 2026-11-22: the UI skills inside light mode
 
 ui-hill-climb 0.3.1 gains `light-mode.md`, read before round 1 on a project run on light mode (task cards, a reader

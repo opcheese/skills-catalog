@@ -61,7 +61,8 @@ A facelift fixes layout. It never hides a check, a stage, a label or a refusal t
 The judge is part of the builder's loop, not a review round.
 
 - Light mode's one code review and one fix-check, and the reader, still happen once, after the climb.
-- The judge runs on a model other than the builder's. On the Kimi runner, spend the flat-fee plan first.
+- The judge should run on a model other than the builder's. Nothing enforces it, so pick the runner with that in
+  mind. On the Kimi runner, spend the flat-fee plan first.
 - Judge findings are the builder's to-do. They aren't folded as *silent* findings, and they don't add rounds
   to light's review.
 
@@ -77,19 +78,26 @@ A climb is a per-card check, never the full walk.
 ## Stops
 
 The climb's own stop (cap reached, gain under 0.3, no major deviation left) ends the climb normally, without a
-pull. These pull the stop cord: three lines in the run log (what was observed, which trigger, the question for
-the intent-holder), with a default:
+pull.
+
+Two stops pull the stop cord, because they are light's own triggers: three lines in the run log (what was
+observed, which trigger, the question for the intent-holder), with a default.
 
 - **Exit 75, or the card's budget is spent:** the cost trigger.
-- **`revert_to` set in two consecutive rounds:** a repair made things worse twice. Treat it like the trigger for
-  a repair that created the defect it repaired.
+- **`revert_to` set in two consecutive rounds:** a repair made things worse twice, light's trigger for a repair
+  that created the defect it repaired.
+
+The pull's default is the safe branch: the best round's code stays on the branch, and work moves to another card.
+Never continue the climb as the default.
+
+Two more stop the climb and ask the intent-holder, without a pull, since light's cord has no trigger for them:
+
 - **The frame scores far from 10 against itself, or with major findings:** the judge is unreliable on this
   screen. Don't act on its findings.
 - **A measured guard trip, or a round that isn't comparable twice running:** the measurement is broken. Fix the
   setup, don't judge.
 
-The pull's default is the safe branch: the best round's code stays on the branch, and work moves to another card.
-Never continue the climb as the default.
+While either waits, the best round stays on the branch, so nothing is lost.
 
 ## At the gate
 
