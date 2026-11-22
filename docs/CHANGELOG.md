@@ -8,6 +8,16 @@ audience: developers
 
 Notable changes to the catalog: what devs install, and what the docs tell them.
 
+## 2026-11-22: the UI skills inside light mode
+
+ui-hill-climb 0.3.1 gains `light-mode.md`, read before round 1 on a project run on light mode (task cards, a reader
+per screen card, the stop cord). It maps each kind of facelift card to a tool (`geometry` on every screen change;
+*Building from Figma* or *Building from a screenshot* when the look target is a frame or an image; the climb in
+design mode against the look target), places the checks after the cases are green and before the reader (they are
+evidence for the reader, not its file), keeps the climb's rounds out of light's one review, caps rounds at 3,
+names the stops that pull the cord, and lists what the intent-holder sees at the gate. ui-measure 0.2.1's
+`SKILL.md` gets a short light-mode note. Not yet evaluated.
+
 ## 2026-11-21: ui-measure, building from a screenshot
 
 ui-measure's `SKILL.md` gains *Building from a screenshot*, for a developer with only an image of the design: write
