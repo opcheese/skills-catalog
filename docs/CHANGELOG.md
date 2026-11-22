@@ -16,7 +16,8 @@ per screen card, the stop cord). It maps each kind of facelift card to a tool (`
 design mode against the look target), places the checks after the cases are green and before the reader (they are
 evidence for the reader, not its file), keeps the climb's rounds out of light's one review, caps rounds at 3,
 names the stops that pull the cord, and lists what the intent-holder sees at the gate. ui-measure 0.2.1's
-`SKILL.md` gets a short light-mode note. Not yet evaluated.
+`SKILL.md` gets a short light-mode note. Not yet evaluated. ui-measure's README gains a *Setup* section: Node 20+, and Playwright
+with Chromium for `geometry`, `spec` and `baseline` (`probe` needs neither).
 
 ## 2026-11-21: ui-measure, building from a screenshot
 
