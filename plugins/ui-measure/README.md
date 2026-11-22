@@ -11,13 +11,19 @@ Outcomes: clean (exit 0), mismatches (1), not comparable (2), usage or setup fai
 
 ## Setup
 
-Node 20 or later. `probe` needs nothing else. `geometry`, `spec` and `baseline` drive Chromium through Playwright, found in the project you run from or installed globally:
+Node 20 or later. `probe` needs nothing else. `geometry`, `spec` and `baseline` drive Chromium through Playwright, found in the project you run from or, failing that, installed globally. In a project:
 
 ```bash
-pnpm add -g playwright && pnpm exec playwright install chromium
+pnpm add -D playwright && pnpm exec playwright install chromium
 ```
 
-Without it they exit 3 and print this command.
+Or once per machine, outside any project:
+
+```bash
+pnpm add -g playwright && playwright install chromium
+```
+
+Install Chromium with the same Playwright you added: each Playwright version expects its own Chromium build, so a separately downloaded one (`pnpm dlx playwright`) can fetch the wrong build. Without Playwright the commands exit 3 and print the in-project command.
 
 ## How far to trust it
 

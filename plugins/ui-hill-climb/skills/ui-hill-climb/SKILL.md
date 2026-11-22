@@ -50,7 +50,7 @@ target as the design, and ties the climb's stops to the stop cord.
    `measure.json` in the run directory. It makes the loop climb on exact counts from the ui-measure plugin
    (rendered geometry, and boxes/spacing/colours/fonts against the design) before the judge's scores.
    See the ui-measure skill for the config. Needs the ui-measure plugin installed (or `HILL_UI_MEASURE` set
-   to its `dist/ui-measure.mjs`) and Playwright in the project. Without `measure.json` nothing below
+   to its `dist/ui-measure.mjs`) and Playwright, in the project or installed globally (ui-measure's README, *Setup*). Without `measure.json` nothing below
    changes. Shape:
    ```json
    {"config": "ui-measure.config.json",
